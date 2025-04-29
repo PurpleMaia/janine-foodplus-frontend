@@ -105,4 +105,3 @@ export async function updateBillStatus(billId: string, newStatus: BillStatus): P
 
     return { ...mockBills[billIndex] }; // Return a copy of the updated bill
 }
-```
