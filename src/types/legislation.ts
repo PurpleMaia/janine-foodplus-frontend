@@ -23,4 +23,9 @@ export interface Bill {
    * The current status of the bill, corresponding to a Kanban column ID.
    */
   status: BillStatus;
+  /**
+   * Optional: Timestamp or string indicating the last update time.
+   */
+  lastUpdated?: string | Date;
 }
+```

@@ -12,11 +12,12 @@ interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
   isDraggingOver: boolean;
   draggingBillId: string | null;
   children?: React.ReactNode; // For Droppable placeholder
+  onCardClick: (bill: Bill) => void; // Add callback prop
 }
 
 
 export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-    ({ columnId, title, bills, isDraggingOver, draggingBillId, children, className, ...props }, ref) => {
+    ({ columnId, title, bills, isDraggingOver, draggingBillId, onCardClick, children, className, ...props }, ref) => {
     return (
       <div
         ref={ref}
@@ -45,6 +46,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                     {...provided.dragHandleProps}
                     bill={bill}
                     isDragging={snapshot.isDragging}
+                    onCardClick={onCardClick} // Pass the handler down
                      style={{
                       ...provided.draggableProps.style,
                       // Add styles for dragging appearance if needed
