@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Bill } from '@/types/legislation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button'; // Use Button for click handling
@@ -26,6 +26,26 @@ const getStatusIcon = (status: Bill['status']): React.ReactNode => {
 
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     ({ bill, isDragging, onCardClick, className, style, ...props }, ref) => {
+
+    const [formattedDate, setFormattedDate] = useState<string>('N/A');
+
+    // Format date only on client-side after mount to prevent hydration mismatch
+    useEffect(() => {
+      if (bill.lastUpdated instanceof Date) {
+        setFormattedDate(bill.lastUpdated.toLocaleDateString());
+      } else if (typeof bill.lastUpdated === 'string') {
+          // Attempt to parse if it's a string
+          try {
+              const date = new Date(bill.lastUpdated);
+              if (!isNaN(date.getTime())) {
+                setFormattedDate(date.toLocaleDateString());
+              }
+          } catch (e) {
+              console.warn("Could not parse date string:", bill.lastUpdated);
+          }
+      }
+    }, [bill.lastUpdated]);
+
 
     const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation(); // Prevent drag-and-drop from triggering
@@ -69,7 +89,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                            Status: {COLUMN_TITLES[bill.status] || bill.status}
                         </CardDescription>
                         {/* Optional: Add last updated date if available */}
-                        <p className="text-xs text-muted-foreground mt-1">Updated: {bill.lastUpdated instanceof Date ? bill.lastUpdated.toLocaleDateString() : 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Updated: {formattedDate}</p>
                     </CardContent>
                     <CardFooter className="p-0 pt-2 mt-auto flex items-center justify-end text-xs text-accent hover:underline">
                          {/* Placeholder for "View Details" link/action */}
