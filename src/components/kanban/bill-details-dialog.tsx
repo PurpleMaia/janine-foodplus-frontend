@@ -75,7 +75,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Larger, full height */}
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Larger, full height, flex-col ensures footer is at bottom */}
         {/* Header */}
         <DialogHeader className="p-4 border-b sticky top-0 bg-background z-10">
             <div className="flex justify-between items-start">
@@ -85,7 +85,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                         Current Stage: {currentStageName}
                     </DialogDescription>
                 </div>
-                 {/* Removed the X close button from here */}
+                 {/* The 'X' close button is part of DialogContent by default */}
             </div>
 
           {/* Progress Tracker */}
@@ -112,7 +112,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
         </DialogHeader>
 
         {/* Main Content Area (Scrollable) */}
-        <ScrollArea className="flex-1 overflow-y-auto">
+        <ScrollArea className="flex-1 overflow-y-auto"> {/* flex-1 allows this area to grow and push footer down */}
           {/* Grid layout: Use grid-cols-4, make middle column span 2 */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
 
@@ -227,6 +227,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
         </ScrollArea>
 
         {/* Footer (contains the close button) */}
+        {/* This is already placed correctly at the bottom of the DialogContent flex container */}
         <DialogFooter className="p-4 border-t sticky bottom-0 bg-background z-10">
           <Button variant="outline" onClick={onClose}>
             Close
