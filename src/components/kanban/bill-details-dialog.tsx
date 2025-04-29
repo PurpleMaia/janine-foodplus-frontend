@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import type { Bill, Introducer, BillDraft, NewsArticle } from '@/types/legislation';
+import type { Bill, BillStatus, Introducer, BillDraft, NewsArticle } from '@/types/legislation';
 import {
   Dialog,
   DialogContent,
@@ -116,9 +116,10 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
 
         {/* Main Content Area (Scrollable) */}
         <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+          {/* Grid layout: Use grid-cols-4, make middle column span 2 */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
 
-            {/* Left Column: Introducers */}
+            {/* Left Column: Introducers (Implicitly col-span-1) */}
             <div className="space-y-4 md:border-r md:pr-4">
               <h3 className="text-md font-semibold border-b pb-1">Introducers</h3>
               {bill.introducers.length > 0 ? (
@@ -126,6 +127,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                   {bill.introducers.map((intro, index) => (
                     <li key={index} className="flex items-center space-x-3">
                       <Avatar className="h-8 w-8">
+                        {/* TODO: Replace with actual capitol.hawaii.gov images if possible */}
                         <AvatarImage src={intro.imageUrl} alt={intro.name} />
                         <AvatarFallback>{intro.name.charAt(0)}</AvatarFallback>
                       </Avatar>
@@ -138,8 +140,8 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
               )}
             </div>
 
-            {/* Middle Column: Details & PDF */}
-            <div className="space-y-4 md:col-span-1"> {/* Default to 1 span, let right take remaining */}
+            {/* Middle Column: Details & PDF (Explicitly col-span-2) */}
+            <div className="space-y-4 md:col-span-2"> {/* Make middle column wider */}
               <h3 className="text-md font-semibold border-b pb-1">Details</h3>
               <div className="space-y-2 text-sm">
                 <DetailItem label="Measure Title" value={bill.measureTitle} />
@@ -170,8 +172,8 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
               </div>
             </div>
 
-            {/* Right Column: Links & News */}
-            <div className="space-y-4 md:border-l md:pl-4 md:col-span-1"> {/* Explicitly 1 span */}
+            {/* Right Column: Links & News (Explicitly col-span-1) */}
+            <div className="space-y-4 md:border-l md:pl-4 md:col-span-1">
                 {/* Bill Drafts */}
                 <div>
                     <h3 className="text-md font-semibold border-b pb-1 mb-2">Bill Drafts</h3>
