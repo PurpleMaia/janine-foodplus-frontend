@@ -148,7 +148,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                 {bill.package && <DetailItem label="Package" value={bill.package} badge />}
               </div>
 
-              <Separator />
+              {/* Removed Separator from here */}
 
               <h3 className="text-md font-semibold border-b pb-1">Current Bill Text</h3>
               <div className="border rounded-md overflow-hidden h-64 md:h-96"> {/* Fixed height container */}
@@ -227,7 +227,6 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
         </ScrollArea>
 
         {/* Footer (contains the close button) */}
-        {/* This is already placed correctly at the bottom of the DialogContent flex container */}
         <DialogFooter className="p-4 border-t sticky bottom-0 bg-background z-10">
           <Button variant="outline" onClick={onClose}>
             Close
