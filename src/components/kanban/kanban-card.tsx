@@ -3,13 +3,13 @@ import type { Bill } from '@/types/legislation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button'; // Use Button for click handling
 import { cn } from '@/lib/utils';
-import { Calendar, CheckCircle, XCircle, Clock, FileText, UserCheck, GitBranch, Flag, Send, Edit, Gavel, ExternalLink } from 'lucide-react'; // Added ExternalLink
+import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel } from 'lucide-react'; // Removed ExternalLink, XCircle, UserCheck, Flag, Edit
 import { COLUMN_TITLES } from '@/lib/kanban-columns'; // Import column titles
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   bill: Bill;
   isDragging: boolean;
-  onCardClick: (bill: Bill) => void; // Add onClick handler prop
+  onCardClick: (bill: Bill) => void; // Keep onClick handler prop
 }
 
 // Function to get an appropriate icon based on status (simple example)
@@ -73,7 +73,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 onClick={handleButtonClick}
                 aria-label={`View details for bill ${bill.id}: ${bill.name}`} // Accessibility
             >
-                <div className="flex flex-col p-3 w-full"> {/* Use flex column for content */}
+                <div className="flex flex-col p-3 w-full min-h-[100px]"> {/* Ensure a min height */}
                     <CardHeader className="p-0 pb-2 space-y-1">
                          <div className="flex items-start justify-between gap-2">
                              <CardTitle className="text-sm font-medium leading-tight break-words" title={bill.name}>
@@ -83,19 +83,15 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                          </div>
                          <p className="text-xs font-mono text-muted-foreground">{bill.id}</p>
                     </CardHeader>
-                    <CardContent className="p-0 pb-2">
+                    <CardContent className="p-0 pb-2 flex-grow"> {/* Allow content to grow */}
                         {/* Show concise status text */}
-                        <CardDescription className="text-xs text-muted-foreground">
+                        <CardDescription className="text-xs text-muted-foreground line-clamp-2"> {/* Limit status text lines */}
                            Status: {COLUMN_TITLES[bill.status] || bill.status}
                         </CardDescription>
                         {/* Optional: Add last updated date if available */}
                         <p className="text-xs text-muted-foreground mt-1">Updated: {formattedDate}</p>
                     </CardContent>
-                    <CardFooter className="p-0 pt-2 mt-auto flex items-center justify-end text-xs text-accent hover:underline">
-                         {/* Placeholder for "View Details" link/action */}
-                        View Details
-                        <ExternalLink className="h-3 w-3 ml-1" />
-                    </CardFooter>
+                    {/* Footer removed as the whole card is clickable */}
                 </div>
             </Button>
       </div>

@@ -10,6 +10,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-p
 import { useKanbanBoard } from '@/hooks/use-kanban-board';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
 
 interface KanbanBoardProps {
   initialBills: Bill[];
@@ -22,6 +23,8 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null); // State for selected bill
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
 
   // Debounced search effect
   useEffect(() => {
@@ -152,62 +155,66 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   }, [bills, toast]); // Include bills and toast in dependency array
 
 
-   // Placeholder function for handling card clicks
+   // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
-     console.log("Card clicked:", bill);
-     // TODO: Implement navigation or modal display logic here
-     // Example: router.push(`/bills/${bill.id}`);
-     // Example: setSelectedBill(bill); setModalOpen(true);
-     toast({
-        title: "Bill Clicked",
-        description: `You clicked on ${bill.name} (${bill.id}). Add details view logic here.`,
-      });
-   }, [toast]); // Include dependencies like router or state setters if needed
+     console.log("Card clicked, opening details:", bill);
+     setSelectedBill(bill);
+     setIsDialogOpen(true);
+   }, []);
 
 
    return (
-    <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <ScrollArea className="h-full w-full whitespace-nowrap p-4">
-        {error && <p className="text-destructive p-4">{error}</p>}
-        {loading && !bills.length && ( // Show skeleton only if loading and no bills displayed
-            <div className="flex space-x-4">
-                 {KANBAN_COLUMNS.map((col) => (
-                    <div key={col.id} className="w-80 shrink-0 space-y-2">
-                        <Skeleton className="h-8 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-20 w-full" />
-                    </div>
-                 ))}
+    <>
+        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <ScrollArea className="h-full w-full whitespace-nowrap p-4">
+            {error && <p className="text-destructive p-4">{error}</p>}
+            {loading && !bills.length && ( // Show skeleton only if loading and no bills displayed
+                <div className="flex space-x-4">
+                     {KANBAN_COLUMNS.map((col) => (
+                        <div key={col.id} className="w-80 shrink-0 space-y-2">
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-20 w-full" />
+                        </div>
+                     ))}
+                </div>
+            )}
+            {!loading && !bills.length && searchQuery && (
+                 <p className="p-4 text-center text-muted-foreground">No bills found matching "{searchQuery}".</p>
+            )}
+             {!loading && !bills.length && !searchQuery && ( // Message when no bills exist initially
+                 <p className="p-4 text-center text-muted-foreground">No bills to display.</p>
+            )}
+            <div className="flex space-x-4 pb-4">
+              {KANBAN_COLUMNS.map((column) => (
+                 <Droppable key={column.id} droppableId={column.id}>
+                  {(provided, snapshot) => (
+                    <KanbanColumn
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      columnId={column.id as BillStatus}
+                      title={column.title}
+                      bills={billsByColumn[column.id as BillStatus] || []}
+                      isDraggingOver={snapshot.isDraggingOver}
+                      draggingBillId={draggingBillId}
+                      onCardClick={handleCardClick} // Pass click handler
+                    >
+                      {provided.placeholder}
+                    </KanbanColumn>
+                  )}
+                </Droppable>
+              ))}
             </div>
-        )}
-        {!loading && !bills.length && searchQuery && (
-             <p className="p-4 text-center text-muted-foreground">No bills found matching "{searchQuery}".</p>
-        )}
-         {!loading && !bills.length && !searchQuery && ( // Message when no bills exist initially
-             <p className="p-4 text-center text-muted-foreground">No bills to display.</p>
-        )}
-        <div className="flex space-x-4 pb-4">
-          {KANBAN_COLUMNS.map((column) => (
-             <Droppable key={column.id} droppableId={column.id}>
-              {(provided, snapshot) => (
-                <KanbanColumn
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  columnId={column.id as BillStatus}
-                  title={column.title}
-                  bills={billsByColumn[column.id as BillStatus] || []}
-                  isDraggingOver={snapshot.isDraggingOver}
-                  draggingBillId={draggingBillId}
-                  onCardClick={handleCardClick} // Pass click handler
-                >
-                  {provided.placeholder}
-                </KanbanColumn>
-              )}
-            </Droppable>
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-    </DragDropContext>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </DragDropContext>
+
+        {/* Render the dialog */}
+        <BillDetailsDialog
+            bill={selectedBill}
+            isOpen={isDialogOpen}
+            onClose={() => setIsDialogOpen(false)}
+        />
+    </>
   );
 }
