@@ -28,8 +28,8 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
         {...props}
       >
         <div className="sticky top-0 z-[1] rounded-t-lg bg-secondary p-3 shadow-sm">
-           {/* Removed truncate class to allow full title display */}
-           <h2 className="text-sm font-semibold text-secondary-foreground" title={title}>
+           {/* Allow text wrapping for long column titles */}
+           <h2 className="text-sm font-semibold text-secondary-foreground whitespace-normal break-words" title={title}>
             {title} ({bills.length})
            </h2>
         </div>
@@ -64,4 +64,3 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
 });
 
 KanbanColumn.displayName = "KanbanColumn";
-
