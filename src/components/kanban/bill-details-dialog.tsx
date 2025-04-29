@@ -226,8 +226,8 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
           </div>
         </ScrollArea>
 
-        {/* Footer (contains the close button) */}
-        <DialogFooter className="p-4 border-t sticky bottom-0 bg-background z-10">
+        {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
+        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
