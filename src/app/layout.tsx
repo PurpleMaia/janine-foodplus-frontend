@@ -26,7 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      {/* Add suppressHydrationWarning to body to ignore extension-injected attributes */}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning={true}>
         <KanbanBoardProvider> {/* Wrap children with the provider */}
           {children}
         </KanbanBoardProvider>
