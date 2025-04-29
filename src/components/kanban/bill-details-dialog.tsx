@@ -85,10 +85,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                         Current Stage: {currentStageName}
                     </DialogDescription>
                 </div>
-                 <Button variant="ghost" size="icon" onClick={onClose} className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x h-4 w-4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                    <span className="sr-only">Close</span>
-                 </Button>
+                 {/* Removed the X close button from here */}
             </div>
 
           {/* Progress Tracker */}
@@ -229,7 +226,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
           </div>
         </ScrollArea>
 
-        {/* Footer (optional close button) */}
+        {/* Footer (contains the close button) */}
         <DialogFooter className="p-4 border-t sticky bottom-0 bg-background z-10">
           <Button variant="outline" onClick={onClose}>
             Close
