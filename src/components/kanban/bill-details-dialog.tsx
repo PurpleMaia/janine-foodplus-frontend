@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import type { Bill, BillStatus, Introducer, BillDraft, NewsArticle } from '@/types/legislation';
+import type { Bill, BillStatus } from '@/types/legislation';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { ExternalLink, FileText, Newspaper } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -65,13 +64,8 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
     return null; // Don't render anything if no bill is selected
   }
 
-  const progressValue = getProgressValue(bill.status);
-  const currentStageName = getCurrentStageName(bill.status);
-
-  // Sort drafts newest to oldest
-  const sortedDrafts = [...bill.billDrafts].sort((a, b) => b.date.getTime() - a.date.getTime());
-  // Sort articles newest to oldest
-  const sortedArticles = [...bill.newsArticles].sort((a, b) => b.date.getTime() - a.date.getTime());
+  const progressValue = getProgressValue(bill.current_status as BillStatus);
+  const currentStageName = getCurrentStageName(bill.current_status as BillStatus);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -80,7 +74,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
         <DialogHeader className="p-4 border-b sticky top-0 bg-background z-10">
             <div className="flex justify-between items-start">
                 <div>
-                    <DialogTitle className="text-lg font-semibold">{bill.id} - {bill.shortName}</DialogTitle>
+                    <DialogTitle className="text-lg font-semibold">{bill.bill_number} - {bill.bill_title}</DialogTitle>
                     <DialogDescription className="text-sm text-muted-foreground">
                         Current Stage: {currentStageName}
                     </DialogDescription>
@@ -113,115 +107,48 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
 
         {/* Main Content Area (Scrollable) */}
         <ScrollArea className="flex-1 overflow-y-auto"> {/* flex-1 allows this area to grow and push footer down */}
-          {/* Grid layout: Use grid-cols-4, make middle column span 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
+          {/* Grid layout: Use grid-cols-2 for simpler layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
 
-            {/* Left Column: Introducers (Implicitly col-span-1) */}
-            <div className="space-y-4 md:border-r md:pr-4">
-              <h3 className="text-md font-semibold border-b pb-1">Introducers</h3>
-              {bill.introducers.length > 0 ? (
-                <ul className="space-y-3">
-                  {bill.introducers.map((intro, index) => (
-                    <li key={index} className="flex items-center space-x-3">
-                      <Avatar className="h-8 w-8">
-                        {/* TODO: Replace with actual capitol.hawaii.gov images if possible */}
-                        <AvatarImage src={intro.imageUrl} alt={intro.name} />
-                        <AvatarFallback>{intro.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{intro.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">No introducers listed.</p>
-              )}
-            </div>
-
-            {/* Middle Column: Details & PDF (Explicitly col-span-2) */}
-            <div className="space-y-4 md:col-span-2"> {/* Make middle column wider */}
+            {/* Left Column: Details */}
+            <div className="space-y-4">
               <h3 className="text-md font-semibold border-b pb-1">Details</h3>
               <div className="space-y-2 text-sm">
-                <DetailItem label="Measure Title" value={bill.measureTitle} />
-                {bill.reportTitle && <DetailItem label="Report Title" value={bill.reportTitle} />}
+                <DetailItem label="Bill Number" value={bill.bill_number} />
+                <DetailItem label="Bill Title" value={bill.bill_title} />
                 <DetailItem label="Description" value={bill.description} />
-                {bill.companionBill && <DetailItem label="Companion Bill" value={bill.companionBill} badge />}
-                {bill.package && <DetailItem label="Package" value={bill.package} badge />}
-              </div>
-
-              {/* Removed Separator from here */}
-
-              <h3 className="text-md font-semibold border-b pb-1">Current Bill Text</h3>
-              <div className="border rounded-md overflow-hidden h-64 md:h-96"> {/* Fixed height container */}
-                {bill.currentDraftPdfUrl ? (
-                  <iframe
-                    src={bill.currentDraftPdfUrl}
-                    title={`Current draft of ${bill.id}`}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 'none' }}
-                  />
-                ) : (
-                   <div className="flex items-center justify-center h-full text-muted-foreground">
-                        <FileText className="h-10 w-10 mr-2" />
-                        <span>No PDF available</span>
-                   </div>
-                )}
+                <DetailItem label="Status" value={bill.current_status} badge />
+                <DetailItem label="Committee Assignment" value={bill.committee_assignment} />
+                <DetailItem label="Introducers" value={bill.introducers} />
+                <DetailItem label="Created" value={bill.created_at.toLocaleDateString()} />
+                <DetailItem label="Last Updated" value={bill.updated_at.toLocaleDateString()} />
               </div>
             </div>
 
-            {/* Right Column: Links & News (Explicitly col-span-1) */}
-            <div className="space-y-4 md:border-l md:pl-4 md:col-span-1">
-                {/* Bill Drafts */}
-                <div>
-                    <h3 className="text-md font-semibold border-b pb-1 mb-2">Bill Drafts</h3>
-                    {sortedDrafts.length > 0 ? (
-                        <ul className="space-y-2">
-                        {sortedDrafts.map((draft) => (
-                            <li key={draft.version} className="text-sm space-y-1">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-medium">{draft.version}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {draft.date.toLocaleDateString()}
-                                    </span>
-                                </div>
-                                <div className="flex space-x-2">
-                                    <a href={draft.htmlUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs flex items-center">
-                                       HTML <ExternalLink className="h-3 w-3 ml-1" />
-                                    </a>
-                                    <a href={draft.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs flex items-center">
-                                        PDF <ExternalLink className="h-3 w-3 ml-1" />
-                                    </a>
-                                </div>
-                            </li>
-                        ))}
-                        </ul>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">No drafts available.</p>
-                    )}
-                 </div>
-
-                <Separator />
-
-                 {/* News Articles */}
-                 <div>
-                    <h3 className="text-md font-semibold border-b pb-1 mb-2">In the News</h3>
-                     {sortedArticles.length > 0 ? (
-                        <ul className="space-y-3">
-                        {sortedArticles.map((article, index) => (
-                            <li key={index} className="text-sm">
-                               <a href={article.url} target="_blank" rel="noopener noreferrer" className="hover:underline block">
-                                  {article.title}
-                               </a>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    {article.source} - {article.date.toLocaleDateString()}
-                                </p>
-                            </li>
-                        ))}
-                        </ul>
-                     ) : (
-                        <p className="text-sm text-muted-foreground">No recent news articles found.</p>
-                     )}
-                 </div>
+            {/* Right Column: Bill URL & Additional Info */}
+            <div className="space-y-4">
+              <h3 className="text-md font-semibold border-b pb-1">Bill Information</h3>
+              
+              <div className="space-y-2">
+                <DetailItem label="Bill URL" value={bill.bill_url} />
+                
+                <div className="border rounded-md overflow-hidden h-64 md:h-96"> {/* Fixed height container */}
+                  {bill.bill_url ? (
+                    <iframe
+                      src={bill.bill_url}
+                      title={`Bill details for ${bill.bill_number}`}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 'none' }}
+                    />
+                  ) : (
+                     <div className="flex items-center justify-center h-full text-muted-foreground">
+                          <FileText className="h-10 w-10 mr-2" />
+                          <span>No bill information available</span>
+                     </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </ScrollArea>

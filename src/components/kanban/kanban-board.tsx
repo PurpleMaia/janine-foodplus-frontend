@@ -28,6 +28,11 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
   // Debounced search effect
   useEffect(() => {
+    if (!searchQuery.trim()) {
+      setBills(initialBills);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     const handler = setTimeout(async () => {
@@ -53,19 +58,19 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
     KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
     bills.forEach(bill => {
-      // Ensure bill.status is a valid key
-      const statusKey = bill.status as BillStatus;
+      // Ensure bill.current_status is a valid key
+      const statusKey = bill.current_status as BillStatus;
       if (grouped.hasOwnProperty(statusKey)) {
         grouped[statusKey]?.push(bill);
       } else {
         // Handle potentially invalid status (optional, depends on data integrity)
-        console.warn(`Bill ${bill.id} has invalid status: ${bill.status}`);
+        console.warn(`Bill ${bill.id} has invalid status: ${bill.current_status}`);
         // Place it in a default column like 'introduced' or handle as needed
         grouped['introduced']?.push(bill);
       }
     });
     // Sort bills within each column if needed, e.g., by ID or name
-    // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.name.localeCompare(b.name)));
+    // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.bill_title.localeCompare(b.bill_title)));
     return grouped;
   }, [bills]);
 
@@ -107,7 +112,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
     if (billIndex > -1) {
         // Create a new bill object with the updated status
-        const updatedBill = { ...newBills[billIndex], status: destinationColumnId };
+        const updatedBill = { ...newBills[billIndex], current_status: destinationColumnId };
         // Replace the old bill object with the updated one
         newBills.splice(billIndex, 1, updatedBill);
         setBills(newBills); // Update state optimistically
@@ -129,7 +134,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
         // setBills(prev => prev.map(b => b.id === updatedBillFromServer.id ? updatedBillFromServer : b));
         toast({
           title: "Bill Status Updated",
-          description: `${movedBill.name} moved to ${COLUMN_TITLES[destinationColumnId]}.`,
+          description: `${movedBill.bill_title} moved to ${COLUMN_TITLES[destinationColumnId]}.`,
         });
     } catch (error) {
         console.error("Failed to update bill status:", error);
@@ -139,14 +144,14 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
         const billToRevertIndex = revertedBills.findIndex(b => b.id === draggableId);
          if (billToRevertIndex > -1) {
             // Create a new bill object with the original status
-            const revertedBill = { ...revertedBills[billToRevertIndex], status: sourceColumnId };
+            const revertedBill = { ...revertedBills[billToRevertIndex], current_status: sourceColumnId };
             // Replace the optimistically updated bill object with the reverted one
             revertedBills.splice(billToRevertIndex, 1, revertedBill);
             setBills(revertedBills); // Revert state
          }
          toast({
            title: "Update Failed",
-           description: `Could not move ${movedBill.name}. Please try again.`,
+           description: `Could not move ${movedBill.bill_title}. Please try again.`,
            variant: "destructive",
          });
     } finally {

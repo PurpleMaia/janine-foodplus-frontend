@@ -1,6 +1,14 @@
 import type { Bill, BillStatus, BillDraft, Introducer, NewsArticle } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 
+// Only import postgres on server-side to avoid browser module issues
+let sql: any = null;
+if (typeof window === 'undefined') {
+  // Server-side only
+  const postgres = require('postgres');
+  sql = postgres(process.env.DATABASE_URL!);
+}
+
 // Helper function to create placeholder introducers
 const createIntroducers = (names: string[]): Introducer[] =>
     names.map((name, index) => ({
@@ -28,91 +36,80 @@ const createNewsArticles = (count: number): NewsArticle[] =>
     }));
 
 
-// Mock data with diverse statuses and lastUpdated timestamps, including new fields
+// Mock data with diverse statuses and lastUpdated timestamps, updated to match new Bill type
 const mockBills: Bill[] = [
   {
-      id: 'HB101',
-      name: 'Clean Energy Act', // Keep for backward compat / simple display if needed
-      shortName: 'Clean Energy',
-      measureTitle: 'A Bill for an Act Relating to Clean Energy Standards.',
-      reportTitle: 'Report on Clean Energy Standards (Committee on Energy)',
+      id: '1',
+      bill_url: '/bills/HB101',
       description: 'Promotes renewable energy sources and sets new standards for emissions.',
-      status: 'introduced',
-      lastUpdated: new Date(2024, 5, 1),
-      introducers: createIntroducers(['Rep. Aloha', 'Rep. Mahalo']),
-      companionBill: 'SB202',
-      package: 'Governor\'s Package',
-      currentDraftPdfUrl: '/bills/HB101/drafts/latest.pdf', // Placeholder
-      billDrafts: createBillDrafts('HB101', ['Orig.', 'HD1']),
-      newsArticles: createNewsArticles(2),
+      current_status: 'introduced',
+      created_at: new Date(2024, 5, 1),
+      updated_at: new Date(2024, 5, 1),
+      committee_assignment: 'Energy',
+      bill_title: 'Clean Energy Act',
+      introducers: 'Rep. Aloha, Rep. Mahalo',
+      bill_number: 'HB101',
   },
   {
-      id: 'SB205',
-      name: 'Education Reform Bill',
-      shortName: 'Edu Reform',
-      measureTitle: 'A Bill for an Act Relating to Public Education Funding.',
+      id: '2',
+      bill_url: '/bills/SB205',
       description: 'Improves funding mechanisms and accountability for public schools.',
-      status: 'scheduled1',
-      lastUpdated: new Date(2024, 5, 10),
-      introducers: createIntroducers(['Sen. Kokua', 'Sen. Pono']),
-      currentDraftPdfUrl: '/bills/SB205/drafts/latest.pdf',
-      billDrafts: createBillDrafts('SB205', ['Orig.']),
-      newsArticles: createNewsArticles(1),
+      current_status: 'scheduled1',
+      created_at: new Date(2024, 5, 10),
+      updated_at: new Date(2024, 5, 10),
+      committee_assignment: 'Education',
+      bill_title: 'Education Reform Bill',
+      introducers: 'Sen. Kokua, Sen. Pono',
+      bill_number: 'SB205',
   },
   {
-      id: 'HB330',
-      name: 'Healthcare Access Initiative',
-      shortName: 'Healthcare Access',
-      measureTitle: 'A Bill for an Act Relating to Healthcare Accessibility.',
+      id: '3',
+      bill_url: '/bills/HB330',
       description: 'Expands healthcare coverage options for underserved populations.',
-      status: 'introduced',
-      lastUpdated: new Date(2024, 5, 5),
-      introducers: createIntroducers(['Rep. Laulima']),
-      currentDraftPdfUrl: '/bills/HB330/drafts/latest.pdf',
-      billDrafts: createBillDrafts('HB330', ['Orig.']),
-      newsArticles: [],
- },
- {
-      id: 'SB410',
-      name: 'Infrastructure Investment Plan',
-      shortName: 'Infrastructure Plan',
-      measureTitle: 'A Bill for an Act Appropriating Funds for Infrastructure.',
-      description: 'Funds critical infrastructure projects across the state, including roads and bridges.',
-      status: 'deferred1',
-      lastUpdated: new Date(2024, 5, 12),
-      introducers: createIntroducers(['Sen. Alakai']),
-      package: 'Senate Majority Package',
-      currentDraftPdfUrl: '/bills/SB410/drafts/latest.pdf',
-      billDrafts: createBillDrafts('SB410', ['Orig.', 'SD1']),
-      newsArticles: createNewsArticles(3),
+      current_status: 'introduced',
+      created_at: new Date(2024, 5, 5),
+      updated_at: new Date(2024, 5, 5),
+      committee_assignment: 'Health',
+      bill_title: 'Healthcare Access Initiative',
+      introducers: 'Rep. Laulima',
+      bill_number: 'HB330',
   },
   {
-      id: 'HB500',
-      name: 'Data Privacy Law',
-      shortName: 'Data Privacy',
-      measureTitle: 'A Bill for an Act Relating to Consumer Data Privacy.',
-      description: 'Strengthens consumer data protection rights and regulations for businesses.',
-      status: 'passedCommittees', // Updated status to test progress tracker
-      lastUpdated: new Date(2024, 5, 20), // Updated date
-      introducers: createIntroducers(['Rep. Malama', 'Rep. Kuleana']),
-      currentDraftPdfUrl: '/bills/HB500/drafts/latest.pdf',
-      billDrafts: createBillDrafts('HB500', ['Orig.', 'HD1', 'HD2']),
-      newsArticles: createNewsArticles(1),
+      id: '4',
+      bill_url: '/bills/SB410',
+      description: 'Funds critical infrastructure projects across the state, including roads and bridges.',
+      current_status: 'deferred1',
+      created_at: new Date(2024, 5, 12),
+      updated_at: new Date(2024, 5, 12),
+      committee_assignment: 'Transportation',
+      bill_title: 'Infrastructure Investment Plan',
+      introducers: 'Sen. Alakai',
+      bill_number: 'SB410',
   },
-   {
-      id: 'SB621',
-      name: 'Affordable Housing Act',
-      shortName: 'Housing Act',
-      measureTitle: 'A Bill for an Act Relating to Affordable Housing Development.',
+  {
+      id: '5',
+      bill_url: '/bills/HB500',
+      description: 'Strengthens consumer data protection rights and regulations for businesses.',
+      current_status: 'passedCommittees',
+      created_at: new Date(2024, 5, 20),
+      updated_at: new Date(2024, 5, 20),
+      committee_assignment: 'Consumer Protection',
+      bill_title: 'Data Privacy Law',
+      introducers: 'Rep. Malama, Rep. Kuleana',
+      bill_number: 'HB500',
+  },
+  {
+      id: '6',
+      bill_url: '/bills/SB621',
       description: 'Provides incentives and zoning changes to encourage affordable housing.',
-      status: 'governorSigns', // Updated status
-      lastUpdated: new Date(2024, 5, 28), // Updated date
-      introducers: createIntroducers(['Sen. Ohana']),
-      currentDraftPdfUrl: '/bills/SB621/drafts/latest.pdf',
-      billDrafts: createBillDrafts('SB621', ['Orig.', 'SD1', 'SD2', 'Final']),
-      newsArticles: createNewsArticles(4),
-   },
-  // Add more mock bills as needed...
+      current_status: 'governorSigns',
+      created_at: new Date(2024, 5, 28),
+      updated_at: new Date(2024, 5, 28),
+      committee_assignment: 'Housing',
+      bill_title: 'Affordable Housing Act',
+      introducers: 'Sen. Ohana',
+      bill_number: 'SB621',
+  },
 ];
 
 
@@ -128,9 +125,8 @@ export async function getBill(id: string): Promise<Bill | null> {
   const bill = mockBills.find(b => b.id === id);
   // Ensure dates are Date objects (if they were strings)
    if (bill) {
-     bill.lastUpdated = new Date(bill.lastUpdated);
-     bill.billDrafts.forEach(draft => draft.date = new Date(draft.date));
-     bill.newsArticles.forEach(article => article.date = new Date(article.date));
+     bill.created_at = new Date(bill.created_at);
+     bill.updated_at = new Date(bill.updated_at);
    }
   return bill ? { ...bill } : null; // Return a copy
 }
@@ -142,24 +138,31 @@ export async function getBill(id: string): Promise<Bill | null> {
  */
 
 // TODO make a db request here
-export async function getAllBills(): Promise<Bill[]> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    // Ensure dates are Date objects before sorting
-    const processedBills = mockBills.map(bill => ({
-        ...bill,
-        lastUpdated: new Date(bill.lastUpdated),
-        billDrafts: bill.billDrafts.map(draft => ({ ...draft, date: new Date(draft.date) })),
-        newsArticles: bill.newsArticles.map(article => ({ ...article, date: new Date(article.date) })),
-    }));
-    // Sort by lastUpdated date descending (most recent first) before returning
-    const sortedBills = [...processedBills].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
-    return sortedBills; // Return a sorted copy
+export async function getAllBills(): Promise<Bill[]> {    
+
+    // Server-side database query
+    let data: Bill[] = [];
+    try {
+        if (sql) {
+            data = await sql<Bill[]>`
+                SELECT * FROM bills
+            `;
+            console.log(data.slice(1, 5));
+        } else {
+            console.log('SQL connection not available');            
+        }
+    } catch (e) {
+        console.log('Data fetch did not work: ', e);                
+    }   
+    
+    // Sort by updated_at date descending (most recent first) before returning
+    const sortedBills = [...data].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
+    return sortedBills.slice(0,5); // Return a sorted copy
 }
 
 
 /**
- * Asynchronously searches for bills based on a query (ID, shortName, measureTitle, or description).
+ * Asynchronously searches for bills based on a query (ID, bill_title, or description).
  *
  * @param query The search query.
  * @returns A promise that resolves to an array of matching Bill objects.
@@ -168,7 +171,7 @@ export async function searchBills(query: string): Promise<Bill[]> {
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 200));
 
-   // Get all bills, already sorted by lastUpdated
+   // Get all bills, already sorted by updated_at
    const allBills = await getAllBills();
 
   if (!query) {
@@ -178,8 +181,8 @@ export async function searchBills(query: string): Promise<Bill[]> {
   const lowerCaseQuery = query.toLowerCase();
   return allBills.filter(bill =>
     bill.id.toLowerCase().includes(lowerCaseQuery) ||
-    bill.shortName.toLowerCase().includes(lowerCaseQuery) ||
-    bill.measureTitle.toLowerCase().includes(lowerCaseQuery) ||
+    bill.bill_number.toLowerCase().includes(lowerCaseQuery) ||
+    bill.bill_title.toLowerCase().includes(lowerCaseQuery) ||
     bill.description.toLowerCase().includes(lowerCaseQuery)
   );
 }
@@ -187,7 +190,7 @@ export async function searchBills(query: string): Promise<Bill[]> {
 
 /**
  * Asynchronously updates the status of a bill.
- * Also updates the lastUpdated timestamp.
+ * Also updates the updated_at timestamp.
  *
  * @param billId The ID of the bill to update.
  * @param newStatus The new status (Kanban column ID) for the bill.
@@ -209,17 +212,15 @@ export async function updateBillStatus(billId: string, newStatus: BillStatus): P
         return null; // Invalid status
     }
 
-    // Update the status and lastUpdated timestamp in the mock data
-    mockBills[billIndex].status = newStatus;
-    mockBills[billIndex].lastUpdated = new Date(); // Set to current time
-    console.log(`Updated bill ${billId} to status ${newStatus} at ${mockBills[billIndex].lastUpdated}`);
+    // Update the status and updated_at timestamp in the mock data
+    mockBills[billIndex].current_status = newStatus;
+    mockBills[billIndex].updated_at = new Date(); // Set to current time
+    console.log(`Updated bill ${billId} to status ${newStatus} at ${mockBills[billIndex].updated_at}`);
 
     // Ensure dates are Date objects on return
     const updatedBill = { ...mockBills[billIndex] };
-    updatedBill.lastUpdated = new Date(updatedBill.lastUpdated);
-    updatedBill.billDrafts.forEach(draft => draft.date = new Date(draft.date));
-    updatedBill.newsArticles.forEach(article => article.date = new Date(article.date));
-
+    updatedBill.created_at = new Date(updatedBill.created_at);
+    updatedBill.updated_at = new Date(updatedBill.updated_at);
 
     return updatedBill; // Return a copy of the updated bill
 }
