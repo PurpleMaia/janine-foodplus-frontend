@@ -1,7 +1,9 @@
+'use server';
+
 import type { Bill, BillStatus, BillDraft, Introducer, NewsArticle } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
+import { NextRequest, NextResponse } from 'next/server';
 
-// Only import postgres on server-side to avoid browser module issues
 let sql: any = null;
 if (typeof window === 'undefined') {
   // Server-side only
@@ -196,31 +198,78 @@ export async function searchBills(query: string): Promise<Bill[]> {
  * @param newStatus The new status (Kanban column ID) for the bill.
  * @returns A promise that resolves to the updated Bill object or null if not found.
  */
-export async function updateBillStatus(billId: string, newStatus: BillStatus): Promise<Bill | null> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    const billIndex = mockBills.findIndex(b => b.id === billId);
-    if (billIndex === -1) {
-        console.error(`Bill with ID ${billId} not found for update.`);
-        return null; // Bill not found
-    }
-
+export async function updateBillStatusServerAction(billId: string, newStatus: BillStatus): Promise<Bill | null> {
+    console.log('updateBillStatusServerAction called with:', { billId, newStatus });
+    
     // Validate if newStatus is a valid column ID
     if (!KANBAN_COLUMNS.some(col => col.id === newStatus)) {
         console.error(`Invalid status update: ${newStatus}`);
         return null; // Invalid status
     }
 
-    // Update the status and updated_at timestamp in the mock data
-    mockBills[billIndex].current_status = newStatus;
-    mockBills[billIndex].updated_at = new Date(); // Set to current time
-    console.log(`Updated bill ${billId} to status ${newStatus} at ${mockBills[billIndex].updated_at}`);
+    try {
+        // Update the database using the same approach as getAllBills
+        if (sql) {
+            const result = await sql<Bill[]>`
+                UPDATE bills 
+                SET current_status = ${newStatus}, updated_at = NOW()
+                WHERE id = ${billId}
+                RETURNING *
+            `;
+            
+            if (result && result.length > 0) {
+                const updatedBill = result[0];
+                // Ensure dates are Date objects
+                updatedBill.created_at = new Date(updatedBill.created_at);
+                updatedBill.updated_at = new Date(updatedBill.updated_at);
+                
+                console.log(`Successfully updated bill ${billId} to status ${newStatus} in database`);
+                return updatedBill;
+            } else {
+                console.error(`Bill with ID ${billId} not found in database.`);
+                return null;
+            }
+        } else {
+            console.error('SQL connection not available');
+            return null;
+        }
+    } catch (error) {
+        console.error('Database update failed:', error);
+        return null;
+    }
+}
 
-    // Ensure dates are Date objects on return
-    const updatedBill = { ...mockBills[billIndex] };
-    updatedBill.created_at = new Date(updatedBill.created_at);
-    updatedBill.updated_at = new Date(updatedBill.updated_at);
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { status } = await request.json();
+    const billId = params.id;
 
-    return updatedBill; // Return a copy of the updated bill
+    console.log('Updating bill:', { billId, status });
+
+    const result = await sql`
+      UPDATE bills 
+      SET current_status = ${status}, updated_at = NOW()
+      WHERE id = ${billId}
+      RETURNING *
+    `;
+
+    if (result && result.length > 0) {
+      const updatedBill = result[0];
+      // Ensure dates are Date objects
+      updatedBill.created_at = new Date(updatedBill.created_at);
+      updatedBill.updated_at = new Date(updatedBill.updated_at);
+      
+      console.log('Successfully updated bill:', updatedBill);
+      return NextResponse.json(updatedBill);
+    } else {
+      console.error('Bill not found:', billId);
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+  } catch (error) {
+    console.error('Database update failed:', error);
+    return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+  }
 }

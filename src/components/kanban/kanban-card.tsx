@@ -48,7 +48,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     }, [bill.updated_at]);
 
 
-    const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation(); // Prevent drag-and-drop from triggering
       onCardClick(bill);
     };
@@ -66,32 +66,32 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
             {...props} // dnd props
             tabIndex={0} // Make focusable
         >
-            {/* Make the content area a button */}
-            <Button
-                variant="ghost"
-                className="h-full w-full p-0 text-left justify-start items-stretch focus-visible:ring-0 focus-visible:ring-offset-0" // Remove button styling
-                onClick={handleButtonClick}
-                aria-label={`View details for bill ${bill.id}: ${bill.bill_title}`} // Use bill_title for accessibility
+            {/* Add click handler to the content div */}
+            <div 
+                className="flex flex-col p-3 w-full min-h-[80px] cursor-pointer"
+                onClick={handleCardClick}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleCardClick(e as any);
+                    }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for bill ${bill.id}: ${bill.bill_title}`}
             >
-                <div className="flex flex-col p-3 w-full min-h-[80px]"> {/* Slightly reduced min height */}
-                    <CardHeader className="p-0 pb-1 space-y-0.5">
-                         <div className="flex items-start justify-between gap-1">
-                             {/* Use bill_title in the title */}
-                             <CardTitle className="text-sm font-medium leading-tight break-words" title={bill.bill_title}>
-                                {bill.bill_number} - {bill.bill_title}
-                            </CardTitle>
-                            {getStatusIcon(bill.current_status)}
-                         </div>
-                    </CardHeader>
-                    <CardContent className="p-0 mt-1 flex-grow">
-                        {/* Display last updated date */}
-                        <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
-                        {/* Optionally show a very brief status text if needed */}
-                        {/* <p className="text-xs text-muted-foreground line-clamp-1">{COLUMN_TITLES[bill.current_status]}</p> */}
-                    </CardContent>
-                     {/* Footer removed */}
-                </div>
-            </Button>
+                <CardHeader className="p-0 pb-1 space-y-0.5">
+                     <div className="flex items-start justify-between gap-1">
+                         <CardTitle className="text-sm font-medium leading-tight break-words" title={bill.bill_title}>
+                            {bill.bill_number} - {bill.bill_title}
+                        </CardTitle>
+                        {getStatusIcon(bill.current_status)}
+                     </div>
+                </CardHeader>
+                <CardContent className="p-0 mt-1 flex-grow">
+                    <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
+                </CardContent>
+            </div>
       </div>
     );
 });
