@@ -9,6 +9,8 @@ export default async function Home() {
   // Fetch initial data on the server
   const initialBills = await getAllBills();
 
+  //make a toggle here, and display spreadsheet component or Kanban component
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
        <KanbanHeader />

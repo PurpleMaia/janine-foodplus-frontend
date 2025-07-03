@@ -140,6 +140,8 @@ export async function getBill(id: string): Promise<Bill | null> {
  *
  * @returns A promise that resolves to an array of all Bill objects.
  */
+
+// TODO make a db request here
 export async function getAllBills(): Promise<Bill[]> {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 300));
