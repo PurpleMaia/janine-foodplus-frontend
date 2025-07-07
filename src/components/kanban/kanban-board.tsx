@@ -5,7 +5,7 @@ import type { Bill, BillStatus } from '@/types/legislation';
 import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
 import { KanbanColumn } from './kanban-column';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { updateBillStatus, searchBills } from '@/services/legislation'; // Assuming searchBills is implemented
+import { updateBillStatusServerAction, searchBills } from '@/services/legislation';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { useKanbanBoard } from '@/hooks/use-kanban-board';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
@@ -104,34 +104,26 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     if (!movedBill) return; // Should not happen
 
     // --- Optimistic UI Update ---
-    // 1. Remove from old column array
-    // 2. Add to new column array at the destination index
-    // 3. Update the bill's status property
     const newBills = Array.from(bills);
     const billIndex = newBills.findIndex(b => b.id === draggableId);
 
     if (billIndex > -1) {
-        // Create a new bill object with the updated status
         const updatedBill = { ...newBills[billIndex], current_status: destinationColumnId };
-        // Replace the old bill object with the updated one
         newBills.splice(billIndex, 1, updatedBill);
         setBills(newBills); // Update state optimistically
     } else {
         console.error("Bill not found for optimistic update");
-        return; // Exit if bill wasn't found in the array somehow
+        return;
     }
     // --- End Optimistic UI Update ---
 
-
-    // Call API to update status
+    // Call Server Action to update status
     try {
-        setLoading(true); // Show loading state during update
-        const updatedBillFromServer = await updateBillStatus(draggableId, destinationColumnId);
+        setLoading(true);
+        const updatedBillFromServer = await updateBillStatusServerAction(draggableId, destinationColumnId);
         if (!updatedBillFromServer) {
             throw new Error('Failed to update bill status on server.');
         }
-        // Optional: Re-sync state if server returns slightly different data, though optimistic often suffices
-        // setBills(prev => prev.map(b => b.id === updatedBillFromServer.id ? updatedBillFromServer : b));
         toast({
           title: "Bill Status Updated",
           description: `${movedBill.bill_title} moved to ${COLUMN_TITLES[destinationColumnId]}.`,
@@ -140,14 +132,12 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
         console.error("Failed to update bill status:", error);
         setError("Failed to update bill status. Please try again.");
         // Revert optimistic update on error
-        const revertedBills = Array.from(bills); // Use the state *before* this failed attempt
+        const revertedBills = Array.from(bills);
         const billToRevertIndex = revertedBills.findIndex(b => b.id === draggableId);
          if (billToRevertIndex > -1) {
-            // Create a new bill object with the original status
             const revertedBill = { ...revertedBills[billToRevertIndex], current_status: sourceColumnId };
-            // Replace the optimistically updated bill object with the reverted one
             revertedBills.splice(billToRevertIndex, 1, revertedBill);
-            setBills(revertedBills); // Revert state
+            setBills(revertedBills);
          }
          toast({
            title: "Update Failed",
@@ -155,9 +145,9 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
            variant: "destructive",
          });
     } finally {
-        setLoading(false); // Hide loading state
+        setLoading(false);
     }
-  }, [bills, toast]); // Include bills and toast in dependency array
+  }, [bills, toast]);
 
 
    // Updated handler to open the dialog
