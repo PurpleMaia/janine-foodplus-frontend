@@ -1,6 +1,7 @@
 'use server'
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { OpenAI } from 'openai';
+import { updateBillStatusServerAction } from './legislation';
 
 let sql: any = null;
 if (typeof window === 'undefined') {
@@ -153,7 +154,15 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
             const classification = response.choices[0].message.content.trim();
             console.log("Current Status:", currStatus);
             console.log("Classification:", classification);
-            console.log("Mapped:", mapToColumnID(classification))
+            const newStatus = mapToColumnID(classification)
+            console.log("Mapped:", newStatus)
+
+            if (!newStatus) {
+                console.log('Could not map LLM Classification to column')
+            } else {
+                updateBillStatusServerAction(billId, newStatus)
+            }
+
             return classification;
         } catch (error) {
             const err = error as any;
