@@ -39,80 +39,80 @@ const createNewsArticles = (count: number): NewsArticle[] =>
 
 
 // Mock data with diverse statuses and lastUpdated timestamps, updated to match new Bill type
-const mockBills: Bill[] = [
-  {
-      id: '1',
-      bill_url: '/bills/HB101',
-      description: 'Promotes renewable energy sources and sets new standards for emissions.',
-      current_status: 'introduced',
-      created_at: new Date(2024, 5, 1),
-      updated_at: new Date(2024, 5, 1),
-      committee_assignment: 'Energy',
-      bill_title: 'Clean Energy Act',
-      introducers: 'Rep. Aloha, Rep. Mahalo',
-      bill_number: 'HB101',
-  },
-  {
-      id: '2',
-      bill_url: '/bills/SB205',
-      description: 'Improves funding mechanisms and accountability for public schools.',
-      current_status: 'scheduled1',
-      created_at: new Date(2024, 5, 10),
-      updated_at: new Date(2024, 5, 10),
-      committee_assignment: 'Education',
-      bill_title: 'Education Reform Bill',
-      introducers: 'Sen. Kokua, Sen. Pono',
-      bill_number: 'SB205',
-  },
-  {
-      id: '3',
-      bill_url: '/bills/HB330',
-      description: 'Expands healthcare coverage options for underserved populations.',
-      current_status: 'introduced',
-      created_at: new Date(2024, 5, 5),
-      updated_at: new Date(2024, 5, 5),
-      committee_assignment: 'Health',
-      bill_title: 'Healthcare Access Initiative',
-      introducers: 'Rep. Laulima',
-      bill_number: 'HB330',
-  },
-  {
-      id: '4',
-      bill_url: '/bills/SB410',
-      description: 'Funds critical infrastructure projects across the state, including roads and bridges.',
-      current_status: 'deferred1',
-      created_at: new Date(2024, 5, 12),
-      updated_at: new Date(2024, 5, 12),
-      committee_assignment: 'Transportation',
-      bill_title: 'Infrastructure Investment Plan',
-      introducers: 'Sen. Alakai',
-      bill_number: 'SB410',
-  },
-  {
-      id: '5',
-      bill_url: '/bills/HB500',
-      description: 'Strengthens consumer data protection rights and regulations for businesses.',
-      current_status: 'passedCommittees',
-      created_at: new Date(2024, 5, 20),
-      updated_at: new Date(2024, 5, 20),
-      committee_assignment: 'Consumer Protection',
-      bill_title: 'Data Privacy Law',
-      introducers: 'Rep. Malama, Rep. Kuleana',
-      bill_number: 'HB500',
-  },
-  {
-      id: '6',
-      bill_url: '/bills/SB621',
-      description: 'Provides incentives and zoning changes to encourage affordable housing.',
-      current_status: 'governorSigns',
-      created_at: new Date(2024, 5, 28),
-      updated_at: new Date(2024, 5, 28),
-      committee_assignment: 'Housing',
-      bill_title: 'Affordable Housing Act',
-      introducers: 'Sen. Ohana',
-      bill_number: 'SB621',
-  },
-];
+// const mockBills: Bill[] = [
+//   {
+//       id: '1',
+//       bill_url: '/bills/HB101',
+//       description: 'Promotes renewable energy sources and sets new standards for emissions.',
+//       current_status: '',
+//       created_at: new Date(2024, 5, 1),
+//       updated_at: new Date(2024, 5, 1),
+//       committee_assignment: 'Energy',
+//       bill_title: 'Clean Energy Act',
+//       introducers: 'Rep. Aloha, Rep. Mahalo',
+//       bill_number: 'HB101',
+//   },
+//   {
+//       id: '2',
+//       bill_url: '/bills/SB205',
+//       description: 'Improves funding mechanisms and accountability for public schools.',
+//       current_status: '',
+//       created_at: new Date(2024, 5, 10),
+//       updated_at: new Date(2024, 5, 10),
+//       committee_assignment: 'Education',
+//       bill_title: 'Education Reform Bill',
+//       introducers: 'Sen. Kokua, Sen. Pono',
+//       bill_number: 'SB205',
+//   },
+//   {
+//       id: '3',
+//       bill_url: '/bills/HB330',
+//       description: 'Expands healthcare coverage options for underserved populations.',
+//       current_status: '',
+//       created_at: new Date(2024, 5, 5),
+//       updated_at: new Date(2024, 5, 5),
+//       committee_assignment: 'Health',
+//       bill_title: 'Healthcare Access Initiative',
+//       introducers: 'Rep. Laulima',
+//       bill_number: 'HB330',
+//   },
+//   {
+//       id: '4',
+//       bill_url: '/bills/SB410',
+//       description: 'Funds critical infrastructure projects across the state, including roads and bridges.',
+//       current_status: '',
+//       created_at: new Date(2024, 5, 12),
+//       updated_at: new Date(2024, 5, 12),
+//       committee_assignment: 'Transportation',
+//       bill_title: 'Infrastructure Investment Plan',
+//       introducers: 'Sen. Alakai',
+//       bill_number: 'SB410',
+//   },
+//   {
+//       id: '5',
+//       bill_url: '/bills/HB500',
+//       description: 'Strengthens consumer data protection rights and regulations for businesses.',
+//       current_status: '',
+//       created_at: new Date(2024, 5, 20),
+//       updated_at: new Date(2024, 5, 20),
+//       committee_assignment: 'Consumer Protection',
+//       bill_title: 'Data Privacy Law',
+//       introducers: 'Rep. Malama, Rep. Kuleana',
+//       bill_number: 'HB500',
+//   },
+//   {
+//       id: '6',
+//       bill_url: '/bills/SB621',
+//       description: 'Provides incentives and zoning changes to encourage affordable housing.',
+//       current_status: '',
+//       created_at: new Date(2024, 5, 28),
+//       updated_at: new Date(2024, 5, 28),
+//       committee_assignment: 'Housing',
+//       bill_title: 'Affordable Housing Act',
+//       introducers: 'Sen. Ohana',
+//       bill_number: 'SB621',
+//   },
+// ];
 
 
 /**
@@ -121,17 +121,17 @@ const mockBills: Bill[] = [
  * @param id The ID of the bill to retrieve.
  * @returns A promise that resolves to a Bill object or null if not found.
  */
-export async function getBill(id: string): Promise<Bill | null> {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 100));
-  const bill = mockBills.find(b => b.id === id);
-  // Ensure dates are Date objects (if they were strings)
-   if (bill) {
-     bill.created_at = new Date(bill.created_at);
-     bill.updated_at = new Date(bill.updated_at);
-   }
-  return bill ? { ...bill } : null; // Return a copy
-}
+// export async function getBill(id: string): Promise<Bill | null> {
+//   // Simulate API call delay
+//   await new Promise(resolve => setTimeout(resolve, 100));
+//   const bill = mockBills.find(b => b.id === id);
+//   // Ensure dates are Date objects (if they were strings)
+//    if (bill) {
+//      bill.created_at = new Date(bill.created_at);
+//      bill.updated_at = new Date(bill.updated_at);
+//    }
+//   return bill ? { ...bill } : null; // Return a copy
+// }
 
 /**
  * Asynchronously retrieves all bills.
@@ -139,7 +139,7 @@ export async function getBill(id: string): Promise<Bill | null> {
  * @returns A promise that resolves to an array of all Bill objects.
  */
 
-// TODO make a db request here
+
 export async function getAllBills(): Promise<Bill[]> {    
 
     // Server-side database query
@@ -159,7 +159,7 @@ export async function getAllBills(): Promise<Bill[]> {
     
     // Sort by updated_at date descending (most recent first) before returning
     const sortedBills = [...data].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    return sortedBills.slice(0,5); // Return a sorted copy
+    return sortedBills.slice(0,5); // Returning only 5
 }
 
 

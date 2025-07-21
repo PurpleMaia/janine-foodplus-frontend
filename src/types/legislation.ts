@@ -40,7 +40,7 @@ export interface Bill {
   bill_url: string;
   description: string; 
   current_status: string;  
-  // status: BillStatus; (edit DB so there is a column type number)
+  current_status_string: string;
   created_at: Date;
   updated_at: Date;
   committee_assignment: string;

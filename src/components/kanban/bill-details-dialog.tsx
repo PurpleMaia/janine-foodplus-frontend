@@ -17,6 +17,7 @@ import { FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { classifyStatusWithLLM } from '@/services/llm';
 
 
 interface BillDetailsDialogProps {
@@ -148,6 +149,8 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                      </div>
                   )}
                 </div>
+
+                <Button onClick={() => classifyStatusWithLLM(bill.current_status_string)}>Classify Status with LLM</Button>                  
               </div>
             </div>
           </div>
