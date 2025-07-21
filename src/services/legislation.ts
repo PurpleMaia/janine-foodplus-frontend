@@ -174,7 +174,7 @@ export async function getAllBills(): Promise<Bill[]> {
     
     // Sort by updated_at date descending (most recent first) before returning
     let sortedBills = [...data].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    console.log('SORTED', sortedBills.slice(0,5))
+    // console.log('SORTED', sortedBills.slice(0,5))
     sortedBills = sortedBills.slice(0,5)
     sortedBills.push(test_bill)
     return sortedBills; // Returning only 5
