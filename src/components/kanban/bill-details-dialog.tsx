@@ -150,7 +150,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                   )}
                 </div>
 
-                <Button onClick={() => classifyStatusWithLLM(bill.current_status_string)}>Classify Status with LLM</Button>                  
+                <Button onClick={() => classifyStatusWithLLM(bill.id)}>Classify Status with LLM</Button>                  
               </div>
             </div>
           </div>

@@ -1,6 +1,13 @@
 'use server'
 import { OpenAI } from 'openai';
 
+let sql: any = null;
+if (typeof window === 'undefined') {
+  // Server-side only
+  const postgres = require('postgres');
+  sql = postgres(process.env.DATABASE_URL!);
+}
+
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL
@@ -87,11 +94,28 @@ Governor Signs Bill Into Law: The Governor has signed the enrolled bill, making 
 Became law without Gov signature: The bill became law by constitutional default without the Governor’s signature.
 `.trim();
 
-export async function classifyStatusWithLLM(statusDescription: string, maxRetries = 3, retryDelay = 1000) {    
-    const currStatus = statusDescription.split(/\r?\n/)[0];
+async function getContext(billId: string) {
+    console.log('getting context...')
+    try {
+        const data = await sql`
+            select chamber, date, statustext from status_updates su 
+            where su.bill_id = ${billId}
+            limit 5
+        `;       
+        console.log('# of status updates', data.length) 
+        // Format as tab-separated string, one row per line
+        return data.map((row: any) => `${row.chamber}\t${row.date}\t${row.statustext}`).join('\n');
+    } catch (error){
+        console.log('Error fetching bill\'s status context:', error)
+        return null
+    }
+}
+export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retryDelay = 1000) {    
+    const context = await getContext(billId);
+    const currStatus = context.split(/\r?\n/)[0];
     let attempt = 0;
-    const context = statusDescription.split(/\r?\n/).slice(0, 1).join("\n");
-    console.log(context)
+    console.log('CONTEXT:\n', context)
+    console.log('awaiting llm...', process.env.MODEL)
     while (attempt < maxRetries) {
         try {
             const response = await client.chat.completions.create({
@@ -110,7 +134,7 @@ export async function classifyStatusWithLLM(statusDescription: string, maxRetrie
                 ],
                 temperature: 0.0
             }, {
-                timeout: 12000
+                timeout: 60000
             });
             if (!response || !response.choices || !response.choices[0] || !response.choices[0].message || !response.choices[0].message.content) {
                 return null;
@@ -121,18 +145,24 @@ export async function classifyStatusWithLLM(statusDescription: string, maxRetrie
             console.log("--------------------------------")
             return classification;
         } catch (error) {
-            // Check for 524 error (Cloudflare timeout)
             const err = error as any;
             const status = err?.response?.status || err?.status;
-            if (status === 524) {
+            const message = typeof err?.message === 'string' ? err.message : String(err);
+
+            // Retry on HTTP 524 (Cloudflare), ETIMEDOUT, or generic timeout message
+            const isTimeout =
+                status === 524 ||
+                err?.code === 'ETIMEDOUT' ||
+                message.toLowerCase().includes('timeout');
+
+            if (isTimeout) {
                 attempt++;
                 if (attempt < maxRetries) {
-                    console.warn(`524 Timeout error encountered. Retrying attempt ${attempt + 1} after ${retryDelay}ms...`);
+                    console.warn(`Timeout encountered. Retrying attempt ${attempt + 1} after ${retryDelay}ms...`);
                     await new Promise(res => setTimeout(res, retryDelay));
                     continue;
                 }
             }
-            const message = typeof err?.message === 'string' ? err.message : String(err);
             console.error(`Error:`, message);
             return null;
         }
