@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Bill, BillStatus } from '@/types/legislation';
 import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
 import { KanbanColumn } from './kanban-column';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { updateBillStatusServerAction, searchBills } from '@/services/legislation';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { useKanbanBoard } from '@/hooks/use-kanban-board';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 import { useToast } from "@/hooks/use-toast"; // Import useToast
 import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
+import { Button } from '@/components/ui/button';
 
 interface KanbanBoardProps {
   initialBills: Bill[];
@@ -25,6 +27,33 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null); // State for selected bill
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
+
+  // --- Add refs for scroll groups ---
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const beforeCrossoverRef = useRef<HTMLDivElement>(null);
+  const crossoverRef = useRef<HTMLDivElement>(null);
+  const governorRef = useRef<HTMLDivElement>(null);
+
+  // --- Find first column index for each group ---
+  const beforeCrossoverIdx = KANBAN_COLUMNS.findIndex(col => col.id === 'introduced');
+  const crossoverIdx = KANBAN_COLUMNS.findIndex(col => col.id.startsWith('crossover'));
+  const governorIdx = KANBAN_COLUMNS.findIndex(col => col.id === 'transmittedGovernor');
+
+  // --- Scroll handler ---
+  const handleScrollTo = (ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current && viewportRef.current) {
+      const container = viewportRef.current;
+      const target = ref.current;
+      // Get the left position of the target relative to the scroll container
+      const targetRect = target.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const scrollLeft = container.scrollLeft + (targetRect.left - containerRect.left);      
+      console.log('before', container.scrollLeft, '+', scrollLeft);
+      container.scrollLeft = scrollLeft  
+      console.log('after', container.scrollLeft);
+
+    }
+  };
 
   // Debounced search effect
   useEffect(() => {
@@ -162,47 +191,60 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     <>
         <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <ScrollArea className="h-full w-full whitespace-nowrap p-4">
-            {error && <p className="text-destructive p-4">{error}</p>}
-            {loading && !bills.length && ( // Show skeleton only if loading and no bills displayed
-                <div className="flex space-x-4">
-                     {KANBAN_COLUMNS.map((col) => (
-                        <div key={col.id} className="w-80 shrink-0 space-y-2">
-                            <Skeleton className="h-8 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                        </div>
-                     ))}
-                </div>
-            )}
-            {!loading && !bills.length && searchQuery && (
-                 <p className="p-4 text-center text-muted-foreground">No bills found matching "{searchQuery}".</p>
-            )}
-             {!loading && !bills.length && !searchQuery && ( // Message when no bills exist initially
-                 <p className="p-4 text-center text-muted-foreground">No bills to display.</p>
-            )}
-            <div className="flex space-x-4 pb-4">
-              {KANBAN_COLUMNS.map((column) => (
-                 <Droppable key={column.id} droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <KanbanColumn
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      columnId={column.id as BillStatus}
-                      title={column.title}
-                      bills={billsByColumn[column.id as BillStatus] || []}
-                      isDraggingOver={snapshot.isDraggingOver}
-                      draggingBillId={draggingBillId}
-                      onCardClick={handleCardClick} // Pass click handler
-                    >
-                      {provided.placeholder}
-                    </KanbanColumn>
-                  )}
-                </Droppable>
-              ))}
-            </div>
+            <ScrollAreaPrimitive.Viewport
+              ref={viewportRef}
+              className="h-full w-full max-w-[100vw] rounded-[inherit]"
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              <div className="flex space-x-4 pb-4">
+                {KANBAN_COLUMNS.map((column, idx) => {
+                  let ref = undefined;
+                  if (idx === beforeCrossoverIdx) {
+                    ref = beforeCrossoverRef;
+                  } else if (idx === crossoverIdx) {
+                    ref = crossoverRef;
+                  } else if (idx === governorIdx) {
+                    ref = governorRef;
+                  }
+                  return (
+                    <div key={column.id} ref={ref} className="inline-block">
+                      <Droppable droppableId={column.id}>
+                        {(provided, snapshot) => (
+                          <KanbanColumn
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            columnId={column.id as BillStatus}
+                            title={column.title}
+                            bills={billsByColumn[column.id as BillStatus] || []}
+                            isDraggingOver={snapshot.isDraggingOver}
+                            draggingBillId={draggingBillId}
+                            onCardClick={handleCardClick}
+                          >
+                            {provided.placeholder}
+                          </KanbanColumn>
+                        )}
+                      </Droppable>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollAreaPrimitive.Viewport>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </DragDropContext>
+
+        {/* Bottom scroll bar */}
+        <div className="fixed bottom-0 left-0 w-full flex justify-center gap-4 bg-background/90 p-2 z-20 border-t">
+          <Button variant="secondary" onClick={() => handleScrollTo(beforeCrossoverRef)}>
+            Before Crossover
+          </Button>
+          <Button variant="secondary" onClick={() => handleScrollTo(crossoverRef)}>
+            Crossover
+          </Button>
+          <Button variant="secondary" onClick={() => handleScrollTo(governorRef)}>
+            Governor
+          </Button>
+        </div>
 
         {/* Render the dialog */}
         <BillDetailsDialog
