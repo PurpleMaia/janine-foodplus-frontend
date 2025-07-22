@@ -8,41 +8,46 @@ import { classifyStatusWithLLM } from '@/services/llm';
 import { useBills } from '@/hooks/use-bills';
 import { updateBillStatusServerAction } from '@/services/legislation';
 
-interface ButtonProps {
-    bills: Bill[];
-}
-
 export default function AIUpdateButton() {
   const [loading, setLoading] = useState<boolean>(false); // State for dialog visibility
-  const [loadingIds, setLoadingIds] = useState<string[]>([]);
   const { toast } = useToast();  
   const { bills, setBills } = useBills()
 
   // Handler to trigger LLM classification for all bills
-  const handleAIUpdate = async () => {    
+  const handleAIUpdate = async () => {        
     for (const bill of bills) {
       toast({
         title: `Classifying ${bill.bill_number}`,
         description: `AI is categorizing this bill...`,
         variant: 'default',
       });
-      // await classifyStatusWithLLM(bill.id); // Assume this is async
-      await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
-
-      const classification = 'scheduled1'
-    
-      // Update the UI optimistically (same pattern as drag & drop in kanban-board)
-      const newBills = Array.from(bills);
-      const billIndex = newBills.findIndex(b => b.id === bill.id);
+      const classification = await classifyStatusWithLLM(bill.id); 
+      if (!classification) {
+        console.log('Error classifying bill status with LLM...')
+        toast({
+          title: `Error: ${bill.bill_number}`,
+          description: `Could not classify bill status with LLM`,
+          variant: 'destructive',
+        });
+      } else {
+        // await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
+  
+        // const classification = 'scheduled1'
       
-      if (billIndex > -1) {
-        const updatedBill = { ...newBills[billIndex], current_status: classification };
-        newBills.splice(billIndex, 1, updatedBill);
-        setBills(newBills); // This will trigger UI updates in your kanban board
+        // Update the UI optimistically (same pattern as drag & drop in kanban-board)
+        const newBills = Array.from(bills);
+        const billIndex = newBills.findIndex(b => b.id === bill.id);
+        
+        if (billIndex > -1) {
+          const updatedBill = { ...newBills[billIndex], current_status: classification };
+          newBills.splice(billIndex, 1, updatedBill);
+          setBills(newBills); // This will trigger UI updates in your kanban board
+        }
+
+        // Update the server
+        await updateBillStatusServerAction(bill.id, classification)
       }
 
-      // Update the server
-      updateBillStatusServerAction(bill.id, classification)
 
       toast({
         title: `Done: ${bill.bill_number}`,
@@ -57,7 +62,7 @@ export default function AIUpdateButton() {
       description: 'Please reject or accept the changes',
       variant: 'default'      
     })
-  };
+  };  
 
   return (
     <>
@@ -66,7 +71,7 @@ export default function AIUpdateButton() {
           setLoading(true);
           await handleAIUpdate();
         }}
-        disabled={loadingIds.length > 0}
+        disabled={loading}
       >
         { loading ? (
           <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Loading</span>
