@@ -14,14 +14,27 @@ export default function AIUpdateButton() {
   const { bills, setBills } = useBills()
 
   // Handler to trigger LLM classification for all bills
-  const handleAIUpdate = async () => {        
+  const handleAIUpdate = async () => {            
     for (const bill of bills) {
+
+      // Mark bill as processing and store bill index
+      setBills(prevBills => 
+        prevBills.map(b => 
+          b.id === bill.id 
+            ? { ...b, llm_processing: true }
+            : b
+        )
+      );
+
       toast({
         title: `Classifying ${bill.bill_number}`,
         description: `AI is categorizing this bill...`,
         variant: 'default',
       });
-      const classification = await classifyStatusWithLLM(bill.id); 
+
+      // const classification = await classifyStatusWithLLM(bill.id); 
+      const classification = 'scheduled1'
+
       if (!classification) {
         console.log('Error classifying bill status with LLM...')
         toast({
@@ -30,24 +43,23 @@ export default function AIUpdateButton() {
           variant: 'destructive',
         });
       } else {
-        // await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
-  
-        // const classification = 'scheduled1'
-      
-        // Update the UI optimistically (same pattern as drag & drop in kanban-board)
-        const newBills = Array.from(bills);
-        const billIndex = newBills.findIndex(b => b.id === bill.id);
-        
-        if (billIndex > -1) {
-          const updatedBill = { ...newBills[billIndex], current_status: classification };
-          newBills.splice(billIndex, 1, updatedBill);
-          setBills(newBills); // This will trigger UI updates in your kanban board
-        }
-
-        // Update the server
-        await updateBillStatusServerAction(bill.id, classification)
+        await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
+              
+        // Update the UI with LLM suggestion (optimistic)
+        setBills(prevBills => 
+          prevBills.map(b => 
+            b.id === bill.id 
+              ? { 
+                  ...b, 
+                  previous_status: b.current_status, // Store original status
+                  current_status: classification,
+                  llm_suggested: true,
+                  llm_processing: false
+                }
+              : b
+          )
+        );
       }
-
 
       toast({
         title: `Done: ${bill.bill_number}`,

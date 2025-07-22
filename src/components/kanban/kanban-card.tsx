@@ -3,8 +3,10 @@ import type { Bill } from '@/types/legislation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Removed unused imports
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkles, X, Check } from 'lucide-react';
 import { COLUMN_TITLES } from '@/lib/kanban-columns'; // Keep for status text if needed briefly
+import { Badge } from '../ui/badge';
+import { useBills } from '@/hooks/use-bills';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   bill: Bill;
@@ -28,6 +30,8 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     ({ bill, isDragging, onCardClick, className, style, ...props }, ref) => {
 
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const { acceptLLMChange, rejectLLMChange } = useBills()
 
     // Format date only on client-side after mount to prevent hydration mismatch
     useEffect(() => {
@@ -53,6 +57,24 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
       onCardClick(bill);
     };
 
+    const handleAccept = async () => {
+      setIsProcessing(true);
+      try {
+        await acceptLLMChange(bill.id);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+  
+    const handleReject = async () => {
+      setIsProcessing(true);
+      try {
+        await rejectLLMChange(bill.id);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
     return (
         <div
             ref={ref}
@@ -68,7 +90,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
         >
             {/* Add click handler to the content div */}
             <div 
-                className="flex flex-col p-3 w-full min-h-[80px] cursor-pointer"
+                className="flex flex-col p-3 w-full min-h-[80px] cursor-pointer "
                 onClick={handleCardClick}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -80,18 +102,53 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 tabIndex={0}
                 aria-label={`View details for bill ${bill.id}: ${bill.bill_title}`}
             >
-                <CardHeader className="p-0 pb-1 space-y-0.5">
-                     <div className="flex items-start justify-between gap-1">
-                         <CardTitle className="text-sm font-medium leading-tight break-words" title={bill.bill_title}>
-                            {bill.bill_number} - {bill.bill_title}
-                        </CardTitle>
-                        {getStatusIcon(bill.current_status)}
+                <CardHeader className="p-0 pb-1 space-y-0.5 w-1">
+                     <div className="items-start flex justify-between gap-2">
+                         <CardTitle className="text-sm font-bold" title={bill.bill_title}>
+                            {bill.bill_number}
+                        </CardTitle>                                              
                      </div>
                 </CardHeader>
-                <CardContent className="p-0 mt-1 flex-grow">
+                <CardContent className="p-0 mt-1 gap-2">
+                    <p className='text-sm text-foreground text-wrap pb-2'>{bill.description}</p>
                     <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
-                </CardContent>
+
+                </CardContent>                           
             </div>
+            {/* LLM Action Buttons */}
+            {bill.llm_suggested && !bill.llm_processing && (
+              <div className="p-4 flex gap-2 mt-3 pt-3 border-t border-blue-100">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAccept}
+                  disabled={isProcessing}
+                  className="flex-1 text-xs h-8 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                >
+                  <Check className="h-3 w-3 mr-1" />
+                  Accept
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleReject}
+                  disabled={isProcessing}
+                  className="flex-1 text-xs h-8 bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Reject
+                </Button>
+              </div>
+            )}
+
+            {bill.llm_processing && (
+              <div className="mt-3 pt-3 border-t border-blue-100 p-4">
+                <div className="flex items-center justify-center text-xs text-blue-600">
+                  <Sparkles className="h-3 w-3 mr-1 animate-pulse" />
+                  AI Processing...
+                </div>
+              </div>
+            )}
       </div>
     );
 });
