@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Suspense } from 'react';
 import { KanbanHeader } from '@/components/kanban/kanban-header';
 import AIUpdateButton from '@/components/llm/llm-update-button';
-import { useCardUpdate } from '@/hooks/update-cards';
 
 export default async function Home() {
   // Fetch initial data on the server
@@ -20,7 +19,7 @@ export default async function Home() {
             <KanbanHeader />
           </div>
           <div className=''>
-            <AIUpdateButton bills={initialBills}/>
+            <AIUpdateButton/>
           </div>
         </div>
       <main className="flex-1 overflow-hidden">

@@ -158,25 +158,25 @@ export async function getAllBills(): Promise<Bill[]> {
 
     // FOR TESTING ADDING THIS INDIVIDUAL SCRAPED BILL
     // 11b31720-81d9-47c9-8451-55d215569805
-    const test_bill = {
-      id: '11b31720-81d9-47c9-8451-55d215569805',
-      bill_url:	'https://www.capitol.hawaii.gov/session/measure_indiv.aspx?billtype=SB&billnumber=1186&year=2025',
-      description: 'Establishes the Statewide Interagency Food Systems Coordination Team and the Interagency Food Systems Working Group within the Agribusiness Development Corporation. Requires reports to the Legislature.  Appropriates funds.  (CD1)',
-      current_status_string: 'S 5/2/2025: Enrolled to Governor.',	
-      created_at: new Date('2025-06-12 12:19:23.970 -1000'),
-      updated_at: new Date('2025-06-12 12:19:23.970 -1000'),
-      committee_assignment:	'AGR_ ECD_ FIN',
-      bill_title:	'RELATING TO SUSTAINABLE FOOD SYSTEMS.',
-      introducers: 'GABBARD_ AQUINO_ MCKELVEY_ San Buenaventura',
-      bill_number:	'SB1186 SD2 HD3 CD1',
-      current_status: ''
-    }
+    // const test_bill = {
+    //   id: '11b31720-81d9-47c9-8451-55d215569805',
+    //   bill_url:	'https://www.capitol.hawaii.gov/session/measure_indiv.aspx?billtype=SB&billnumber=1186&year=2025',
+    //   description: 'Establishes the Statewide Interagency Food Systems Coordination Team and the Interagency Food Systems Working Group within the Agribusiness Development Corporation. Requires reports to the Legislature.  Appropriates funds.  (CD1)',
+    //   current_status_string: 'S 5/2/2025: Enrolled to Governor.',	
+    //   created_at: new Date('2025-06-12 12:19:23.970 -1000'),
+    //   updated_at: new Date('2025-06-12 12:19:23.970 -1000'),
+    //   committee_assignment:	'AGR_ ECD_ FIN',
+    //   bill_title:	'RELATING TO SUSTAINABLE FOOD SYSTEMS.',
+    //   introducers: 'GABBARD_ AQUINO_ MCKELVEY_ San Buenaventura',
+    //   bill_number:	'SB1186 SD2 HD3 CD1',
+    //   current_status: ''
+    // }
     
     // Sort by updated_at date descending (most recent first) before returning
     let sortedBills = [...data].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
     // console.log('SORTED', sortedBills.slice(0,5))
-    sortedBills = sortedBills.slice(0,5)
-    sortedBills.push(test_bill)
+    sortedBills = sortedBills.slice(0,1)
+    // sortedBills.push(test_bill)
     return sortedBills; // Returning only 5
 }
 

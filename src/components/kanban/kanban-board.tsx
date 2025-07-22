@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 import { useToast } from "@/hooks/use-toast"; // Import useToast
 import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
 import { Button } from '@/components/ui/button';
+import { useBills } from '@/hooks/use-bills';
 
 interface KanbanBoardProps {
   initialBills: Bill[];
@@ -21,7 +22,8 @@ interface KanbanBoardProps {
 export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
-  const [bills, setBills] = useState<Bill[]>(initialBills);
+  // const [bills, setBills] = useState<Bill[]>(initialBills);
+  const { bills, setBills } = useBills()
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
@@ -71,9 +73,9 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
       } catch (err) {
         console.error("Error searching bills:", err);
         setError("Failed to search bills.");
-        setBills(initialBills); // Revert to initial on error
+        setBills(initialBills); // Revert to initial on error        
       } finally {
-        setLoading(false);
+        setLoading(false);        
       }
     }, 300); // Debounce search requests
 
@@ -83,6 +85,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   }, [searchQuery, initialBills]); // Rerun when searchQuery or initialBills change
 
 
+  // put this in a context to have the ai status button edit it
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
     KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
@@ -133,13 +136,14 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     if (!movedBill) return; // Should not happen
 
     // --- Optimistic UI Update ---
+    // edit the global bill status
     const newBills = Array.from(bills);
     const billIndex = newBills.findIndex(b => b.id === draggableId);
 
     if (billIndex > -1) {
         const updatedBill = { ...newBills[billIndex], current_status: destinationColumnId };
         newBills.splice(billIndex, 1, updatedBill);
-        setBills(newBills); // Update state optimistically
+        setBills(newBills); // Update state optimistically      
     } else {
         console.error("Bill not found for optimistic update");
         return;

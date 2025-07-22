@@ -5,22 +5,21 @@ import { Button } from '../ui/button';
 import { RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
-import { useRouter } from 'next/navigation';
-import { useCardUpdate } from '@/hooks/update-cards';
+import { useBills } from '@/hooks/use-bills';
+import { updateBillStatusServerAction } from '@/services/legislation';
 
 interface ButtonProps {
     bills: Bill[];
 }
 
-export default function AIUpdateButton({ bills }: ButtonProps) {
+export default function AIUpdateButton() {
   const [loading, setLoading] = useState<boolean>(false); // State for dialog visibility
   const [loadingIds, setLoadingIds] = useState<string[]>([]);
-  const { toast } = useToast();
-  const { billStatuses } = useCardUpdate()
+  const { toast } = useToast();  
+  const { bills, setBills } = useBills()
 
   // Handler to trigger LLM classification for all bills
-  const handleAIUpdate = async () => {
-    setLoadingIds(bills.map(b => b.id));
+  const handleAIUpdate = async () => {    
     for (const bill of bills) {
       toast({
         title: `Classifying ${bill.bill_number}`,
@@ -29,7 +28,22 @@ export default function AIUpdateButton({ bills }: ButtonProps) {
       });
       // await classifyStatusWithLLM(bill.id); // Assume this is async
       await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
-      setLoadingIds(ids => ids.filter(id => id !== bill.id));
+
+      const classification = 'scheduled1'
+    
+      // Update the UI optimistically (same pattern as drag & drop in kanban-board)
+      const newBills = Array.from(bills);
+      const billIndex = newBills.findIndex(b => b.id === bill.id);
+      
+      if (billIndex > -1) {
+        const updatedBill = { ...newBills[billIndex], current_status: classification };
+        newBills.splice(billIndex, 1, updatedBill);
+        setBills(newBills); // This will trigger UI updates in your kanban board
+      }
+
+      // Update the server
+      updateBillStatusServerAction(bill.id, classification)
+
       toast({
         title: `Done: ${bill.bill_number}`,
         description: `AI finished categorizing this bill.`,
@@ -59,9 +73,7 @@ export default function AIUpdateButton({ bills }: ButtonProps) {
         ) : (
           <span className="flex items-center gap-2"><WandSparkles />AI Update</span>
         )}
-      </Button>
-      {/* Optionally, pass loadingIds to LLMUpdateDialog to disable bill cards */}
-      {/* <LLMUpdateDialog bills={bills} isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} loadingIds={loadingIds} /> */}
+      </Button>    
     </>
   );
 }
