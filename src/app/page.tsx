@@ -1,16 +1,17 @@
-import { KanbanBoard } from '@/components/kanban/kanban-board';
+'use client'
+
 import { getAllBills } from '@/services/legislation';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Suspense } from 'react';
+import { useState } from 'react';
 import { KanbanHeader } from '@/components/kanban/kanban-header';
 import AIUpdateButton from '@/components/llm/llm-update-button';
+import { KanbanBoardOrSpreadsheet } from './KanbanBoardOrSpreadsheet';
+import { Button } from '@/components/ui/button';
 
-export default async function Home() {
-  // Fetch initial data on the server
-  const initialBills = await getAllBills();
-
-  //make a toggle here, and display spreadsheet component or Kanban component
+export default function Home() {
+  const [view, setView] = useState<'kanban' | 'spreadsheet'>('kanban');
+  // const initialBills = await getAllBills();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -22,10 +23,22 @@ export default async function Home() {
             <AIUpdateButton/>
           </div>
         </div>
+        <div className="flex items-center gap-2 p-4 border-b bg-background">
+        <Button
+          variant={view === 'kanban' ? 'default' : 'outline'}
+          onClick={() => setView('kanban')}
+        >
+          Kanban View
+        </Button>
+        <Button
+          variant={view === 'spreadsheet' ? 'default' : 'outline'}
+          onClick={() => setView('spreadsheet')}
+        >
+          Spreadsheet View
+        </Button>
+        </div>
       <main className="flex-1 overflow-hidden">
-        <Suspense fallback={<div className="p-4">Loading board...</div>}>
-          <KanbanBoard initialBills={initialBills} />
-        </Suspense>
+          <KanbanBoardOrSpreadsheet view={view}/>        
       </main>
     </div>
   );
