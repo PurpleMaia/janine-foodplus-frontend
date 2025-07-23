@@ -2,14 +2,16 @@
 
 import { getAllBills, updateBillStatusServerAction } from '@/services/legislation';
 import React, { createContext, useContext, useState, ReactNode, Dispatch, SetStateAction, useEffect } from 'react';
-import type { Bill } from '@/types/legislation';
+import type { Bill, TempBill } from '@/types/legislation';
 import { toast } from './use-toast';
 
 interface BillsContextType {
-    bills: Bill[]
-    setBills: Dispatch<SetStateAction<Bill[]>>;
-    acceptLLMChange: (billId: string) => Promise<void>;
-    rejectLLMChange: (billId: string) => Promise<void>;
+  bills: Bill[]
+  setBills: Dispatch<SetStateAction<Bill[]>>;
+  tempBills: TempBill[]
+  setTempBills: Dispatch<SetStateAction<TempBill[]>>;
+  acceptLLMChange: (billId: string) => Promise<void>;
+  rejectLLMChange: (billId: string) => Promise<void>;
 }
 
 const BillsContext = createContext<BillsContextType | undefined>(undefined)
@@ -17,6 +19,7 @@ const BillsContext = createContext<BillsContextType | undefined>(undefined)
 export function BillsProvider({ children }: { children : ReactNode }) {
     // const [billStatuses, setBillStatuses] = useState<BillStatus[]>([])   
     const [bills, setBills] = useState<Bill[]>([]);
+    const [tempBills, setTempBills] = useState<TempBill[]>([])
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);    
 
@@ -39,6 +42,11 @@ export function BillsProvider({ children }: { children : ReactNode }) {
               : b
             )
           );
+
+        // Remove the corresponding temp bill
+        setTempBills(prevTempBills => 
+          prevTempBills.filter(tb => tb.id !== billId)
+        );
   
         toast({
           title: 'Change Accepted',
@@ -69,7 +77,12 @@ export function BillsProvider({ children }: { children : ReactNode }) {
             }
           : b
         )
-      )
+      )      
+
+      // Remove the corresponding temp bill
+      setTempBills(prevTempBills => 
+        prevTempBills.filter(tb => tb.id !== billId)
+      );
 
       toast({
         title: 'Change Rejected',
@@ -103,7 +116,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
 
 
     return (
-        <BillsContext.Provider value={{ bills, setBills, acceptLLMChange, rejectLLMChange }}>
+        <BillsContext.Provider value={{ bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills }}>
             {children}
         </BillsContext.Provider>
     )

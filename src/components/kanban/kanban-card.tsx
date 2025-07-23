@@ -110,11 +110,12 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                      </div>
                 </CardHeader>
                 <CardContent className="p-0 mt-1 gap-2">
-                    <p className='text-sm text-foreground text-wrap pb-2'>{bill.description}</p>
+                    <p className='text-sm text-foreground text-wrap mb-3 line-clamp-2'>{bill.description}</p>
                     <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
 
                 </CardContent>                           
             </div>
+            
             {/* LLM Action Buttons */}
             {bill.llm_suggested && !bill.llm_processing && (
               <div className="p-4 flex gap-2 mt-3 pt-3 border-t border-blue-100">

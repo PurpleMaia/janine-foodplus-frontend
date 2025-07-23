@@ -177,6 +177,7 @@ export async function getAllBills(): Promise<Bill[]> {
     // console.log('SORTED', sortedBills.slice(0,5))
     sortedBills = sortedBills.slice(0,1)
     // sortedBills.push(test_bill)
+    console.log('sortedBills', sortedBills)
     return sortedBills; // Returning only 5
 }
 

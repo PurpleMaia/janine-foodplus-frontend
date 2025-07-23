@@ -51,3 +51,10 @@ export interface Bill {
   llm_suggested?: boolean;  
   llm_processing?: boolean;  
 }
+
+export interface TempBill {
+  id: string,  
+  current_status: string
+  suggested_status: string   
+  target_idx: number
+}
