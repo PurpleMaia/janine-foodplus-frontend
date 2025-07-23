@@ -191,9 +191,16 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     const billIndex = newBills.findIndex(b => b.id === draggableId);
 
     if (billIndex > -1) {
-        const updatedBill = { ...newBills[billIndex], current_status: destinationColumnId };
+        const updatedBill = { 
+          ...newBills[billIndex],
+          current_status: destinationColumnId,
+          llm_suggested: false 
+        };
         newBills.splice(billIndex, 1, updatedBill);
-        setBills(newBills); // Update state optimistically      
+        setBills(newBills); // Update state optimistically
+        setTempBills(prevTempBills => 
+          prevTempBills.filter(tb => tb.id !== updatedBill.id)
+        );
     } else {
         console.error("Bill not found for optimistic update");
         return;
