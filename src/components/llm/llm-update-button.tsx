@@ -40,10 +40,10 @@ export default function AIUpdateButton() {
         variant: 'default',
       });
 
-      // const classification = await classifyStatusWithLLM(bill.id); 
-      await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
+      const classification = await classifyStatusWithLLM(bill.id); 
+      // await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
 
-      const classification = 'deferred1'
+      // const classification = 'deferred1'
 
       if (!classification) {
         console.log('Error classifying bill status with LLM...')
