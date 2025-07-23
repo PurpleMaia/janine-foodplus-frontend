@@ -1,7 +1,6 @@
 'use server'
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { OpenAI } from 'openai';
-import { updateBillStatusServerAction } from './legislation';
 
 let sql: any = null;
 if (typeof window === 'undefined') {

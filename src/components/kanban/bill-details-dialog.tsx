@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { classifyStatusWithLLM } from '@/services/llm';
-
+import { scrapeForUpdates } from '@/services/scraper';
 
 interface BillDetailsDialogProps {
   bill: Bill | null;
@@ -150,7 +150,8 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                   )}
                 </div>
 
-                <Button onClick={() => classifyStatusWithLLM(bill.id)}>Classify Status with LLM</Button>                  
+                <Button onClick={() => classifyStatusWithLLM(bill.id)}>Classify Status with LLM</Button>
+                <Button onClick={() => scrapeForUpdates(bill.id)}>Refresh</Button>
               </div>
             </div>
           </div>
