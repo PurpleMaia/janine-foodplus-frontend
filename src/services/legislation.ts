@@ -149,7 +149,7 @@ export async function getAllBills(): Promise<Bill[]> {
             data = await sql<Bill[]>`
                 SELECT * FROM bills
             `;
-            console.log(data.slice(1, 5));
+            // console.log(data.slice(1, 5));
         } else {
             console.log('SQL connection not available');            
         }
@@ -159,7 +159,7 @@ export async function getAllBills(): Promise<Bill[]> {
     
     // Sort by updated_at date descending (most recent first) before returning
     const sortedBills = [...data].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    return sortedBills.slice(0,5); // Return a sorted copy
+    return sortedBills.slice(0,20); // Return a sorted copy
 }
 
 

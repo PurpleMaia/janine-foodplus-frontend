@@ -1,6 +1,6 @@
 'use client';
 
-import type React from 'react';
+import React from 'react';
 import type { Bill, BillStatus } from '@/types/legislation';
 import {
   Dialog,
@@ -131,22 +131,11 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
               
               <div className="space-y-2">
                 <DetailItem label="Bill URL" value={bill.bill_url} />
-                
-                <div className="border rounded-md overflow-hidden h-64 md:h-96"> {/* Fixed height container */}
-                  {bill.bill_url ? (
-                    <iframe
-                      src={bill.bill_url}
-                      title={`Bill details for ${bill.bill_number}`}
-                      width="100%"
-                      height="100%"
-                      style={{ border: 'none' }}
-                    />
-                  ) : (
-                     <div className="flex items-center justify-center h-full text-muted-foreground">
-                          <FileText className="h-10 w-10 mr-2" />
-                          <span>No bill information available</span>
-                     </div>
-                  )}
+
+                {/* Comment Section */}
+                <div className="mt-4">
+                  <h4 className="font-semibold mb-2">Comments</h4>
+                  <CommentSection billId={bill.id} />
                 </div>
               </div>
             </div>
@@ -176,3 +165,46 @@ const DetailItem: React.FC<DetailItemProps> = ({ label, value, badge }) => (
         {badge ? <Badge variant="secondary">{value}</Badge> : <span className="text-muted-foreground">{value}</span>}
     </div>
 );
+
+interface CommentSectionProps {
+  billId: string;
+}
+
+const CommentSection: React.FC<CommentSectionProps> = ({ billId }) => {
+  const [comment, setComment] = React.useState('');
+  const [comments, setComments] = React.useState<string[]>([]);
+
+  const handlePost = () => {
+    if (comment.trim()) {
+      setComments([...comments, comment.trim()]);
+      setComment('');
+    }
+  };
+
+  return (
+    <div>
+      <textarea
+        className="w-full border rounded p-2 text-sm mb-2"
+        rows={2}
+        placeholder="Write a comment..."
+        value={comment}
+        onChange={e => setComment(e.target.value)}
+      />
+      <button
+        className="bg-primary text-white px-3 py-1 rounded text-sm mb-2"
+        onClick={handlePost}
+        type="button"
+      >
+        Post
+      </button>
+      <div className="space-y-1 mt-2">
+        {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments yet.</div>}
+        {comments.map((c, i) => (
+          <div key={i} className="bg-secondary rounded p-2 text-sm">
+            {c}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
