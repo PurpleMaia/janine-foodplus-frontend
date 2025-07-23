@@ -139,6 +139,13 @@ const createNewsArticles = (count: number): NewsArticle[] =>
  * @returns A promise that resolves to an array of all Bill objects.
  */
 
+const FOOD_KEYWORDS = [
+  'agriculture', 'food', 'farm', 'pesticides', 'eating', 'edible', 'meal',
+  'crop', 'harvest', 'organic', 'nutrition', 'diet', 'restaurant', 'cafe',
+  'kitchen', 'cooking', 'beverage', 'drink', 'produce', 'vegetable', 'fruit',
+  'meat', 'dairy', 'grain', 'seed', 'fertilizer', 'irrigation', 'livestock',
+  'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
+];
 
 export async function getAllBills(): Promise<Bill[]> {    
 
@@ -156,29 +163,20 @@ export async function getAllBills(): Promise<Bill[]> {
         console.log('Data fetch did not work: ', e);                
     }   
 
-    // FOR TESTING ADDING THIS INDIVIDUAL SCRAPED BILL
-    // 11b31720-81d9-47c9-8451-55d215569805
-    // const test_bill = {
-    //   id: '11b31720-81d9-47c9-8451-55d215569805',
-    //   bill_url:	'https://www.capitol.hawaii.gov/session/measure_indiv.aspx?billtype=SB&billnumber=1186&year=2025',
-    //   description: 'Establishes the Statewide Interagency Food Systems Coordination Team and the Interagency Food Systems Working Group within the Agribusiness Development Corporation. Requires reports to the Legislature.  Appropriates funds.  (CD1)',
-    //   current_status_string: 'S 5/2/2025: Enrolled to Governor.',	
-    //   created_at: new Date('2025-06-12 12:19:23.970 -1000'),
-    //   updated_at: new Date('2025-06-12 12:19:23.970 -1000'),
-    //   committee_assignment:	'AGR_ ECD_ FIN',
-    //   bill_title:	'RELATING TO SUSTAINABLE FOOD SYSTEMS.',
-    //   introducers: 'GABBARD_ AQUINO_ MCKELVEY_ San Buenaventura',
-    //   bill_number:	'SB1186 SD2 HD3 CD1',
-    //   current_status: ''
-    // }
+    // filtering the bill results only by food-related keywords    
+    const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
+    // console.log('filtered', filteredData)
     
     // Sort by updated_at date descending (most recent first) before returning
-    let sortedBills = [...data].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    // console.log('SORTED', sortedBills.slice(0,5))
+    let sortedBills = [...filteredData].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
     sortedBills = sortedBills.slice(0,3)
-    // sortedBills.push(test_bill)
     console.log('sortedBills', sortedBills)
     return sortedBills; // Returning only 5
+}
+
+const containsFoodKeywords = (bill: Bill) => {
+  const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
+  return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
 }
 
 
