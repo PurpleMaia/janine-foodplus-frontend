@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { KanbanBoardProvider } from '@/hooks/use-kanban-board'; // Import the provider
 import { Toaster } from "@/components/ui/toaster" // Import Toaster for potential notifications
+import { BillsProvider } from '@/hooks/use-bills';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,7 +30,9 @@ export default function RootLayout({
       {/* Add suppressHydrationWarning to body to ignore extension-injected attributes */}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning={true}>
         <KanbanBoardProvider> {/* Wrap children with the provider */}
-          {children}
+          <BillsProvider>
+            {children}
+          </BillsProvider>
         </KanbanBoardProvider>
         <Toaster /> {/* Add toaster for notifications */}
       </body>

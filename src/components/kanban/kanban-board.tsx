@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Bill, BillStatus } from '@/types/legislation';
+import type { Bill, BillStatus, TempBill } from '@/types/legislation';
 import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
 import { KanbanColumn } from './kanban-column';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 import { useToast } from "@/hooks/use-toast"; // Import useToast
 import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
 import { Button } from '@/components/ui/button';
+import { useBills } from '@/hooks/use-bills';
+import * as refs from '@/types/column-refs';
 
 interface KanbanBoardProps {
   initialBills: Bill[];
@@ -21,7 +23,8 @@ interface KanbanBoardProps {
 export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
-  const [bills, setBills] = useState<Bill[]>(initialBills);
+  // const [bills, setBills] = useState<Bill[]>(initialBills);
+  const { bills, setBills, tempBills, setTempBills } = useBills()
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
@@ -30,30 +33,62 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
   // --- Add refs for scroll groups ---
   const viewportRef = useRef<HTMLDivElement>(null);
-  const beforeCrossoverRef = useRef<HTMLDivElement>(null);
+  const introducedRef = useRef<HTMLDivElement>(null);
   const crossoverRef = useRef<HTMLDivElement>(null);
+  const conferenceRef = useRef<HTMLDivElement>(null);
   const governorRef = useRef<HTMLDivElement>(null);
 
-  // --- Find first column index for each group ---
-  const beforeCrossoverIdx = KANBAN_COLUMNS.findIndex(col => col.id === 'introduced');
-  const crossoverIdx = KANBAN_COLUMNS.findIndex(col => col.id.startsWith('crossover'));
+  const deferred1Ref = useRef<HTMLDivElement>(null);
+  const defferred1Idx = KANBAN_COLUMNS.findIndex(col => col.id === 'deferred1');
+
+  const targetRef = useRef<HTMLDivElement>(null)
+
+  // Create refs for all columns dynamically
+  const columnRefs = useRef<(HTMLDivElement | null)[]>(
+    new Array(KANBAN_COLUMNS.length).fill(null)
+  );
+  const getColumnRef = useCallback((idx: number) => {
+    return columnRefs.current[idx]
+  }, [])
+
+  const introducedIdx = KANBAN_COLUMNS.findIndex(col => col.id === 'introduced');
+  const crossoverIdx = KANBAN_COLUMNS.findIndex(col => col.id === ('crossoverWaiting1'));
+  const conferenceIdx = KANBAN_COLUMNS.findIndex(col => col.id === ('conferenceAssigned'));
   const governorIdx = KANBAN_COLUMNS.findIndex(col => col.id === 'transmittedGovernor');
+
+  const scrollToIntroduced = () => scrollToColumnByIndex(introducedIdx);
+  const scrollToCrossover = () => scrollToColumnByIndex(crossoverIdx);
+  const scrollToConference = () => scrollToColumnByIndex(conferenceIdx);
+  const scrollToGovernor = () => scrollToColumnByIndex(governorIdx);
 
   // --- Scroll handler ---
   const handleScrollTo = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current && viewportRef.current) {
       const container = viewportRef.current;
       const target = ref.current;
+      console.log('target', target)
       // Get the left position of the target relative to the scroll container
       const targetRect = target.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       const scrollLeft = container.scrollLeft + (targetRect.left - containerRect.left);      
-      console.log('before', container.scrollLeft, '+', scrollLeft);
+      // console.log('before', container.scrollLeft, '+', scrollLeft);
       container.scrollLeft = scrollLeft  
-      console.log('after', container.scrollLeft);
-
+      // console.log('after', container.scrollLeft);
     }
   };
+
+  const scrollToColumnByIndex = useCallback((columnIndex: number) => {
+    if (columnIndex >= 0 && columnIndex < columnRefs.current.length) {
+      const element = columnRefs.current[columnIndex];
+      if (element) {
+        const ref = { current: element };
+        console.log('Scrolling to column index:', columnIndex, 'Status:', KANBAN_COLUMNS[columnIndex]?.id);
+        handleScrollTo(ref);
+      }
+    } else {
+      console.warn('Invalid column index:', columnIndex);
+    }
+  }, []);
 
   // Debounced search effect
   useEffect(() => {
@@ -71,9 +106,9 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
       } catch (err) {
         console.error("Error searching bills:", err);
         setError("Failed to search bills.");
-        setBills(initialBills); // Revert to initial on error
+        setBills(initialBills); // Revert to initial on error        
       } finally {
-        setLoading(false);
+        setLoading(false);        
       }
     }, 300); // Debounce search requests
 
@@ -81,7 +116,6 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
       clearTimeout(handler);
     };
   }, [searchQuery, initialBills]); // Rerun when searchQuery or initialBills change
-
 
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
@@ -103,6 +137,25 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     return grouped;
   }, [bills]);
 
+  const tempBillsByColumn = useMemo(() => {
+    const grouped: { [key in BillStatus]?: TempBill[] } = {};
+    KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
+    tempBills.forEach(bill => {
+      // Ensure bill.current_status is a valid key
+      const statusKey = bill.current_status as BillStatus;
+      if (grouped.hasOwnProperty(statusKey)) {
+        grouped[statusKey]?.push(bill);
+      } else {
+        // Handle potentially invalid status (optional, depends on data integrity)
+        console.warn(`Bill ${bill.id} has invalid status: ${bill.current_status}`);
+        // Place it in a default column like 'introduced' or handle as needed
+        grouped['introduced']?.push(bill);
+      }
+    });
+    // Sort bills within each column if needed, e.g., by ID or name
+    // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.bill_title.localeCompare(b.bill_title)));
+    return grouped;
+  }, [tempBills])
 
   const onDragStart = useCallback((start: any) => {
       setDraggingBillId(start.draggableId);
@@ -133,13 +186,21 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     if (!movedBill) return; // Should not happen
 
     // --- Optimistic UI Update ---
+    // edit the global bill status
     const newBills = Array.from(bills);
     const billIndex = newBills.findIndex(b => b.id === draggableId);
 
     if (billIndex > -1) {
-        const updatedBill = { ...newBills[billIndex], current_status: destinationColumnId };
+        const updatedBill = { 
+          ...newBills[billIndex],
+          current_status: destinationColumnId,
+          llm_suggested: false 
+        };
         newBills.splice(billIndex, 1, updatedBill);
         setBills(newBills); // Update state optimistically
+        setTempBills(prevTempBills => 
+          prevTempBills.filter(tb => tb.id !== updatedBill.id)
+        );
     } else {
         console.error("Bill not found for optimistic update");
         return;
@@ -186,6 +247,11 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
      setIsDialogOpen(true);
    }, []);
 
+   const handleTempCardClick = useCallback((bill: TempBill) => {
+      console.log("Temp Card clicked, scrolling to target:", bill.target_idx);
+      scrollToColumnByIndex(bill.target_idx);
+  }, [scrollToColumnByIndex]);
+
 
    return (
     <>
@@ -198,16 +264,12 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
             >
               <div className="flex space-x-4 pb-4">
                 {KANBAN_COLUMNS.map((column, idx) => {
-                  let ref = undefined;
-                  if (idx === beforeCrossoverIdx) {
-                    ref = beforeCrossoverRef;
-                  } else if (idx === crossoverIdx) {
-                    ref = crossoverRef;
-                  } else if (idx === governorIdx) {
-                    ref = governorRef;
-                  }
                   return (
-                    <div key={column.id} ref={ref} className="inline-block">
+                    <div key={column.id} 
+                      ref={(el) => {
+                          columnRefs.current[idx] = el
+                        }} 
+                      className="inline-block">
                       <Droppable droppableId={column.id}>
                         {(provided, snapshot) => (
                           <KanbanColumn
@@ -216,15 +278,17 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
                             columnId={column.id as BillStatus}
                             title={column.title}
                             bills={billsByColumn[column.id as BillStatus] || []}
+                            tempBills={tempBillsByColumn[column.id as BillStatus] || []}
                             isDraggingOver={snapshot.isDraggingOver}
                             draggingBillId={draggingBillId}
                             onCardClick={handleCardClick}
+                            onTempCardClick={handleTempCardClick}
                           >
                             {provided.placeholder}
                           </KanbanColumn>
                         )}
                       </Droppable>
-                    </div>
+                    </div>                    
                   );
                 })}
               </div>
@@ -235,13 +299,16 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
         {/* Bottom scroll bar */}
         <div className="fixed bottom-0 left-0 w-full flex justify-center gap-4 bg-background/90 p-2 z-20 border-t">
-          <Button variant="secondary" onClick={() => handleScrollTo(beforeCrossoverRef)}>
-            Before Crossover
+          <Button variant="secondary" onClick={scrollToIntroduced}>
+            Introduced
           </Button>
-          <Button variant="secondary" onClick={() => handleScrollTo(crossoverRef)}>
+          <Button variant="secondary" onClick={scrollToCrossover}>
             Crossover
           </Button>
-          <Button variant="secondary" onClick={() => handleScrollTo(governorRef)}>
+          <Button variant="secondary" onClick={scrollToConference}>
+            Conference
+          </Button>
+          <Button variant="secondary" onClick={scrollToGovernor}>
             Governor
           </Button>
         </div>

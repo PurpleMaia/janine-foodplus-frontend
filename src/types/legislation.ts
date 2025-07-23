@@ -46,5 +46,15 @@ export interface Bill {
   committee_assignment: string;
   bill_title: string;  
   introducers: string;
-  bill_number: string  
+  bill_number: string;
+  previous_status?: string;  
+  llm_suggested?: boolean;  
+  llm_processing?: boolean;  
+}
+
+export interface TempBill {
+  id: string,  
+  current_status: string
+  suggested_status: string   
+  target_idx: number
 }

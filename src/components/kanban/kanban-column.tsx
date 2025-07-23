@@ -1,23 +1,27 @@
 import React from 'react';
-import type { Bill, BillStatus } from '@/types/legislation';
+import type { Bill, BillStatus, TempBill } from '@/types/legislation';
 import { KanbanCard } from './kanban-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
+import { useBills } from '@/hooks/use-bills';
+import { TempBillCard } from './temp-card';
 
 interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
   columnId: BillStatus;
   title: string;
   bills: Bill[];
+  tempBills: TempBill[]
   isDraggingOver: boolean;
   draggingBillId: string | null;
   children?: React.ReactNode; // For Droppable placeholder
   onCardClick: (bill: Bill) => void; // Add callback prop
+  onTempCardClick: (bill: TempBill) => void; // Add callback prop
 }
 
 
 export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-    ({ columnId, title, bills, isDraggingOver, draggingBillId, onCardClick, children, className, ...props }, ref) => {
+    ({ columnId, title, bills, tempBills, isDraggingOver, draggingBillId, onCardClick, onTempCardClick, children, className, ...props }, ref) => {
     return (
       <div
         ref={ref}
@@ -37,6 +41,11 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
 
         <ScrollArea className="flex-1 p-2">
           <div className="flex flex-col gap-2">
+            {tempBills.map((bill, index) => (
+              <div key={`temp-${bill.id}`}>
+                <TempBillCard tempBill={bill} onTempCardClick={onTempCardClick}/>
+              </div>
+            ))}
             {bills.map((bill, index) => (
               <Draggable key={bill.id} draggableId={bill.id} index={index}>
                 {(provided, snapshot) => (

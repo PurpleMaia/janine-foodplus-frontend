@@ -155,15 +155,9 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
             console.log("Current Status:", currStatus);
             console.log("Classification:", classification);
             const newStatus = mapToColumnID(classification)
-            console.log("Mapped:", newStatus)
+            console.log("Mapped:", newStatus)            
 
-            if (!newStatus) {
-                console.log('Could not map LLM Classification to column')
-            } else {
-                updateBillStatusServerAction(billId, newStatus)
-            }
-
-            return classification;
+            return newStatus;
         } catch (error) {
             const err = error as any;
             const status = err?.response?.status || err?.status;
