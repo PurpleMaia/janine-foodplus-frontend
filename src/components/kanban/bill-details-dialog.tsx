@@ -162,7 +162,20 @@ interface DetailItemProps {
 const DetailItem: React.FC<DetailItemProps> = ({ label, value, badge }) => (
     <div>
         <span className="font-medium">{label}:</span>{' '}
-        {badge ? <Badge variant="secondary">{value}</Badge> : <span className="text-muted-foreground">{value}</span>}
+        {label === 'Bill URL' ? (
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline break-all hover:text-blue-800"
+          >
+            {value}
+          </a>
+        ) : badge ? (
+          <Badge variant="secondary">{value}</Badge>
+        ) : (
+          <span className="text-muted-foreground">{value}</span>
+        )}
     </div>
 );
 
