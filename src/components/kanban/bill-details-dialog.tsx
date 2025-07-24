@@ -1,7 +1,7 @@
 'use client';
 
-import type React from 'react';
-import type { BillStatus } from '@/types/legislation';
+import React from 'react';
+import type { Bill, BillStatus } from '@/types/legislation';
 import {
   Dialog,
   DialogContent,
@@ -121,7 +121,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
         {/* Main Content Area (Scrollable) */}
         <ScrollArea className="flex-1 overflow-y-auto"> {/* flex-1 allows this area to grow and push footer down */}
           {/* Grid layout: Use grid-cols-2 for simpler layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
 
             {/* Left Column: Details */}
             <div className="space-y-4">
@@ -151,25 +151,25 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               
               <div className="space-y-2">
                 <DetailItem label="Bill URL" value={bill.bill_url} />
-                
-                <div className="border rounded-md overflow-hidden h-64 md:h-96"> {/* Fixed height container */}
-                  {bill.bill_url ? (
-                    <iframe
-                      src={bill.bill_url}
-                      title={`Bill details for ${bill.bill_number}`}
-                      width="100%"
-                      height="100%"
-                      style={{ border: 'none' }}
-                    />
-                  ) : (
-                     <div className="flex items-center justify-center h-full text-muted-foreground">
-                          <FileText className="h-10 w-10 mr-2" />
-                          <span>No bill information available</span>
-                     </div>
-                  )}
+
+                {/* Comment Section */}
+                <div className="mt-4">
+                  <h4 className="font-semibold mb-2">Comments</h4>
+                  <CommentSection billId={bill.id} />
                 </div>
               </div>
             </div>
+
+
+            <div className="space-y-4">
+              <h3 className="text-md font-semibold border-b pb-1">Status updates</h3>
+              
+              <div className="space-y-2">
+                <DetailItem label="Bill Status" value={bill.current_status} />
+              </div>
+            </div>
+
+
           </div>
         </ScrollArea>
 
@@ -197,6 +197,62 @@ interface DetailItemProps {
 const DetailItem: React.FC<DetailItemProps> = ({ label, value, badge }) => (
     <div>
         <span className="font-medium">{label}:</span>{' '}
-        {badge ? <Badge variant="secondary">{value}</Badge> : <span className="text-muted-foreground">{value}</span>}
+        {label === 'Bill URL' ? (
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline break-all hover:text-blue-800"
+          >
+            {value}
+          </a>
+        ) : badge ? (
+          <Badge variant="secondary">{value}</Badge>
+        ) : (
+          <span className="text-muted-foreground">{value}</span>
+        )}
     </div>
 );
+
+interface CommentSectionProps {
+  billId: string;
+}
+
+const CommentSection: React.FC<CommentSectionProps> = ({ billId }) => {
+  const [comment, setComment] = React.useState('');
+  const [comments, setComments] = React.useState<string[]>([]);
+
+  const handlePost = () => {
+    if (comment.trim()) {
+      setComments([...comments, comment.trim()]);
+      setComment('');
+    }
+  };
+
+  return (
+    <div>
+      <textarea
+        className="w-full border rounded p-2 text-sm mb-2"
+        rows={2}
+        placeholder="Write a comment..."
+        value={comment}
+        onChange={e => setComment(e.target.value)}
+      />
+      <button
+        className="bg-primary text-white px-3 py-1 rounded text-sm mb-2"
+        onClick={handlePost}
+        type="button"
+      >
+        Post
+      </button>
+      <div className="space-y-1 mt-2">
+        {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments yet.</div>}
+        {comments.map((c, i) => (
+          <div key={i} className="bg-secondary rounded p-2 text-sm">
+            {c}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
