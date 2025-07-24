@@ -135,14 +135,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 <DetailItem label="Introducers" value={bill.introducers} />
                 <DetailItem label="Created" value={bill.created_at.toLocaleDateString()} />
                 <DetailItem label="Last Updated" value={bill.updated_at.toLocaleDateString()} />
-              </div>
-
-              <h3 className='text-md font-semibold border-b pt-4 pb-1'>Status Updates</h3>
-                {bill.updates?.map((update, index) => (
-                  <div key={update.id || `update-${index}`}>
-                    ({update.chamber}) - {update.date} - {update.statustext}
-                  </div>
-                ))}
+              </div>                
             </div>
 
             {/* Right Column: Bill URL & Additional Info */}
@@ -165,7 +158,11 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               <h3 className="text-md font-semibold border-b pb-1">Status updates</h3>
               
               <div className="space-y-2">
-                <DetailItem label="Bill Status" value={bill.current_status} />
+                {bill.updates?.map((update, index) => (
+                    <div key={update.id || `update-${index}`}>
+                      ({update.chamber}) - {update.date} - {update.statustext}
+                    </div>
+                  ))}
               </div>
             </div>
 
