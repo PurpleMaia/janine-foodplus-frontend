@@ -9,10 +9,15 @@ import { useBills } from '@/hooks/use-bills';
 import { updateBillStatusServerAction } from '@/services/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 
-export default function AIUpdateButton() {
+interface Props {
+    bill: Bill
+}
+
+export default function AIUpdateSingleButton({ bill } : Props) {
   const [loading, setLoading] = useState<boolean>(false); // State for dialog visibility
   const { toast } = useToast();  
   const { bills, setBills, setTempBills } = useBills()
+  
 
   // Helper function to get column index based on status ID
   const getColumnIndex = (statusId: BillStatus): number => {
@@ -22,9 +27,6 @@ export default function AIUpdateButton() {
 
   // Handler to trigger LLM classification for all bills
   const handleAIUpdate = async () => {     
-    const newTempBills: TempBill[] = [];       
-    for (const bill of bills) {
-
       // Mark bill as processing
       setBills(prevBills => 
         prevBills.map(b => 
@@ -64,7 +66,14 @@ export default function AIUpdateButton() {
           target_idx: targetColumnIdx
         };      
 
-        newTempBills.push(tempBill);
+        // Set temp bill 
+        setTempBills(prevBills => 
+            prevBills.map(b => 
+              b.id === bill.id 
+                ? tempBill
+                : b
+            )
+          );   
 
         // Update the UI with LLM suggestion (optimistic)
         setBills(prevBills => 
@@ -87,10 +96,7 @@ export default function AIUpdateButton() {
         description: `AI finished categorizing this bill.`,
         variant: 'default',
       });
-    }
 
-    // Set all temp bills at once
-    setTempBills(newTempBills);
 
     setLoading(false)
     toast({
@@ -107,12 +113,12 @@ export default function AIUpdateButton() {
           setLoading(true);
           await handleAIUpdate();
         }}
-        disabled={loading}
+        disabled={loading || bill.llm_processing}
       >
-        { loading ? (
+        { loading || bill.llm_processing ? (
           <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Loading</span>
         ) : (
-          <span className="flex items-center gap-2"><WandSparkles />AI Update All</span>
+          <span className="flex items-center gap-2"><WandSparkles />AI Update</span>
         )}
       </Button>    
     </>

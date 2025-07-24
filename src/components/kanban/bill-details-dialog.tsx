@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import type { Bill, BillStatus } from '@/types/legislation';
+import type { BillStatus } from '@/types/legislation';
 import {
   Dialog,
   DialogContent,
@@ -14,14 +14,15 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { FileText } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { classifyStatusWithLLM } from '@/services/llm';
-import { scrapeForUpdates } from '@/services/scraper';
+import { useMemo, useState } from 'react';
+import AIUpdateSingleButton from '../llm/llm-update-single-button';
+import RefreshStatusesButton from '../scraper/scrape-updates-button';
+import { useBills } from '@/hooks/use-bills';
 
 interface BillDetailsDialogProps {
-  bill: Bill | null;
+  billID: string | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -60,13 +61,24 @@ const getCurrentStageName = (status: BillStatus): string => {
 
 // --- Component ---
 
-export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogProps) {
+export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
+  const { bills } = useBills()
+
+  const bill = useMemo(() => {
+    console.log('triggered bill rehydration')
+
+    const found = bills.find(b => b.id === billID)    
+    console.log('updates', found?.updates)
+
+    return found
+  }, [bills, billID])
+
   if (!bill) {
     return null; // Don't render anything if no bill is selected
   }
-
   const progressValue = getProgressValue(bill.current_status as BillStatus);
   const currentStageName = getCurrentStageName(bill.current_status as BillStatus);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -124,6 +136,13 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                 <DetailItem label="Created" value={bill.created_at.toLocaleDateString()} />
                 <DetailItem label="Last Updated" value={bill.updated_at.toLocaleDateString()} />
               </div>
+
+              <h3 className='text-md font-semibold border-b pt-4 pb-1'>Status Updates</h3>
+                {bill.updates?.map((update, index) => (
+                  <div key={update.id || `update-${index}`}>
+                    ({update.chamber}) - {update.date} - {update.statustext}
+                  </div>
+                ))}
             </div>
 
             {/* Right Column: Bill URL & Additional Info */}
@@ -149,16 +168,17 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                      </div>
                   )}
                 </div>
-
-                <Button onClick={() => classifyStatusWithLLM(bill.id)}>Classify Status with LLM</Button>
-                <Button onClick={() => scrapeForUpdates(bill.id)}>Refresh</Button>
               </div>
             </div>
           </div>
         </ScrollArea>
 
         {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
-        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
+        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
+          <div className='flex gap-2'>
+            <AIUpdateSingleButton bill={bill} />
+            <RefreshStatusesButton bill={bill} />
+          </div>
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
