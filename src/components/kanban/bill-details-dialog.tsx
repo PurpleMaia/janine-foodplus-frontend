@@ -124,6 +124,9 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                 <DetailItem label="Created" value={bill.created_at.toLocaleDateString()} />
                 <DetailItem label="Last Updated" value={bill.updated_at.toLocaleDateString()} />
               </div>
+
+              <h3 className='text-md font-semibold border-b pt-4 pb-1'>Status Updates</h3>
+                
             </div>
 
             {/* Right Column: Bill URL & Additional Info */}
@@ -149,16 +152,17 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                      </div>
                   )}
                 </div>
-
-                <Button onClick={() => classifyStatusWithLLM(bill.id)}>Classify Status with LLM</Button>
-                <Button onClick={() => scrapeForUpdates(bill.id)}>Refresh</Button>
               </div>
             </div>
           </div>
         </ScrollArea>
 
         {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
-        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
+        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
+          <div className='flex gap-2'>
+            <Button onClick={() => classifyStatusWithLLM(bill.id)}>Classify Status with LLM</Button>
+            <Button onClick={() => scrapeForUpdates(bill.id)}>Refresh Statuses</Button>
+          </div>
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>

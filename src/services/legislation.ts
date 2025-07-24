@@ -165,7 +165,20 @@ export async function getAllBills(): Promise<Bill[]> {
 
     // filtering the bill results only by food-related keywords    
     const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
-    // console.log('filtered', filteredData)
+    const dataWithStatusUpdates = [...filteredData].map(async(bill) => {
+      try {
+        if (sql) {
+          const result = await sql`
+              SELECT id, chamber, date, statustext FROM status_updates su
+              WHERE su.bill_id = ${bill.id}
+          `
+        } else {
+          console.log('SQL Connection not available')
+        }
+      } catch (e) {
+        console.log('Dat fetch did not work: ', e)
+      }
+    })
     
     // Sort by updated_at date descending (most recent first) before returning
     let sortedBills = [...filteredData].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
