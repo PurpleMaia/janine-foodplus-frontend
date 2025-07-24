@@ -201,7 +201,7 @@ const DetailItem: React.FC<DetailItemProps> = ({ label, value, badge }) => (
             rel="noopener noreferrer"
             className="text-blue-600 underline break-all hover:text-blue-800"
           >
-            {value}
+            {checkURL(value)}
           </a>
         ) : badge ? (
           <Badge variant="secondary">{value}</Badge>
@@ -210,6 +210,18 @@ const DetailItem: React.FC<DetailItemProps> = ({ label, value, badge }) => (
         )}
     </div>
 );
+
+function checkURL(url: string){
+  // extracting href from the html incase it is not caught on server-side
+  if (url.startsWith('<a')) {
+    const match = url.match(/href=(["']?)([^"'\s>]+)\1/);
+    const editedURL = match ? match[2] : null;
+    console.log('Had to convert:', url)
+    return editedURL
+  } else {
+    return url
+  }
+}
 
 interface CommentSectionProps {
   billId: string;
