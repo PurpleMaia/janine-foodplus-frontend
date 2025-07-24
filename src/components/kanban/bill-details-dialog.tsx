@@ -108,7 +108,7 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
         {/* Main Content Area (Scrollable) */}
         <ScrollArea className="flex-1 overflow-y-auto"> {/* flex-1 allows this area to grow and push footer down */}
           {/* Grid layout: Use grid-cols-2 for simpler layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
 
             {/* Left Column: Details */}
             <div className="space-y-4">
@@ -139,6 +139,17 @@ export function BillDetailsDialog({ bill, isOpen, onClose }: BillDetailsDialogPr
                 </div>
               </div>
             </div>
+
+
+            <div className="space-y-4">
+              <h3 className="text-md font-semibold border-b pb-1">Status updates</h3>
+              
+              <div className="space-y-2">
+                <DetailItem label="Bill Status" value={bill.current_status} />
+              </div>
+            </div>
+
+
           </div>
         </ScrollArea>
 
