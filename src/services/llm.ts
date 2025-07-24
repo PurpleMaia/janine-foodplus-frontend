@@ -124,11 +124,11 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
     const context = await getContext(billId);
     const currStatus = context.split(/\r?\n/)[0];
     let attempt = 0;
-    console.log('CONTEXT:\n', context)
-    console.log('awaiting llm...', process.env.MODEL)
+    // console.log('CONTEXT:\n', context)
+    console.log('awaiting llm...', process.env.VLLM)
     while (attempt < maxRetries) {
         try {
-            const model = process.env.MODEL || "gpt-3.5-turbo";
+            const model = process.env.VLLM || process.env.LLM || '';
             const response = await client.chat.completions.create({
                 model,
                 messages: [
@@ -139,7 +139,8 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
                             "Here is the bill's status log so far:",
                             context,  
                             "",                                                       
-                            "Which label applies to the first line (the current status)? Only respond with the classified label"
+                            "Which label applies to the first line (the current status)? Only respond with the classified label",
+                            " /no_think"
                         ].join("\n")
                     }
                 ],
