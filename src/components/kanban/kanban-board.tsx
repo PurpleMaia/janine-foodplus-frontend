@@ -16,20 +16,43 @@ interface KanbanBoardProps {
   initialBills: Bill[];
 }
 
+
+const FOOD_KEYWORDS = [
+  'agriculture', 'food', 'farm', 'pesticides', 'eating', 'edible', 'meal',
+  'crop', 'harvest', 'organic', 'nutrition', 'diet', 'restaurant', 'cafe',
+  'kitchen', 'cooking', 'beverage', 'drink', 'produce', 'vegetable', 'fruit',
+  'meat', 'dairy', 'grain', 'seed', 'fertilizer', 'irrigation', 'livestock',
+  'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
+];
+
+function containsFoodKeywords(bill: Bill): boolean {
+  const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
+  return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
+}
+
+
+
+
 export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
-  const [bills, setBills] = useState<Bill[]>(initialBills);
+  // const [bills, setBills] = useState<Bill[]>(initialBills);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null); // State for selected bill
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
+  const [showFoodOnly, setShowFoodOnly] = useState(false);
+  const [rawBills, setRawBills] = useState<Bill[]>(initialBills);
+  const bills = useMemo(() => {
+    return showFoodOnly ? rawBills.filter(containsFoodKeywords) : rawBills;
+  }, [rawBills, showFoodOnly]);
+
 
   // Debounced search effect
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setBills(initialBills);
+      setRawBills(initialBills);
       return;
     }
     
@@ -38,11 +61,11 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     const handler = setTimeout(async () => {
       try {
         const results = await searchBills(searchQuery);
-        setBills(results);
+        setRawBills(results);
       } catch (err) {
         console.error("Error searching bills:", err);
         setError("Failed to search bills.");
-        setBills(initialBills); // Revert to initial on error
+        setRawBills(initialBills); // Revert to initial on error
       } finally {
         setLoading(false);
       }
@@ -110,7 +133,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     if (billIndex > -1) {
         const updatedBill = { ...newBills[billIndex], current_status: destinationColumnId };
         newBills.splice(billIndex, 1, updatedBill);
-        setBills(newBills); // Update state optimistically
+        setRawBills(newBills); // Update state optimistically
     } else {
         console.error("Bill not found for optimistic update");
         return;
@@ -137,7 +160,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
          if (billToRevertIndex > -1) {
             const revertedBill = { ...revertedBills[billToRevertIndex], current_status: sourceColumnId };
             revertedBills.splice(billToRevertIndex, 1, revertedBill);
-            setBills(revertedBills);
+            setRawBills(revertedBills);
          }
          toast({
            title: "Update Failed",
@@ -160,56 +183,65 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
    return (
     <>
-        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <ScrollArea className="h-full w-full whitespace-nowrap p-4">
-            {error && <p className="text-destructive p-4">{error}</p>}
-            {loading && !bills.length && ( // Show skeleton only if loading and no bills displayed
-                <div className="flex space-x-4">
-                     {KANBAN_COLUMNS.map((col) => (
-                        <div key={col.id} className="w-80 shrink-0 space-y-2">
-                            <Skeleton className="h-8 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                        </div>
-                     ))}
-                </div>
-            )}
-            {!loading && !bills.length && searchQuery && (
-                 <p className="p-4 text-center text-muted-foreground">No bills found matching "{searchQuery}".</p>
-            )}
-             {!loading && !bills.length && !searchQuery && ( // Message when no bills exist initially
-                 <p className="p-4 text-center text-muted-foreground">No bills to display.</p>
-            )}
-            <div className="flex space-x-4 pb-4">
-              {KANBAN_COLUMNS.map((column) => (
-                 <Droppable key={column.id} droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <KanbanColumn
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      columnId={column.id as BillStatus}
-                      title={column.title}
-                      bills={billsByColumn[column.id as BillStatus] || []}
-                      isDraggingOver={snapshot.isDraggingOver}
-                      draggingBillId={draggingBillId}
-                      onCardClick={handleCardClick} // Pass click handler
-                    >
-                      {provided.placeholder}
-                    </KanbanColumn>
-                  )}
-                </Droppable>
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </DragDropContext>
+      <div className="flex justify-end px-4 pt-2">
+        <button
+          onClick={() => setShowFoodOnly(prev => !prev)}
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+        >
+          {showFoodOnly ? 'Show All Bills' : 'Show Food-Related Bills'}
+        </button>
+      </div>
+      <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <ScrollArea className="h-full w-full whitespace-nowrap p-4">
+          {error && <p className="text-destructive p-4">{error}</p>}
+          {loading && !bills.length && ( // Show skeleton only if loading and no bills displayed
+              <div className="flex space-x-4">
+                    {KANBAN_COLUMNS.map((col) => (
+                      <div key={col.id} className="w-80 shrink-0 space-y-2">
+                          <Skeleton className="h-8 w-full" />
+                          <Skeleton className="h-24 w-full" />
+                          <Skeleton className="h-20 w-full" />
+                      </div>
+                    ))}
+              </div>
+          )}
+          
+          {!loading && !bills.length && searchQuery && (
+                <p className="p-4 text-center text-muted-foreground">No bills found matching "{searchQuery}".</p>
+          )}
+            {!loading && !bills.length && !searchQuery && ( // Message when no bills exist initially
+                <p className="p-4 text-center text-muted-foreground">No bills to display.</p>
+          )}
+          <div className="flex space-x-4 pb-4">
+            {KANBAN_COLUMNS.map((column) => (
+                <Droppable key={column.id} droppableId={column.id}>
+                {(provided, snapshot) => (
+                  <KanbanColumn
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    columnId={column.id as BillStatus}
+                    title={column.title}
+                    bills={billsByColumn[column.id as BillStatus] || []}
+                    isDraggingOver={snapshot.isDraggingOver}
+                    draggingBillId={draggingBillId}
+                    onCardClick={handleCardClick} // Pass click handler
+                  >
+                    {provided.placeholder}
+                  </KanbanColumn>
+                )}
+              </Droppable>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </DragDropContext>
 
-        {/* Render the dialog */}
-        <BillDetailsDialog
-            bill={selectedBill}
-            isOpen={isDialogOpen}
-            onClose={() => setIsDialogOpen(false)}
-        />
+      {/* Render the dialog */}
+      <BillDetailsDialog
+          bill={selectedBill}
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+      />
     </>
   );
 }
