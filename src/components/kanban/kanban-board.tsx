@@ -28,28 +28,16 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
-  const [selectedBill, setSelectedBill] = useState<Bill | null>(null); // State for selected bill
+  const [selectedBillId, setSelectedBillId] = useState<string | null>(null); // State for selected bill
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
 
   // --- Add refs for scroll groups ---
   const viewportRef = useRef<HTMLDivElement>(null);
-  const introducedRef = useRef<HTMLDivElement>(null);
-  const crossoverRef = useRef<HTMLDivElement>(null);
-  const conferenceRef = useRef<HTMLDivElement>(null);
-  const governorRef = useRef<HTMLDivElement>(null);
-
-  const deferred1Ref = useRef<HTMLDivElement>(null);
-  const defferred1Idx = KANBAN_COLUMNS.findIndex(col => col.id === 'deferred1');
-
-  const targetRef = useRef<HTMLDivElement>(null)
 
   // Create refs for all columns dynamically
   const columnRefs = useRef<(HTMLDivElement | null)[]>(
     new Array(KANBAN_COLUMNS.length).fill(null)
   );
-  const getColumnRef = useCallback((idx: number) => {
-    return columnRefs.current[idx]
-  }, [])
 
   const introducedIdx = KANBAN_COLUMNS.findIndex(col => col.id === 'introduced');
   const crossoverIdx = KANBAN_COLUMNS.findIndex(col => col.id === ('crossoverWaiting1'));
@@ -243,7 +231,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
    // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
      console.log("Card clicked, opening details:", bill);
-     setSelectedBill(bill);
+     setSelectedBillId(bill.id);
      setIsDialogOpen(true);
    }, []);
 
@@ -315,7 +303,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
         {/* Render the dialog */}
         <BillDetailsDialog
-            bill={selectedBill}
+            billID={selectedBillId}
             isOpen={isDialogOpen}
             onClose={() => setIsDialogOpen(false)}
         />

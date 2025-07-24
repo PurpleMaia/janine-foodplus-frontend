@@ -1,6 +1,6 @@
 'use server';
 
-import type { Bill, BillStatus, BillDraft, Introducer, NewsArticle } from '@/types/legislation';
+import type { Bill, BillStatus, BillDraft, Introducer, NewsArticle, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -165,24 +165,40 @@ export async function getAllBills(): Promise<Bill[]> {
 
     // filtering the bill results only by food-related keywords    
     const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
-    const dataWithStatusUpdates = [...filteredData].map(async(bill) => {
-      try {
-        if (sql) {
-          const result = await sql`
-              SELECT id, chamber, date, statustext FROM status_updates su
-              WHERE su.bill_id = ${bill.id}
-          `
-        } else {
-          console.log('SQL Connection not available')
+
+    // update each bill object with its status updates
+    const dataWithStatusUpdates = await Promise.all(
+        filteredData.map(async(bill) => {
+        try {
+          if (sql) {
+            const result = await sql<StatusUpdate[]>`
+                SELECT id, chamber, date, statustext FROM status_updates su
+                WHERE su.bill_id = ${bill.id}
+            `
+            return {
+              ...bill,
+              updates: result
+            }
+          } else {
+            console.log('SQL Connection not available, setting updates to []')
+            return {
+              ...bill,
+              updates: []
+            }
+          }
+        } catch (e) {
+          console.log('Status update fetch did not work for: ', bill.id, e)
+          return {
+            ...bill,
+            updates: []
+          }
         }
-      } catch (e) {
-        console.log('Dat fetch did not work: ', e)
-      }
-    })
+      })
+    )
     
     // Sort by updated_at date descending (most recent first) before returning
-    let sortedBills = [...filteredData].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    sortedBills = sortedBills.slice(0,3)
+    let sortedBills = [...dataWithStatusUpdates].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
+    sortedBills = sortedBills.slice(0,9)
     console.log('sortedBills', sortedBills)
     return sortedBills; // Returning only 5
 }

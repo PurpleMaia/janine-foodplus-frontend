@@ -64,5 +64,5 @@ export interface StatusUpdate {
   id: string;
   chamber: string;
   date: string;
-  text: string
+  statustext: string
 }
