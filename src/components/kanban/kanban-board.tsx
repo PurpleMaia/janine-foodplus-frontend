@@ -20,23 +20,6 @@ interface KanbanBoardProps {
   initialBills: Bill[];
 }
 
-
-const FOOD_KEYWORDS = [
-  'agriculture', 'food', 'farm', 'pesticides', 'eating', 'edible', 'meal',
-  'crop', 'harvest', 'organic', 'nutrition', 'diet', 'restaurant', 'cafe',
-  'kitchen', 'cooking', 'beverage', 'drink', 'produce', 'vegetable', 'fruit',
-  'meat', 'dairy', 'grain', 'seed', 'fertilizer', 'irrigation', 'livestock',
-  'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
-];
-
-function containsFoodKeywords(bill: Bill): boolean {
-  const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
-  return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
-}
-
-
-
-
 export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
@@ -52,7 +35,6 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   // const bills = useMemo(() => {
   //   return showFoodOnly ? rawBills.filter(containsFoodKeywords) : rawBills;
   // }, [rawBills, showFoodOnly]);
-
 
   // --- Add refs for scroll groups ---
   const viewportRef = useRef<HTMLDivElement>(null);

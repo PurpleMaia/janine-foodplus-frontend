@@ -67,13 +67,10 @@ export default function AIUpdateSingleButton({ bill } : Props) {
         };      
 
         // Set temp bill 
-        setTempBills(prevBills => 
-            prevBills.map(b => 
-              b.id === bill.id 
-                ? tempBill
-                : b
-            )
-          );   
+        setTempBills(prevBills => [
+          ...prevBills.filter(tb => tb.id !== bill.id),
+          tempBill
+        ]);
 
         // Update the UI with LLM suggestion (optimistic)
         setBills(prevBills => 

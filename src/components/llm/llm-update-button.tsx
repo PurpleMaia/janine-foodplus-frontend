@@ -89,18 +89,20 @@ export default function AIUpdateButton() {
             : b
         )
       );
-    }
 
-    toast({
-      title: `Done: ${bill.bill_number}`,
-      description: `AI finished categorizing this bill.`,
-      variant: 'default',
-    });
+      toast({
+        title: `Done: ${bill.bill_number}`,
+        description: `AI finished categorizing this bill.`,
+        variant: 'default',
+      });    
+
+      return tempBill
+    }
   }      
 
   // Handler to trigger LLM classification for all bills
   const handleAIUpdateAll = async () => { 
-    console.log('triggered AI Update ALL')   
+    const newTempBills: TempBill[] = []
     const MAX_REQUESTS = 3
 
       // main loop that processes each bill 
@@ -110,8 +112,16 @@ export default function AIUpdateButton() {
 
         // Process current batch in parallel
         const batchResults = await Promise.allSettled(
-          batch.map(bill => processBill(bill))
+          batch.map((bill) => {processBill(bill)})          
         );
+
+        // map to the tempbill array all succcessful suggestions 
+        // error handle here later
+        batchResults.forEach((result) => {
+          if (result.status === 'fulfilled' && result.value) {
+            newTempBills.push(result.value)
+          }
+        })        
       }      
   
       setLoading(false)
