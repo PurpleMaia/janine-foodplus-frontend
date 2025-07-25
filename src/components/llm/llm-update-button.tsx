@@ -55,25 +55,25 @@ export default function AIUpdateButton() {
         variant: 'destructive',
       });
     } else {
-      // const currentColumnIdx = getColumnIndex(bill.current_status);
-      const targetColumnIdx = getColumnIndex(classification);
 
-       // Create temp bill for the original position
-      const tempBill: TempBill = {
-        id: bill.id,
-        current_status: bill.current_status,          
-        suggested_status: classification,
-        target_idx: targetColumnIdx
-      };      
+      if (classification !== bill.current_status) {
+        // const currentColumnIdx = getColumnIndex(bill.current_status);
+        const targetColumnIdx = getColumnIndex(classification);
 
-      // Set temp bill 
-      setTempBills(prevBills => 
-        prevBills.map(b => 
-          b.id === bill.id 
-            ? tempBill
-            : b
-        )
-      );   
+         // Create temp bill for the original position
+        const tempBill: TempBill = {
+          id: bill.id,
+          current_status: bill.current_status,          
+          suggested_status: classification,
+          target_idx: targetColumnIdx
+        };      
+
+        // Set temp bill 
+        setTempBills(prevBills => [
+          ...prevBills.filter(tb => tb.id !== bill.id),
+          tempBill
+        ]);
+      }
 
       // Update the UI with LLM suggestion (optimistic)
       setBills(prevBills => 
@@ -95,14 +95,11 @@ export default function AIUpdateButton() {
         description: `AI finished categorizing this bill.`,
         variant: 'default',
       });    
-
-      return tempBill
     }
   }      
 
   // Handler to trigger LLM classification for all bills
   const handleAIUpdateAll = async () => { 
-    const newTempBills: TempBill[] = []
     const MAX_REQUESTS = 3
 
       // main loop that processes each bill 
@@ -113,17 +110,9 @@ export default function AIUpdateButton() {
         // Process current batch in parallel
         const batchResults = await Promise.allSettled(
           batch.map((bill) => {processBill(bill)})          
-        );
-
-        // map to the tempbill array all succcessful suggestions 
-        // error handle here later
-        batchResults.forEach((result) => {
-          if (result.status === 'fulfilled' && result.value) {
-            newTempBills.push(result.value)
-          }
-        })        
+        );     
       }      
-  
+      
       setLoading(false)
       toast({
         title: 'Finished AI Categorizing',
@@ -139,7 +128,7 @@ export default function AIUpdateButton() {
           setLoading(true);
           await handleAIUpdateAll();
         }}
-        disabled={loading}
+        disabled={loading || bills.some((bill) => bill.llm_suggested)}
       >
         { loading ? (
           <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Loading</span>
