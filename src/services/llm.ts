@@ -125,62 +125,64 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
     const currStatus = context.split(/\r?\n/)[0];
     let attempt = 0;
     // console.log('CONTEXT:\n', context)
-    console.log('awaiting llm...', process.env.VLLM)
-    while (attempt < maxRetries) {
-        try {
-            const model = process.env.VLLM || process.env.LLM || '';
-            const response = await client.chat.completions.create({
-                model,
-                messages: [
-                    { role: 'system', content: SYSTEM_PROMPT },
-                    {
-                        role: 'user',
-                        content: [
-                            "Here is the bill's status log so far:",
-                            context,  
-                            "",                                                       
-                            "Which label applies to the first line (the current status)? Only respond with the classified label",
-                            " /no_think"
-                        ].join("\n")
+    console.log('awaiting llm...', process.env.VLLM)   
+        while (attempt < maxRetries) {
+
+            try {
+
+                const model = process.env.VLLM || process.env.LLM || '';
+                const response = await client.chat.completions.create({
+                    model,
+                    messages: [
+                        { role: 'system', content: SYSTEM_PROMPT },
+                        {
+                            role: 'user',
+                            content: [
+                                "Here is the bill's status log so far:",
+                                context,  
+                                "",                                                       
+                                "Which label applies to the first line (the current status)? Only respond with the classified label",
+                                " /no_think"
+                            ].join("\n")
+                        }
+                    ],
+                    temperature: 0.0
+                });
+    
+                if (!response || !response.choices[0].message.content || !response.choices || !response.choices[0].message) {
+                    return null;
+                }
+    
+                const classification = response.choices[0].message.content.trim();
+                console.log("Current Status:", currStatus);
+                console.log("Classification:", classification);
+                const newStatus = mapToColumnID(classification)
+                console.log("Mapped:", newStatus)            
+    
+                return newStatus;
+            } catch (error) {
+                const err = error as any;
+                const status = err?.response?.status || err?.status;
+                const message = typeof err?.message === 'string' ? err.message : String(err);
+    
+                // Retry on HTTP 524 (Cloudflare), ETIMEDOUT, or generic timeout message
+                const isTimeout =
+                    status === 524 ||
+                    err?.code === 'ETIMEDOUT' ||
+                    message.toLowerCase().includes('timeout');
+    
+                if (isTimeout) {
+                    attempt++;
+                    if (attempt < maxRetries) {
+                        console.warn(`Timeout encountered. Retrying attempt ${attempt + 1} after ${retryDelay}ms...`);
+                        await new Promise(res => setTimeout(res, retryDelay));
+                        continue;
                     }
-                ],
-                temperature: 0.0
-            }, {
-                timeout: 60000
-            });
-            if (!response || !response.choices || !response.choices[0] || !response.choices[0].message || !response.choices[0].message.content) {
+                }
+                console.error(`Error:`, message);
                 return null;
             }
-            const classification = response.choices[0].message.content.trim();
-            console.log("Current Status:", currStatus);
-            console.log("Classification:", classification);
-            const newStatus = mapToColumnID(classification)
-            console.log("Mapped:", newStatus)            
-
-            return newStatus;
-        } catch (error) {
-            const err = error as any;
-            const status = err?.response?.status || err?.status;
-            const message = typeof err?.message === 'string' ? err.message : String(err);
-
-            // Retry on HTTP 524 (Cloudflare), ETIMEDOUT, or generic timeout message
-            const isTimeout =
-                status === 524 ||
-                err?.code === 'ETIMEDOUT' ||
-                message.toLowerCase().includes('timeout');
-
-            if (isTimeout) {
-                attempt++;
-                if (attempt < maxRetries) {
-                    console.warn(`Timeout encountered. Retrying attempt ${attempt + 1} after ${retryDelay}ms...`);
-                    await new Promise(res => setTimeout(res, retryDelay));
-                    continue;
-                }
-            }
-            console.error(`Error:`, message);
-            return null;
         }
-    }
 }
 
 function mapToColumnID(classification: string): string | undefined {

@@ -14,6 +14,7 @@ interface BillsContextType {
   rejectLLMChange: (billId: string) => Promise<void>;
   rejectAllLLMChanges: () => Promise<void>;
   acceptAllLLMChanges: () => Promise<void>;
+  resetBills: () => Promise<void>;
 }
 
 const BillsContext = createContext<BillsContextType | undefined>(undefined)
@@ -120,6 +121,22 @@ export function BillsProvider({ children }: { children : ReactNode }) {
         variant: 'default',
       });
     }
+
+    const resetBills = async() => {
+      // Clear temp bills
+      setTempBills([]);
+
+      // Reset all bill states
+      setBills(prevBills => 
+        prevBills.map(bill => ({
+          ...bill,
+          llm_processing: false,
+          llm_suggested: false,
+          current_status: bill.previous_status || bill.current_status,
+          previous_status: undefined
+        }))
+      );
+    }
     
     useEffect(() => {
         setLoading(true)
@@ -144,7 +161,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     }, [])
 
     return (
-        <BillsContext.Provider value={{ bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges }}>
+        <BillsContext.Provider value={{ bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills }}>
             {children}
         </BillsContext.Provider>
     )
