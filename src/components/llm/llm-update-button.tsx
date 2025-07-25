@@ -2,7 +2,7 @@
 import type { Bill, BillStatus, TempBill } from '@/types/legislation';
 import { useState } from 'react';
 import { Button } from '../ui/button';
-import { RefreshCw, WandSparkles } from 'lucide-react';
+import { Check, RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
 import { useBills } from '@/hooks/use-bills';
@@ -12,7 +12,7 @@ import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 export default function AIUpdateButton() {
   const [loading, setLoading] = useState<boolean>(false); // State for dialog visibility
   const { toast } = useToast();  
-  const { bills, setBills, setTempBills } = useBills()
+  const { bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges } = useBills()
 
   // Helper function to get column index based on status ID
   const getColumnIndex = (statusId: BillStatus): number => {
@@ -102,6 +102,7 @@ export default function AIUpdateButton() {
   const handleAIUpdateAll = async () => { 
     const MAX_REQUESTS = 3
 
+    try {
       // main loop that processes each bill 
       for (let i = 0; i < bills.length; i += MAX_REQUESTS) {
         // batch requests (max 3 bills)
@@ -109,33 +110,61 @@ export default function AIUpdateButton() {
 
         // Process current batch in parallel
         const batchResults = await Promise.allSettled(
-          batch.map((bill) => {processBill(bill)})          
+          batch.map((bill) => processBill(bill))          
         );     
-      }      
-      
-      setLoading(false)
+      }
+    } catch (error) {
+      console.error('Error in AI Update processing:', error)
+      toast({
+        title: 'Error in AI Processing',
+        description: 'Some bills may not have been processed',
+        variant: 'destructive'      
+      });
+    } finally {
       toast({
         title: 'Finished AI Categorizing',
         description: 'Please reject or accept the changes',
         variant: 'default'      
       })
-  }  
+
+      setLoading(false)
+    }
+      
+  }    
 
   return (
     <>
+    <div className='flex gap-2'>
+      {/* AI UPDATE ALL BUTTON */}
       <Button
         onClick={async () => {
           setLoading(true);
           await handleAIUpdateAll();
         }}
-        disabled={loading || bills.some((bill) => bill.llm_suggested)}
+        disabled={bills.some((bill) => bill.llm_suggested)}
       >
         { loading ? (
-          <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Loading</span>
+          <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Processing</span>
         ) : (
           <span className="flex items-center gap-2"><WandSparkles />AI Update All</span>
         )}
-      </Button>    
+      </Button>
+
+      { bills.every(bill => bill.llm_suggested) ? (
+        <>      
+          <Button onClick={async() => await acceptAllLLMChanges()}>
+            Accept All
+          </Button>
+
+          <Button className='bg-red-400' onClick={async() => await rejectAllLLMChanges()}>      
+            Reject All
+          </Button>
+        </>
+      ) : (
+        <></>
+      )}
+
+    </div>
     </>
   );
 }
