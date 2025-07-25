@@ -55,25 +55,25 @@ export default function AIUpdateSingleButton({ bill } : Props) {
           variant: 'destructive',
         });
       } else {
-        // const currentColumnIdx = getColumnIndex(bill.current_status);
-        const targetColumnIdx = getColumnIndex(classification);
-
-         // Create temp bill for the original position
-        const tempBill: TempBill = {
-          id: bill.id,
-          current_status: bill.current_status,          
-          suggested_status: classification,
-          target_idx: targetColumnIdx
-        };      
-
-        // Set temp bill 
-        setTempBills(prevBills => 
-            prevBills.map(b => 
-              b.id === bill.id 
-                ? tempBill
-                : b
-            )
-          );   
+        
+        if (classification !== bill.current_status) {
+          // const currentColumnIdx = getColumnIndex(bill.current_status);
+          const targetColumnIdx = getColumnIndex(classification);
+  
+           // Create temp bill for the original position
+          const tempBill: TempBill = {
+            id: bill.id,
+            current_status: bill.current_status,          
+            suggested_status: classification,
+            target_idx: targetColumnIdx
+          };      
+  
+          // Set temp bill 
+          setTempBills(prevBills => [
+            ...prevBills.filter(tb => tb.id !== bill.id),
+            tempBill
+          ]);
+        }
 
         // Update the UI with LLM suggestion (optimistic)
         setBills(prevBills => 
@@ -89,6 +89,7 @@ export default function AIUpdateSingleButton({ bill } : Props) {
               : b
           )
         );
+        
       }
 
       toast({
@@ -113,7 +114,7 @@ export default function AIUpdateSingleButton({ bill } : Props) {
           setLoading(true);
           await handleAIUpdate();
         }}
-        disabled={loading || bill.llm_processing}
+        disabled={loading || bill.llm_processing || bill.llm_suggested}
       >
         { loading || bill.llm_processing ? (
           <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Loading</span>
