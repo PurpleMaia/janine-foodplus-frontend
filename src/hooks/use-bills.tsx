@@ -12,6 +12,9 @@ interface BillsContextType {
   setTempBills: Dispatch<SetStateAction<TempBill[]>>;
   acceptLLMChange: (billId: string) => Promise<void>;
   rejectLLMChange: (billId: string) => Promise<void>;
+  rejectAllLLMChanges: () => Promise<void>;
+  acceptAllLLMChanges: () => Promise<void>;
+  resetBills: () => Promise<void>;
 }
 
 const BillsContext = createContext<BillsContextType | undefined>(undefined)
@@ -90,6 +93,50 @@ export function BillsProvider({ children }: { children : ReactNode }) {
         variant: 'default',
       });
     }
+
+    const rejectAllLLMChanges = async () => {
+      const suggestedBills = bills.filter(b => b.llm_suggested);
+      
+      for (const bill of suggestedBills) {
+        await rejectLLMChange(bill.id);
+      }
+  
+      toast({
+        title: 'All Changes Rejected',
+        description: `Rejected ${suggestedBills.length} AI suggestions`,
+        variant: 'default',
+      });
+    };
+
+    const acceptAllLLMChanges = async () => {
+      const suggestedBills = bills.filter(b => b.llm_suggested)
+
+      for (const bill of suggestedBills) {
+        await acceptLLMChange(bill.id);
+      }
+  
+      toast({
+        title: 'All Changes Accepted',
+        description: `Accepted ${suggestedBills.length} AI suggestions`,
+        variant: 'default',
+      });
+    }
+
+    const resetBills = async() => {
+      // Clear temp bills
+      setTempBills([]);
+
+      // Reset all bill states
+      setBills(prevBills => 
+        prevBills.map(bill => ({
+          ...bill,
+          llm_processing: false,
+          llm_suggested: false,
+          current_status: bill.previous_status || bill.current_status,
+          previous_status: undefined
+        }))
+      );
+    }
     
     useEffect(() => {
         setLoading(true)
@@ -113,10 +160,8 @@ export function BillsProvider({ children }: { children : ReactNode }) {
           };
     }, [])
 
-
-
     return (
-        <BillsContext.Provider value={{ bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills }}>
+        <BillsContext.Provider value={{ bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills }}>
             {children}
         </BillsContext.Provider>
     )
