@@ -6,6 +6,7 @@ import type { Bill, TempBill } from '@/types/legislation';
 import { toast } from './use-toast';
 
 interface BillsContextType {
+  loading: boolean
   bills: Bill[]
   setBills: Dispatch<SetStateAction<Bill[]>>;
   tempBills: TempBill[]
@@ -151,17 +152,19 @@ export function BillsProvider({ children }: { children : ReactNode }) {
               console.error("Error searching bills:", err);
               setError("Failed to search bills.");
             } finally {
-              setLoading(false);              
+              setLoading(false);    
+                        
             }
           });
           
           return () => {
             clearTimeout(handler);
           };
+
     }, [])
 
     return (
-        <BillsContext.Provider value={{ bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills }}>
+        <BillsContext.Provider value={{ loading, bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills }}>
             {children}
         </BillsContext.Provider>
     )
