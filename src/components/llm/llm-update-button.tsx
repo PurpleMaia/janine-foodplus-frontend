@@ -9,11 +9,11 @@ import { useBills } from '@/hooks/use-bills';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 
 export default function AIUpdateButton() {
-  const [loading, setLoading] = useState<boolean>(false); // State for dialog visibility
+  const [processing, setProcessing] = useState<boolean>(false); // State for dialog visibility
   const [shouldStop, setShouldStop] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();  
-  const { bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges, resetBills } = useBills()
+  const { loading, bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges, resetBills } = useBills()
 
   // Helper function to get column index based on status ID
   const getColumnIndex = (statusId: BillStatus): number => {
@@ -224,7 +224,7 @@ export default function AIUpdateButton() {
 
       // reset variables
       abortControllerRef.current = null
-      setLoading(false)
+      setProcessing(false)
     }
       
   }    
@@ -236,7 +236,7 @@ export default function AIUpdateButton() {
       abortControllerRef.current.abort();
     }
 
-    setLoading(false);
+    setProcessing(false);
   }
   return (
     <>
@@ -244,12 +244,12 @@ export default function AIUpdateButton() {
       {/* AI UPDATE ALL BUTTON */}
       <Button
         onClick={async () => {
-          setLoading(true);
+          setProcessing(true);
           await handleAIUpdateAll();
         }}
         disabled={bills.some((bill) => bill.llm_suggested)}
       >
-        { loading ? (
+        { processing ? (
           <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Processing</span>
         ) : (
           <span className="flex items-center gap-2"><WandSparkles />AI Update All</span>
@@ -257,7 +257,8 @@ export default function AIUpdateButton() {
       </Button>
 
       {/* ACCEPT OR REJECT ALL BUTTONS */}
-      { bills.every(bill => bill.llm_suggested) ? (
+      
+      { !loading && bills.length > 0 && bills.every(bill => bill.llm_processing) ? (
         <>      
           <Button onClick={async() => await acceptAllLLMChanges()}>
             Accept All
@@ -272,7 +273,7 @@ export default function AIUpdateButton() {
       )}
 
       {/* STOP PROCESSING */}
-      { loading ? (
+      { processing ? (
         <Button onClick={handleStop}>
           <span className="flex items-center gap-2"><CircleStop />Stop</span>
         </Button>
