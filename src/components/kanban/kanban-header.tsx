@@ -2,17 +2,16 @@
 
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useKanbanBoard } from '@/hooks/use-kanban-board';
-import { Button } from '../ui/button';
-import { LLMUpdateDialog } from '../llm/llm-update-dialog';
 
 export function KanbanHeader() {
   const { setSearchQuery } = useKanbanBoard(); // Access context
-  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
+    const query = event.target.value
+
+    setSearchQuery(query);
   };
 
   return (

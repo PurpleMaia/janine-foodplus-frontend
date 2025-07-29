@@ -24,13 +24,19 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   // const [bills, setBills] = useState<Bill[]>(initialBills);
-  const { bills, setBills, tempBills, setTempBills } = useBills()
+  const { setLoadingBills, bills, setBills, tempBills, setTempBills } = useBills()
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null); // State for selected bill
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
-  const [showFoodOnly, setShowFoodOnly] = useState(false);
+
+  const billsRef = useRef<Bill[]>(initialBills)
+  useEffect(() => {
+    if (bills && bills.length > 0) {
+      billsRef.current = bills
+    }
+  }, [bills])
   // const [rawBills, setRawBills] = useState<Bill[]>(initialBills);
   // const bills = useMemo(() => {
   //   return showFoodOnly ? rawBills.filter(containsFoodKeywords) : rawBills;
@@ -86,29 +92,30 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   // Debounced search effect
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setBills(initialBills);
+      setBills(billsRef.current);
       return;
     }
     
-    setLoading(true);
-    setError(null);
     const handler = setTimeout(async () => {
       try {
+        setLoading(true);
+        setError(null);
         const results = await searchBills(searchQuery);
         setBills(results);
       } catch (err) {
         console.error("Error searching bills:", err);
         setError("Failed to search bills.");
-        setBills(initialBills); // Revert to initial on error        
+        setBills(billsRef.current); // Revert to initial on error        
       } finally {
         setLoading(false);        
       }
     }, 300); // Debounce search requests
-
+    
     return () => {
       clearTimeout(handler);
+      console.log('result:', initialBills)
     };
-  }, [searchQuery, initialBills]); // Rerun when searchQuery or initialBills change
+  }, [searchQuery, billsRef.current]); // Rerun when searchQuery or initialBills change
 
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};

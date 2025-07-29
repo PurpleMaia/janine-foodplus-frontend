@@ -13,7 +13,7 @@ export default function AIUpdateButton() {
   const [shouldStop, setShouldStop] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();  
-  const { loading, bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges, resetBills } = useBills()
+  const { loadingBills, bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges, resetBills } = useBills()
 
   // Helper function to get column index based on status ID
   const getColumnIndex = (statusId: BillStatus): number => {
@@ -238,6 +238,7 @@ export default function AIUpdateButton() {
 
     setProcessing(false);
   }
+
   return (
     <>
     <div className='flex gap-2'>
@@ -247,7 +248,7 @@ export default function AIUpdateButton() {
           setProcessing(true);
           await handleAIUpdateAll();
         }}
-        disabled={bills.some((bill) => bill.llm_suggested)}
+        disabled={bills.some((bill) => bill.llm_suggested) && bills.length > 0}
       >
         { processing ? (
           <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Processing</span>
@@ -258,7 +259,7 @@ export default function AIUpdateButton() {
 
       {/* ACCEPT OR REJECT ALL BUTTONS */}
       
-      { !loading && bills.length > 0 && bills.every(bill => bill.llm_processing) ? (
+      { !loadingBills && bills.length > 0 && bills.every(bill => bill.llm_processing) ? (
         <>      
           <Button onClick={async() => await acceptAllLLMChanges()}>
             Accept All
