@@ -65,10 +65,8 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   const { bills } = useBills()
 
   const bill = useMemo(() => {
-    console.log('triggered bill rehydration')
 
     const found = bills.find(b => b.id === billID)    
-    console.log('updates', found?.updates)
 
     return found
   }, [bills, billID])

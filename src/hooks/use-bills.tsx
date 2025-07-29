@@ -1,12 +1,13 @@
 'use client';
 
 import { getAllBills, updateBillStatusServerAction } from '@/services/legislation';
-import React, { createContext, useContext, useState, ReactNode, Dispatch, SetStateAction, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, Dispatch, SetStateAction, useEffect, useMemo } from 'react';
 import type { Bill, TempBill } from '@/types/legislation';
 import { toast } from './use-toast';
 
 interface BillsContextType {
-  loading: boolean
+  loadingBills: boolean
+  setLoadingBills: Dispatch<SetStateAction<boolean>>;
   bills: Bill[]
   setBills: Dispatch<SetStateAction<Bill[]>>;
   tempBills: TempBill[]
@@ -25,7 +26,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     const [bills, setBills] = useState<Bill[]>([]);
     const [tempBills, setTempBills] = useState<TempBill[]>([])
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);    
+    const [loadingBills, setLoadingBills] = useState(false);    
 
     const acceptLLMChange = async(billId: string) => {
       const bill = bills.find(b => b.id === billId)
@@ -140,7 +141,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     }
     
     useEffect(() => {
-        setLoading(true)
+        setLoadingBills(true)
         setError(null);        
         const handler = setTimeout(async () => {
             try {
@@ -152,7 +153,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
               console.error("Error searching bills:", err);
               setError("Failed to search bills.");
             } finally {
-              setLoading(false);    
+              setLoadingBills(false);    
                         
             }
           });
@@ -163,8 +164,11 @@ export function BillsProvider({ children }: { children : ReactNode }) {
 
     }, [])
 
+    const value = useMemo(() => ({
+      loadingBills, setLoadingBills, bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills
+    }), [bills, loadingBills, tempBills, acceptLLMChange, acceptAllLLMChanges, rejectLLMChange, rejectAllLLMChanges, resetBills])
     return (
-        <BillsContext.Provider value={{ loading, bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills }}>
+        <BillsContext.Provider value={value}>
             {children}
         </BillsContext.Provider>
     )

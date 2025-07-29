@@ -2,7 +2,6 @@ import { KANBAN_COLUMNS } from "@/lib/kanban-columns";
 import { cn } from '@/lib/utils';
 
 export const KanbanColumnSkeleton = () => {
-    const numCols = KANBAN_COLUMNS.length
     return (
     <div
     className={cn(
