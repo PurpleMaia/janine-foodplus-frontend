@@ -259,7 +259,7 @@ export default function AIUpdateButton() {
 
       {/* ACCEPT OR REJECT ALL BUTTONS */}
       
-      { !loadingBills && bills.length > 0 && bills.every(bill => bill.llm_processing) ? (
+      { bills.length > 0 && !processing && bills.some(bill => bill.llm_suggested) ? (
         <>      
           <Button onClick={async() => await acceptAllLLMChanges()}>
             Accept All
