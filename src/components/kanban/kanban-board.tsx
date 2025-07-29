@@ -31,7 +31,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null); // State for selected bill
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
 
-  const [filteredBills, setFilteredBills] = useState<Bill[] | null>(initialBills)
+  const [filteredBills, setFilteredBills] = useState<Bill[] | null>()
 
   // --- Add refs for scroll groups ---
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -80,7 +80,6 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
   // Debounced search effect
   useEffect(() => {
-
     if (!searchQuery.trim()) {
       setFilteredBills(null);
       return;
@@ -109,7 +108,10 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
     KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
-    const billsTobeGrouped = filteredBills ? filteredBills : bills  
+    const billsTobeGrouped = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
+    console.log('grouping', billsTobeGrouped)
+    console.log('filteredBills', filteredBills, 'searchQuery', searchQuery)
+
     billsTobeGrouped.forEach(bill => {
       // Ensure bill.current_status is a valid key
       const statusKey = bill.current_status as BillStatus;
@@ -125,7 +127,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     // Sort bills within each column if needed, e.g., by ID or name
     // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.bill_title.localeCompare(b.bill_title)));
     return grouped;
-  }, [filteredBills]);
+  }, [bills, filteredBills, searchQuery]);
 
   const tempBillsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: TempBill[] } = {};
@@ -171,23 +173,41 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
     const sourceColumnId = source.droppableId as BillStatus;
     const destinationColumnId = destination.droppableId as BillStatus;
-    const movedBill = bills.find(b => b.id === draggableId);
+    const movedBill = bills.find(b => b.id === draggableId)
 
     if (!movedBill) return; // Should not happen
 
     // --- Optimistic UI Update ---
     // edit the global bill status
-    const newBills = Array.from(bills);
+    const newBills = Array.from(bills)
     const billIndex = newBills.findIndex(b => b.id === draggableId);
-
+    
+    console.log('newBills', newBills)
     if (billIndex > -1) {
+
+        // update the bill container
         const updatedBill = { 
           ...newBills[billIndex],
           current_status: destinationColumnId,
           llm_suggested: false 
         };
         newBills.splice(billIndex, 1, updatedBill);
-        setBills(newBills); // Update state optimistically
+        setBills(newBills)
+
+        // Also update filteredBills if it exists
+        console.log('ON_DRAG_END: filteredBills', filteredBills, 'searchQuery', searchQuery)
+        if (filteredBills && searchQuery.trim()) {
+          const newFilteredBills = Array.from(filteredBills);
+          const filteredBillIndex = newFilteredBills.findIndex(b => b.id === draggableId);
+          
+          if (filteredBillIndex > -1) {
+            newFilteredBills.splice(filteredBillIndex, 1, updatedBill);
+            setFilteredBills(newFilteredBills);
+          }
+
+          console.log('filteredBills after setting', filteredBills)
+        }
+
         setTempBills(prevTempBills => 
           prevTempBills.filter(tb => tb.id !== updatedBill.id)
         );
@@ -195,6 +215,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
         console.error("Bill not found for optimistic update");
         return;
     }
+
     // --- End Optimistic UI Update ---
 
     // Call Server Action to update status
@@ -224,7 +245,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
            variant: "destructive",
          });
     } 
-  }, [bills, toast]);
+  }, [bills, toast, filteredBills, searchQuery]);
 
    // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
