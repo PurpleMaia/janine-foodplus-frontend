@@ -121,7 +121,7 @@ export async function getAllBills(): Promise<Bill[]> {
     
     // Sort by updated_at date descending (most recent first) before returning
     let sortedBills = [...dataWithStatusUpdates].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    // sortedBills = sortedBills.slice(0,9)
+    sortedBills = sortedBills.slice(0,9)
     // console.log('sortedBills', sortedBills)
     return sortedBills; // Returning only 5
 }
@@ -207,6 +207,31 @@ export async function updateBillStatusServerAction(billId: string, newStatus: Bi
         console.error('Database update failed:', error);
         return null;
     }
+}
+
+export async function findExistingBillByURL(billURl: string): Promise<Bill | null> {
+  try {
+    if (sql) {
+      const result = await sql`
+        SELECT * FROM bills
+        WHERE bill_url = ${billURl}       
+        limit 1       
+      `
+
+      if (result) {
+        return result[0]
+      } else {
+        console.log('Could not find bill in database based on: ', billURl)
+        return null
+      } 
+    } else {
+      console.error('SQL connection not available');
+      return null;
+  }
+  } catch (error) {
+    console.error('Database search failed', error)
+    return null
+  }
 }
 
 export async function PATCH(
