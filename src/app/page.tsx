@@ -19,8 +19,12 @@ export default function Home() {
           <div className='w-full'>
             <KanbanHeader />
           </div>
-          <div className=''>
+          {/* Taking this out temporarily, need a better fix at scale */}
+          {/* <div className=''>
             <AIUpdateButton/>
+          </div> */}
+          <div>
+            
           </div>
         </div>
         <div className="flex items-center gap-2 p-4 border-b bg-background">
