@@ -14,20 +14,12 @@ export function KanbanBoardOrSpreadsheet({ view }: KanbanBoardOrSpreadsheetProps
   
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <main className="flex-1 overflow-hidden">
-        { loadingBills ? (
-          <>
-              <KanbanBoardSkeleton />
-          </>
-        ): (
-          <>        
+      <main className="flex-1 overflow-hidden">                
             {view === 'kanban' ? (
               <KanbanBoard initialBills={bills} />
             ) : (
               <KanbanSpreadsheet bills={bills} />
-            )}
-          </>
-        )}        
+            )}    
       </main>
     </div>
   );

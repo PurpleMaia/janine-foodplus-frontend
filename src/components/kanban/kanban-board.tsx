@@ -15,6 +15,7 @@ import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dia
 import { Button } from '@/components/ui/button';
 import { useBills } from '@/hooks/use-bills';
 import * as refs from '@/types/column-refs';
+import KanbanBoardSkeleton from './skeletons/skeleton-board';
 
 interface KanbanBoardProps {
   initialBills: Bill[];
@@ -24,23 +25,13 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   // const [bills, setBills] = useState<Bill[]>(initialBills);
-  const { setLoadingBills, bills, setBills, tempBills, setTempBills } = useBills()
-  const [loading, setLoading] = useState(false);
+  const { loadingBills, setLoadingBills, bills, setBills, tempBills, setTempBills } = useBills()
   const [error, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null); // State for selected bill
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
 
-  const billsRef = useRef<Bill[]>(initialBills)
-  useEffect(() => {
-    if (bills && bills.length > 0) {
-      billsRef.current = bills
-    }
-  }, [bills])
-  // const [rawBills, setRawBills] = useState<Bill[]>(initialBills);
-  // const bills = useMemo(() => {
-  //   return showFoodOnly ? rawBills.filter(containsFoodKeywords) : rawBills;
-  // }, [rawBills, showFoodOnly]);
+  const [filteredBills, setFilteredBills] = useState<Bill[] | null>(initialBills)
 
   // --- Add refs for scroll groups ---
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -65,14 +56,12 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     if (ref.current && viewportRef.current) {
       const container = viewportRef.current;
       const target = ref.current;
-      console.log('target', target)
+
       // Get the left position of the target relative to the scroll container
       const targetRect = target.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       const scrollLeft = container.scrollLeft + (targetRect.left - containerRect.left);      
-      // console.log('before', container.scrollLeft, '+', scrollLeft);
       container.scrollLeft = scrollLeft  
-      // console.log('after', container.scrollLeft);
     }
   };
 
@@ -91,36 +80,37 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
   // Debounced search effect
   useEffect(() => {
+
     if (!searchQuery.trim()) {
-      setBills(billsRef.current);
+      setFilteredBills(null);
       return;
     }
     
+    setError(null);
     const handler = setTimeout(async () => {
+      setLoadingBills(true)
       try {
-        setLoading(true);
-        setError(null);
         const results = await searchBills(searchQuery);
-        setBills(results);
+        setFilteredBills(results);        
       } catch (err) {
         console.error("Error searching bills:", err);
         setError("Failed to search bills.");
-        setBills(billsRef.current); // Revert to initial on error        
+        setFilteredBills(null); // Revert to initial on error        
       } finally {
-        setLoading(false);        
+        setLoadingBills(false)      
       }
     }, 300); // Debounce search requests
     
     return () => {
-      clearTimeout(handler);
-      console.log('result:', initialBills)
+      clearTimeout(handler);     
     };
-  }, [searchQuery, billsRef.current]); // Rerun when searchQuery or initialBills change
+  }, [searchQuery]); // Rerun when searchQuery or initialBills change
 
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
     KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
-    bills.forEach(bill => {
+    const billsTobeGrouped = filteredBills ? filteredBills : bills  
+    billsTobeGrouped.forEach(bill => {
       // Ensure bill.current_status is a valid key
       const statusKey = bill.current_status as BillStatus;
       if (grouped.hasOwnProperty(statusKey)) {
@@ -135,7 +125,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     // Sort bills within each column if needed, e.g., by ID or name
     // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.bill_title.localeCompare(b.bill_title)));
     return grouped;
-  }, [bills]);
+  }, [filteredBills]);
 
   const tempBillsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: TempBill[] } = {};
@@ -209,7 +199,6 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
     // Call Server Action to update status
     try {
-        setLoading(true);
         const updatedBillFromServer = await updateBillStatusServerAction(draggableId, destinationColumnId);
         if (!updatedBillFromServer) {
             throw new Error('Failed to update bill status on server.');
@@ -234,11 +223,8 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
            description: `Could not move ${movedBill.bill_title}. Please try again.`,
            variant: "destructive",
          });
-    } finally {
-        setLoading(false);
-    }
+    } 
   }, [bills, toast]);
-
 
    // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
@@ -252,7 +238,6 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
       scrollToColumnByIndex(bill.target_idx);
   }, [scrollToColumnByIndex]);
 
-
    return (
     <>
         <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -262,36 +247,40 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
               className="h-full w-full max-w-[100vw] rounded-[inherit]"
               style={{ scrollBehavior: 'smooth' }}
             >
-              <div className="flex space-x-4 pb-4">
-                {KANBAN_COLUMNS.map((column, idx) => {
-                  return (
-                    <div key={column.id} 
-                      ref={(el) => {
-                          columnRefs.current[idx] = el
-                        }} 
-                      className="inline-block">
-                      <Droppable droppableId={column.id}>
-                        {(provided, snapshot) => (
-                          <KanbanColumn
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            columnId={column.id as BillStatus}
-                            title={column.title}
-                            bills={billsByColumn[column.id as BillStatus] || []}
-                            tempBills={tempBillsByColumn[column.id as BillStatus] || []}
-                            isDraggingOver={snapshot.isDraggingOver}
-                            draggingBillId={draggingBillId}
-                            onCardClick={handleCardClick}
-                            onTempCardClick={handleTempCardClick}
-                          >
-                            {provided.placeholder}
-                          </KanbanColumn>
-                        )}
-                      </Droppable>
-                    </div>                    
-                  );
-                })}
-              </div>
+              { loadingBills ? (
+                <KanbanBoardSkeleton />
+              ) : (
+                <div className="flex space-x-4 pb-4">
+                  {KANBAN_COLUMNS.map((column, idx) => {
+                    return (
+                      <div key={column.id} 
+                        ref={(el) => {
+                            columnRefs.current[idx] = el
+                          }} 
+                        className="inline-block">
+                        <Droppable droppableId={column.id}>
+                          {(provided, snapshot) => (
+                            <KanbanColumn
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              columnId={column.id as BillStatus}
+                              title={column.title}
+                              bills={billsByColumn[column.id as BillStatus] || []}
+                              tempBills={tempBillsByColumn[column.id as BillStatus] || []}
+                              isDraggingOver={snapshot.isDraggingOver}
+                              draggingBillId={draggingBillId}
+                              onCardClick={handleCardClick}
+                              onTempCardClick={handleTempCardClick}
+                            >
+                              {provided.placeholder}
+                            </KanbanColumn>
+                          )}
+                        </Droppable>
+                      </div>                    
+                    );
+                  })}
+                </div>
+              )}
             </ScrollAreaPrimitive.Viewport>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
