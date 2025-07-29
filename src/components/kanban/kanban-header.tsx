@@ -1,11 +1,9 @@
 'use client'; // Keep header client-side for search input interaction
 
 import React, { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { RefreshCw, Search } from 'lucide-react';
+// import { Input } from '@/components/ui/input';
+// import { RefreshCw, Search } from 'lucide-react';
 import { useKanbanBoard } from '@/hooks/use-kanban-board';
-import { Button } from '../ui/button';
-import { LLMUpdateDialog } from '../llm/llm-update-dialog';
 
 export function KanbanHeader() {
   const { setSearchQuery } = useKanbanBoard(); // Access context
@@ -19,7 +17,7 @@ export function KanbanHeader() {
     <header className="sticky top-0 z-10 flex shrink-0 items-center justify-between px-4">
       <h1 className="text-xl font-semibold">Legislation Tracker</h1>
       
-      <div className='flex gap-2'>        
+      {/* <div className='flex gap-2'>        
         <div className="relative ml-auto w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -30,7 +28,7 @@ export function KanbanHeader() {
             aria-label="Search bills"
           />
         </div>
-      </div>
+      </div> */}
     </header>
   );
 }
