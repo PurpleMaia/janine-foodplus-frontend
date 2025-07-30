@@ -5,8 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
 import { TempBillCard } from './temp-card';
-import { Button } from '../ui/button';
-import { ListRestart, WandSparkles } from 'lucide-react';
+import { ListRestart, TriangleAlert } from 'lucide-react';
 import RefreshColumnButton from '../scraper/update-column-button';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
 
@@ -45,6 +44,13 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
               onRefreshEnd={() => setRefreshing(false)}  
             />
            </h2>
+           { bills.length >= 20 && (
+            <div>              
+             <p className='text-sm break-words whitespace-normal mt-2 text0center'>
+                   <span className="flex items-center gap-2 text-gray-600"><TriangleAlert className='w-5 h-5 text-yellow-600'/> Clicking <ListRestart className='w-4 h-4'/> will take a long time </span>
+              </p>                
+            </div>
+           )}
         </div>
 
         <ScrollArea className="flex-1 p-2">
