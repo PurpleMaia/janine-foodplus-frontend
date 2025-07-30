@@ -18,7 +18,7 @@ export async function scrapeForUpdates(billID: string) {
     const data = await response.json();
 
     console.log('result: ', data)
-
+    // test
     return data
 }
 
