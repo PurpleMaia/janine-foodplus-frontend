@@ -8,6 +8,7 @@ import { KanbanHeader } from '@/components/kanban/kanban-header';
 import AIUpdateButton from '@/components/llm/llm-update-button';
 import { KanbanBoardOrSpreadsheet } from './KanbanBoardOrSpreadsheet';
 import { Button } from '@/components/ui/button';
+import NewBillButton from '@/components/new-bill/new-bill-button';
 
 export default function Home() {
   const [view, setView] = useState<'kanban' | 'spreadsheet'>('kanban');
@@ -19,12 +20,9 @@ export default function Home() {
           <div className='w-full'>
             <KanbanHeader />
           </div>
-          {/* Taking this out temporarily, need a better fix at scale */}
-          {/* <div className=''>
-            <AIUpdateButton/>
-          </div> */}
-          <div>
-            
+          <div className=''>
+            {/* <AIUpdateButton/> */}
+            <NewBillButton />
           </div>
         </div>
         <div className="flex items-center gap-2 p-4 border-b bg-background">

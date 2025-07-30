@@ -25,7 +25,7 @@ export const KanbanColumnSkeleton = () => {
     )
 }
 
-const KanbanCardSkeleton = () => {
+export const KanbanCardSkeleton = () => {
     return (
         <div className="rounded-lg border bg-card p-3 shadow-sm animate-pulse">
             {/* Card title skeleton */}

@@ -4,6 +4,7 @@ export interface KanbanColumnData {
 }
 
 export const KANBAN_COLUMNS: KanbanColumnData[] = [
+  { id: 'unassigned', title: 'Not Assigned' },
   { id: 'introduced', title: 'Introduced/Waiting to be Scheduled for First Committee Hearing' },
   { id: 'scheduled1', title: 'Scheduled for First Committee Hearing' },
   { id: 'deferred1', title: 'Deferred after First Committee Hearing' },

@@ -17,6 +17,7 @@ interface BillsContextType {
   rejectAllLLMChanges: () => Promise<void>;
   acceptAllLLMChanges: () => Promise<void>;
   resetBills: () => Promise<void>;
+  refreshBills: () => Promise<void>;
 }
 
 const BillsContext = createContext<BillsContextType | undefined>(undefined)
@@ -139,6 +140,23 @@ export function BillsProvider({ children }: { children : ReactNode }) {
         }))
       );
     }
+
+    const refreshBills = async() => {
+      setLoadingBills(true)
+      setError(null);        
+      try {
+        const results = await getAllBills();
+        setBills(results);
+        console.log('successful results set in context')
+        console.log(results)
+      } catch (err) {
+        console.error("Error searching bills:", err);
+        setError("Failed to search bills.");
+      } finally {
+        setLoadingBills(false);    
+                  
+      }
+    }
     
     useEffect(() => {
         setLoadingBills(true)
@@ -165,8 +183,8 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     }, [])
 
     const value = useMemo(() => ({
-      loadingBills, setLoadingBills, bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills
-    }), [bills, loadingBills, tempBills, acceptLLMChange, acceptAllLLMChanges, rejectLLMChange, rejectAllLLMChanges, resetBills])
+      loadingBills, setLoadingBills, bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills, refreshBills
+    }), [bills, loadingBills, tempBills, acceptLLMChange, acceptAllLLMChanges, rejectLLMChange, rejectAllLLMChanges, resetBills, refreshBills])
     return (
         <BillsContext.Provider value={value}>
             {children}

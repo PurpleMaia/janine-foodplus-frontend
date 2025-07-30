@@ -51,6 +51,7 @@ export interface Bill {
   previous_status?: string;  
   llm_suggested?: boolean;  
   llm_processing?: boolean;  
+  food_related: boolean | null;
 }
 
 export interface TempBill {
