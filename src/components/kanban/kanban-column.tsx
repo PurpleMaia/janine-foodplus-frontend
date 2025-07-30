@@ -4,7 +4,6 @@ import { KanbanCard } from './kanban-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
-import { useBills } from '@/hooks/use-bills';
 import { TempBillCard } from './temp-card';
 
 interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -37,6 +36,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
            <h2 className="text-sm font-semibold text-secondary-foreground whitespace-normal break-words" title={title}>
             {title} ({bills.length})
            </h2>
+           
         </div>
 
         <ScrollArea className="flex-1 p-2">
