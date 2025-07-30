@@ -51,10 +51,24 @@ export function KanbanSpreadsheet({ bills }: KanbanSpreadsheetProps) {
                     </PopoverContent>
                   </Popover>
                 </TableCell>
-                <TableCell>{bill.description}</TableCell>
+                <TableCell className="min-w-[50rem] max-w-[10rem] w-[10rem] truncate cursor-pointer py-4">
+                <Popover
+                    open={openPopover === `${bill.id}-desc`}
+                    onOpenChange={(open) => setOpenPopover(open ? `${bill.id}-desc` : null)}
+                >
+                    <PopoverTrigger asChild>
+                    <div className="truncate cursor-pointer" onClick={() => setOpenPopover(`${bill.id}-desc`)}>
+                        {bill.description}
+                    </div>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="start" className="max-w-xs">
+                    {bill.description}
+                    </PopoverContent>
+                </Popover>
+                </TableCell>
                 <TableCell>
                   <a href={bill.bill_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                    Link
+                    {bill.bill_number}
                   </a>
                 </TableCell>
                 <TableCell>{bill.current_status}</TableCell>
