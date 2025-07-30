@@ -15,7 +15,7 @@ import {
 import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
-import { findExistingBillByURL } from "@/services/legislation";
+import { findExistingBillByURL, updateFoodRelatedFlagByURL } from "@/services/legislation";
 
 
 interface NewBillDialogProps {
@@ -28,6 +28,8 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
     const [error, setError] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [billPreview, setBillPreview] = useState<Bill | null>(null)
+    const [isUpdating, setIsUpdating] = useState<boolean>(false);
+    const [foodRelatedSelection, setFoodRelatedSelection] = useState<boolean | null>(null);
 
     // Reset state when dialog opens/closes
     useEffect(() => {
@@ -37,6 +39,8 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             setError('');
             setIsAlreadyInDB(false);
             setIsLoading(false);
+            setIsUpdating(false);
+            setFoodRelatedSelection(null);
         }
     }, [isOpen]);    
 
@@ -82,6 +86,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                 description: `Could not scrape url for bill info`,
                 variant: 'destructive',
             });
+            setError('Could not scrape url for bill info')
         } else {
             setBillPreview(result)  
             setIsLoading(false)
@@ -109,9 +114,31 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create bill card');
         } finally {
+            onClose()
+            toast({
+                title: `Successfully updated bill: `,
+                description: `Bill ${billPreview?.bill_number} is now in our database`,
+            });
             setIsLoading(false);
         }
     };
+
+    const handleUpdateFoodRelated = async () => {
+        setIsUpdating(true)
+        
+        const result = await updateFoodRelatedFlagByURL(url, foodRelatedSelection)
+
+        if (!result) {
+            console.log('Error updating bill')
+        } else {
+            onClose()
+            toast({
+                title: `Successfully updated bill: `,
+                description: `Bill ${billPreview?.bill_number} is now set as ${!foodRelatedSelection && 'not'} food-related`,
+            });            
+            setIsUpdating(false)
+        }      
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -211,7 +238,52 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                                 <p className="font-mono text-sm">{billPreview.updated_at.toDateString()}</p>
                             </div>                                                        
                         </div>
+
+                        <div>
+                            <Label className="text-sm font-medium text-muted-foreground">Food-related?</Label>
+                            <p className="font-mono text-sm">{billPreview.food_related ? 'True' : 'False'}</p>
+                        </div>                                                        
                     </div>
+                )}
+
+                 {isAlreadyInDB && (
+                    <Alert className="my-4">
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertDescription>            
+                            <p className="my-4">This bill exists in our overall database.</p>
+                            
+                            { !billPreview?.food_related && (
+                                <>
+                                    <p className="my-4">However, it is not flagged as a food-related bill. Click "Yes" if you want this bill in our Kanban Board/Spreadsheet.</p>
+                                </>
+                                
+                            )}
+                            {isAlreadyInDB && (
+                                <div className="border-t pt-4 space-y-3">
+                                    {/* Already in Database Message */}
+                                    <Label className="text-sm font-medium">Is this bill food-related?</Label>
+                                    <div className="flex gap-3">
+                                        <Button
+                                            variant={foodRelatedSelection === true ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setFoodRelatedSelection(true)}
+                                            disabled={isUpdating}
+                                        >
+                                            Yes
+                                        </Button>
+                                        <Button
+                                            variant={foodRelatedSelection === false ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setFoodRelatedSelection(false)}
+                                            disabled={isUpdating}
+                                        >
+                                            No
+                                        </Button>
+                                    </div>                                            
+                                </div>
+                            )}
+                        </AlertDescription>
+                    </Alert>
                 )}
 
                 {/* Error Message */}
@@ -222,20 +294,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                     </Alert>
                 )}
 
-                {/* Already in Database Message */}
-                {isAlreadyInDB && (
-                    <Alert className="my-4">
-                        <CheckCircle className="h-4 w-4" />
-                        <AlertDescription>
-                            <div className="mb-2">
-                                This bill already exists in our overall database.
-                            </div>
-                            <div>
-                                If it is not in the Kanban board, filtering based on food-based keywords may have affected this...
-                            </div>
-                        </AlertDescription>
-                    </Alert>
-                )}
+                
             </div>
             {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
             <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
@@ -252,6 +311,23 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                             </>
                         ) : (
                             'Create Bill Card'
+                        )}
+                    </Button>
+                )}
+                {isAlreadyInDB && foodRelatedSelection !== null && (
+                    <Button
+                        onClick={handleUpdateFoodRelated}
+                        disabled={isUpdating}
+                        size="sm"
+                        className="w-full"
+                    >
+                        {isUpdating ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Updating...
+                            </>
+                        ) : (
+                            'Update Bill'
                         )}
                     </Button>
                 )}

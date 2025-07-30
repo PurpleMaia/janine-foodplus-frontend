@@ -78,6 +78,7 @@ export async function getAllBills(): Promise<Bill[]> {
         if (sql) {
             data = await sql<Bill[]>`
                 SELECT * FROM bills
+                WHERE food_related = true
             `;
         } else {
             console.log('SQL connection not available');            
@@ -87,11 +88,25 @@ export async function getAllBills(): Promise<Bill[]> {
     }   
 
     // filtering the bill results only by food-related keywords    
-    const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
+    
+    // ----- Holding this code here if need to set the flags based on the filter ----------
+    // const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
+    // const billIds = filteredData.map(bill => bill.id)
+    // if (billIds.length > 0) {
+      //   if (billIds.length > 0) {
+        //     const result = await sql`
+        //       UPDATE bills 
+        //       SET food_related = true 
+        //       WHERE id = ANY(${billIds})
+        //     `;
+        //     console.log(`Updated ${result.count} rows`);
+        //   }
+        // }
+      // ----- Holding this code here if need to set the flags based on the filter again ----------
 
     // update each bill object with its status updates
     const dataWithStatusUpdates = await Promise.all(
-        filteredData.map(async(bill) => {
+        data.map(async(bill) => {
         try {
           if (sql) {
             const result = await sql<StatusUpdate[]>`
@@ -230,6 +245,33 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
   }
   } catch (error) {
     console.error('Database search failed', error)
+    return null
+  }
+}
+
+export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean | null) {
+  try {
+    if (sql) {
+      const result = await sql`
+       UPDATE bills 
+       SET food_related = ${state} 
+       WHERE bill_url = ${billURL}
+       RETURNING * 
+      `
+
+      if (result) {
+        console.log(`Successfully updated bill ${result.bill_id} to food_related ${state} in database`)
+        return result[0]
+      } else {
+        console.log('Could not find bill in database based on: ', billURL)
+        return null
+      } 
+    } else {
+      console.error('SQL connection not available');
+      return null;
+    }
+  } catch (error) {
+    console.error('Database update failed', error)
     return null
   }
 }

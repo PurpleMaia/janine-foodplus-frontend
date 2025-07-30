@@ -1,9 +1,9 @@
 'use server'
+const api_url = `http://foodplus-dev.sandbox.purplemaia.org/api/scrape-individual`
+// const api_url = `http://localhost:3000/api/scrape-individual`
 
 export async function scrapeForUpdates(billID: string) {
     console.log('calling scraping service...')
-    // const api_url = `http://foodplus-dev.sandbox.purplemaia.org/api/scrape-individual?billID=${billID}`
-    const api_url = `http://localhost:3000/api/scrape-individual`
     console.log('calling api:', api_url)
     const response = await fetch(api_url, {
         method: 'POST',
@@ -24,8 +24,6 @@ export async function scrapeForUpdates(billID: string) {
 
 export async function findBill(billURL: string) {
   console.log('calling scraping service...')
-    // const api_url = `http://foodplus-dev.sandbox.purplemaia.org/api/scrape-individual?billID=${billID}`
-    const api_url = `http://localhost:3000/api/scrape-individual`
     console.log('calling api:', api_url)
     const response = await fetch(api_url, {
         method: 'POST',        
