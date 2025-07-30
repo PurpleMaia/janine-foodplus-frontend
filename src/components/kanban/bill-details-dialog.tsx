@@ -153,14 +153,55 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
 
             <div className="space-y-4">
-              <h3 className="text-md font-semibold border-b pb-1">Status updates</h3>
+              <h3 className="text-md font-semibold border-b pb-1">Status Updates</h3>
               
-              <div className="space-y-2">
-                {bill.updates?.map((update, index) => (
-                    <div key={update.id || `update-${index}`}>
-                      ({update.chamber}) - {update.date} - {update.statustext}
-                    </div>
-                  ))}
+              <div className="space-y-3">
+                {bill.updates && bill.updates.length > 0 ? (
+                  <div className="relative">
+                    {/* Timeline line */}
+                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
+                    
+                    {bill.updates.map((update, index) => (
+                      <div key={update.id || `update-${index}`} className="relative flex gap-4 mb-4 last:mb-0">
+                        {/* Timeline dot */}
+                        <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
+                          {index === 0 ? (
+                            // Active (latest) update: solid green
+                            <div className="w-5 h-5 bg-green-500 border-4 border-green-200 rounded-full shadow-lg"></div>
+                          ) : (
+                            // Inactive: gray, less prominent
+                            <div className="w-4 h-4 bg-gray-300 border-2 border-gray-200 rounded-full opacity-60"></div>
+                          )}
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 bg-muted/50 rounded-lg p-3 border min-w-0">
+                          <div className="flex items-start justify-between mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              {update.chamber}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(update.date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {update.statustext}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No status updates available</p>
+                  </div>
+                )}
               </div>
             </div>
 

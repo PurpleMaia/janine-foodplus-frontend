@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkles, X, Check } from 'lucide-react';
 import { COLUMN_TITLES } from '@/lib/kanban-columns'; // Keep for status text if needed briefly
 import { Badge } from '../ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useBills } from '@/hooks/use-bills';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -16,14 +17,22 @@ interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 // Function to get an appropriate icon based on status
 const getStatusIcon = (status: Bill['current_status']): React.ReactNode => {
-  if (status.includes('scheduled')) return <Calendar className="h-4 w-4 text-accent" />;
-  if (status.includes('deferred') || status.includes('vetoList') ) return <Clock className="h-4 w-4 text-orange-600" />;
-  if (status.includes('passedCommittees')) return <CheckCircle className="h-4 w-4 text-green-600" />;
-  if (status.includes('governorSigns') || status.includes('lawWithoutSignature')) return <Gavel className="h-4 w-4 text-green-700" />;
-  if (status.includes('conference')) return <GitBranch className="h-4 w-4 text-purple-600" />;
-  if (status.includes('transmittedGovernor')) return <Send className="h-4 w-4 text-blue-600" />;
-  if (status.includes('introduced') || status.includes('waiting')) return <FileText className="h-4 w-4 text-muted-foreground" />;
-  return <FileText className="h-4 w-4 text-muted-foreground" />; // Default icon
+  if (status.includes('scheduled')) return <Calendar className="h-3 w-3 text-blue-600" />;
+  if (status.includes('deferred') || status.includes('vetoList')) return <Clock className="h-3 w-3 text-orange-600" />;
+  if (status.includes('passedCommittees')) return <CheckCircle className="h-3 w-3 text-green-600" />;
+  if (status.includes('governorSigns') || status.includes('lawWithoutSignature')) return <Gavel className="h-3 w-3 text-green-700" />;
+  if (status.includes('conference')) return <GitBranch className="h-3 w-3 text-purple-600" />;
+  if (status.includes('transmittedGovernor')) return <Send className="h-3 w-3 text-blue-600" />;
+  if (status.includes('introduced') || status.includes('waiting')) return <FileText className="h-3 w-3 text-muted-foreground" />;
+  return <FileText className="h-3 w-3 text-muted-foreground" />; // Default icon
+};
+
+// Function to get status color variant
+const getStatusVariant = (status: Bill['current_status']): "default" | "secondary" | "destructive" | "outline" => {
+  if (status.includes('passedCommittees') || status.includes('governorSigns') || status.includes('lawWithoutSignature')) return "default";
+  if (status.includes('deferred') || status.includes('vetoList')) return "destructive";
+  if (status.includes('scheduled') || status.includes('transmittedGovernor')) return "secondary";
+  return "outline";
 };
 
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
@@ -79,9 +88,10 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
         <div
             ref={ref}
             className={cn(
-                "rounded-md border bg-card text-card-foreground shadow-sm transition-shadow duration-200",
+                "rounded-md border bg-card text-card-foreground shadow-sm transition-all duration-200",
                 "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2", // Focus state
                 isDragging ? "opacity-80 shadow-xl rotate-3 scale-105 cursor-grabbing" : "hover:shadow-md cursor-grab",
+                bill.updates && bill.updates.length > 0 && "ring-1 ring-green-200/50", // Subtle glow for active bills
                  className
             )}
             style={style} // dnd positioning
@@ -104,15 +114,78 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
             >
                 <CardHeader className="p-0 pb-1 space-y-0.5 w-1">
                      <div className="items-start flex justify-between gap-2">
-                         <CardTitle className="text-sm font-bold" title={bill.bill_title}>
-                            {bill.bill_number}
-                        </CardTitle>                                              
+                         <div className="flex items-center gap-2">
+                             <CardTitle className="text-sm font-bold" title={bill.bill_title}>
+                                {bill.bill_number}
+                             </CardTitle>
+                             {/* Recent activity indicator */}
+                             {bill.updates && bill.updates.length > 0 && (
+                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                             )}
+                         </div>
+                         {/* Status indicator */}
+                         <div className="flex items-center gap-1">
+                             {getStatusIcon(bill.current_status)}
+                             {bill.updates && bill.updates.length > 0 && (
+                                 <Badge variant="outline" className="text-xs h-4 px-1.5 min-w-0">
+                                     {bill.updates.length}
+                                 </Badge>
+                             )}
+                         </div>                                              
                      </div>
                 </CardHeader>
                 <CardContent className="p-0 mt-1 gap-2">
                     <p className='text-sm text-foreground text-wrap mb-3 line-clamp-2'>{bill.description}</p>
-                    <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
+                    
+                    {/* Status Information */}
+                    <div className="flex items-center justify-between mb-2">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Badge 
+                                        variant={getStatusVariant(bill.current_status)}
+                                        className="text-xs font-medium cursor-help"
+                                    >
+                                        {getStatusIcon(bill.current_status)}
+                                        <span className="ml-1">{bill.current_status_string || bill.current_status}</span>
+                                    </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="max-w-xs">
+                                        <strong>Current Status:</strong> {bill.current_status_string || bill.current_status}
+                                        {bill.updates && bill.updates.length > 0 && (
+                                            <><br /><strong>Latest Update:</strong> {bill.updates[0].statustext}</>
+                                        )}
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
+                    </div>
 
+                    {/* Latest Status Update Preview */}
+                    {bill.updates && bill.updates.length > 0 && (
+                        <div className="bg-muted/30 rounded-md p-2 mb-2">
+                            <div className="flex items-start gap-2">
+                                <div className="w-2 h-2 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-xs text-muted-foreground">
+                                            Latest update • {new Date(bill.updates[0].date).toLocaleDateString()}
+                                        </p>
+                                        {bill.updates.length > 1 && (
+                                            <Badge variant="outline" className="text-xs h-5 px-1.5">
+                                                +{bill.updates.length - 1} more
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-foreground line-clamp-2 leading-relaxed">
+                                        {bill.updates[0].statustext}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>                           
             </div>
             
@@ -145,8 +218,11 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
             {bill.llm_processing && (
               <div className="mt-3 pt-3 border-t border-blue-100 p-4">
                 <div className="flex items-center justify-center text-xs text-blue-600">
-                  <Sparkles className="h-3 w-3 mr-1 animate-pulse" />
-                  AI Processing...
+                  <div className="relative">
+                    <Sparkles className="h-3 w-3 mr-1 animate-pulse" />
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                  </div>
+                  <span className="animate-pulse">AI Processing...</span>
                 </div>
               </div>
             )}
