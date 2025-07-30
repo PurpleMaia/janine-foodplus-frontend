@@ -16,7 +16,7 @@ export default function NewBillButton() {
         <NewBillDialog
             isOpen={isDialogOpen}
             onClose={() => {
-                refreshBills
+                refreshBills()
                 setIsDialogOpen(false)
             }}
         />
