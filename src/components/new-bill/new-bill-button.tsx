@@ -5,7 +5,6 @@ import { NewBillDialog } from "./new-bill-dialog";
 import { useBills } from "@/hooks/use-bills";
 
 export default function NewBillButton() {
-    const { refreshBills } = useBills()
     const [ isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
     return (
         <>
@@ -16,7 +15,6 @@ export default function NewBillButton() {
         <NewBillDialog
             isOpen={isDialogOpen}
             onClose={() => {
-                refreshBills()
                 setIsDialogOpen(false)
             }}
         />

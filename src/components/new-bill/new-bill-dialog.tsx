@@ -15,7 +15,8 @@ import {
 import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
-import { findExistingBillByURL, updateFoodRelatedFlagByURL } from "@/services/legislation";
+import { findExistingBillByURL, insertNewBill, updateFoodRelatedFlagByURL } from "@/services/legislation";
+import { useBills } from "@/hooks/use-bills";
 
 
 interface NewBillDialogProps {
@@ -23,6 +24,7 @@ interface NewBillDialogProps {
     onClose: () => void;
   }
 export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
+    const { bills, setBills } = useBills()
     const [isAlreadyInDB, setIsAlreadyInDB] = useState<boolean>(false)
     const [url, setUrl] = useState<string>('')
     const [error, setError] = useState<string>('');
@@ -93,24 +95,16 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         }         
     }
 
+    //--------- HAVE NOT TESTED FULLY -------------
     const handleCreateBill = async () => {
         if (!billPreview) return;
 
         setIsLoading(true);
         try {
-            const response = await fetch('/api/bills/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    url: url,
-                    ...billPreview 
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create bill card');
-            }                        
-            
+            const result = await insertNewBill(billPreview)           
+            if (result) {
+                const newBills = bills.push(result)                
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create bill card');
         } finally {
@@ -128,13 +122,25 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         
         const result = await updateFoodRelatedFlagByURL(url, foodRelatedSelection)
 
+        // Update local state - remove LLM flags
+        setBills(prevBills => 
+            prevBills.map(b => 
+              b.id === billPreview?.id 
+                ? { 
+                    ...b, 
+                    food_related: foodRelatedSelection 
+                  }
+                : b
+              )
+            );
+
         if (!result) {
             console.log('Error updating bill')
         } else {
             onClose()
             toast({
                 title: `Successfully updated bill: `,
-                description: `${billPreview?.bill_number} is now set as ${!foodRelatedSelection && 'not'} food-related`,
+                description: `${billPreview?.bill_number} is now set as ${!foodRelatedSelection ? 'not' : ''} food-related`,
             });            
             setIsUpdating(false)
         }      
