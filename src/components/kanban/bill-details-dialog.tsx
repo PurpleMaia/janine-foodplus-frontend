@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { Bill, BillStatus } from '@/types/legislation';
 import {
   Dialog,
@@ -13,13 +13,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { FileText } from 'lucide-react';
+import { FileText, RefreshCw, WandSparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMemo, useState } from 'react';
 import AIUpdateSingleButton from '../llm/llm-update-single-button';
 import RefreshStatusesButton from '../scraper/scrape-updates-button';
 import { useBills } from '@/hooks/use-bills';
+import { COLUMN_TITLES, KANBAN_COLUMNS } from '@/lib/kanban-columns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from '@/hooks/use-toast';
+import { updateBillStatusServerAction } from '@/services/legislation';
 
 interface BillDetailsDialogProps {
   billID: string | null;
@@ -62,7 +72,10 @@ const getCurrentStageName = (status: BillStatus): string => {
 // --- Component ---
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills } = useBills()
+  const { bills, setBills, setTempBills } = useBills()
+  const [selectedStatus, setSelectedStatus] = useState<string>('')
+  const [saving, setSaving] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)  
 
   const bill = useMemo(() => {
 
@@ -70,6 +83,20 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
     return found
   }, [bills, billID])
+      
+  useEffect(() => {
+      if (isOpen && bill) {
+          setSelectedStatus(bill.current_status || '');
+      }
+  }, [isOpen, bill?.current_status, bill?.id]);
+  
+  useEffect(() => {
+      if (!isOpen) {
+          setSelectedStatus('');
+      }
+  }, [isOpen]);
+  
+  
 
   if (!bill) {
     return null; // Don't render anything if no bill is selected
@@ -77,6 +104,64 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   const progressValue = getProgressValue(bill.current_status as BillStatus);
   const currentStageName = getCurrentStageName(bill.current_status as BillStatus);
 
+  const handleOnValueChange = (status: string) => {
+    setSelectedStatus(status)
+
+    // Update the UI bill so that AI update is available again
+    setBills(prevBills => 
+        prevBills.map(b => 
+        b.id === bill.id 
+            ? { 
+                ...b, 
+                llm_suggested: false,
+                llm_processing: false,
+            }
+            : b
+        )
+      )
+  }
+
+  const handleSave = async () => {
+    try {
+        setSaving(true);
+
+        const updatedBillFromServer = await updateBillStatusServerAction(bill.id, selectedStatus);
+        if (!updatedBillFromServer) {
+            throw new Error('Failed to update bill status on server.');
+        }
+
+        // Update the UI bill
+        setBills(prevBills => 
+            prevBills.map(b => 
+            b.id === bill.id 
+                ? { 
+                    ...b, 
+                    llm_suggested: false,
+                    llm_processing: false,
+                    previous_status: b.current_status, // Store original status
+                    current_status: selectedStatus,                        
+                }
+                : b
+            )
+        );
+
+        // Remove the corresponding temp bill
+        setTempBills(prevTempBills => 
+          prevTempBills.filter(tb => tb.id !== bill.id)
+        );
+
+        toast({
+          title: "Bill Status Updated",
+          description: `${bill.bill_title} moved to ${COLUMN_TITLES[selectedStatus]}.`,
+        });
+        
+        onClose()
+    } catch (error) {
+        console.error("Failed to update bill status:", error);   
+    } finally {
+        setSaving(false)
+    }         
+  } 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -163,10 +248,31 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                   ))}
               </div>
             </div>
-
-
           </div>
+
         </ScrollArea>
+        <div className="z-10 border-t justify-center align-middle space-y-4 p-4">
+          
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">New Status</h3>
+          <div className='flex gap-4'>
+              <Select value={selectedStatus} onValueChange={handleOnValueChange}>
+                  <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a new status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {KANBAN_COLUMNS.map((column) => (
+                          <SelectItem key={column.id} value={column.id}>
+                              {column.title}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+
+              <Button onClick={handleSave}>
+                Save
+              </Button>
+          </div>
+        </div>
 
         {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
         <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
