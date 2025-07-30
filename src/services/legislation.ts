@@ -276,6 +276,25 @@ export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean
   }
 }
 
+export async function insertNewBill(bill: Bill): Promise<Bill | null> {
+  try {
+    if (sql) {
+      const result = await sql`
+        INSERT INTO bills
+        VALUES ${sql(bill)}
+      `
+
+      return result
+    } else {
+      console.error('SQL connection not available')
+      return null
+    }
+  } catch (error) {
+    console.error('Database insert failed', error)
+    return null
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
