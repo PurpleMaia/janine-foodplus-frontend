@@ -121,7 +121,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
         // Handle potentially invalid status (optional, depends on data integrity)
         console.warn(`Bill ${bill.id} has invalid status: ${bill.current_status}`);
         // Place it in a default column like 'introduced' or handle as needed
-        grouped['introduced']?.push(bill);
+        grouped['unassigned']?.push(bill);
       }
     });
     // Sort bills within each column if needed, e.g., by ID or name

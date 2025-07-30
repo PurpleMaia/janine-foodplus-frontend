@@ -134,7 +134,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             onClose()
             toast({
                 title: `Successfully updated bill: `,
-                description: `Bill ${billPreview?.bill_number} is now set as ${!foodRelatedSelection && 'not'} food-related`,
+                description: `${billPreview?.bill_number} is now set as ${!foodRelatedSelection && 'not'} food-related`,
             });            
             setIsUpdating(false)
         }      

@@ -136,7 +136,7 @@ export async function getAllBills(): Promise<Bill[]> {
     
     // Sort by updated_at date descending (most recent first) before returning
     let sortedBills = [...dataWithStatusUpdates].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    sortedBills = sortedBills.slice(0,9)
+    // sortedBills = sortedBills.slice(0,9)
     // console.log('sortedBills', sortedBills)
     return sortedBills; // Returning only 5
 }
@@ -260,7 +260,7 @@ export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean
       `
 
       if (result) {
-        console.log(`Successfully updated bill ${result.bill_id} to food_related ${state} in database`)
+        console.log(`Successfully updated bill ${result[0].bill_number} to food_related ${state} in database`)
         return result[0]
       } else {
         console.log('Could not find bill in database based on: ', billURL)
