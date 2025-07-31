@@ -75,8 +75,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             setIsLoading(false)
             return
         } else {
-            setError('Failed to search database')
-            setIsLoading(false)
+            setError('Could not find bill in database, inserting now...')
         }
 
         const result = await findBill(url) // result is the full json
@@ -92,6 +91,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         } else {
             setBillPreview(result)  
             setIsLoading(false)
+            return
         }         
     }
 

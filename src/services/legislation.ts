@@ -229,8 +229,8 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
     if (sql) {
       const result = await sql`
         SELECT * FROM bills
-        WHERE bill_url = ${billURl}       
-        limit 1       
+        WHERE bill_url LIKE ${billURl + '%'}       
+        LIMIT 1       
       `
 
       if (result) {
