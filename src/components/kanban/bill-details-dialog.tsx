@@ -105,19 +105,6 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
   const handleOnValueChange = (status: string) => {
     setSelectedStatus(status)
-
-    // Update the UI bill so that AI update is available again
-    setBills(prevBills => 
-        prevBills.map(b => 
-        b.id === bill.id 
-            ? { 
-                ...b, 
-                llm_suggested: false,
-                llm_processing: false,
-            }
-            : b
-        )
-      )
   }
 
   const handleSave = async () => {
