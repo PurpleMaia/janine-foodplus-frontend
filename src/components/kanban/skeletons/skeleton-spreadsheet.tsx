@@ -80,13 +80,13 @@ interface SpreadsheetCellSkeletonProps {
 const SpreadsheetCellSkeleton: React.FC<SpreadsheetCellSkeletonProps> = ({ variant }) => {
   const variants = [
     // Text content (wide)
-    <div className="h-4 w-32 bg-muted rounded animate-pulse"></div>,
+    <div key='text' className="h-4 w-32 bg-muted rounded animate-pulse"></div>,
     // Numbers/dates (medium)
-    <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>,
+    <div key='number' className="h-4 w-20 bg-muted rounded animate-pulse"></div>,
     // Short text (narrow)  
-    <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>,
+    <div key='short' className="h-4 w-16 bg-muted rounded animate-pulse"></div>,
     // Status/tags (small with different shape)
-    <div className="h-5 w-14 bg-muted rounded-full animate-pulse"></div>
+    <div key='status' className="h-5 w-14 bg-muted rounded-full animate-pulse"></div>
   ];
 
   return variants[variant] || variants[0];
