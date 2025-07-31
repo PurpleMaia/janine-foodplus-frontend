@@ -1,6 +1,6 @@
 'use client'; // Keep header client-side for search input interaction
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useKanbanBoard } from '@/hooks/use-kanban-board';

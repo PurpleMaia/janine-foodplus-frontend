@@ -6,7 +6,6 @@ import { RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
 import { useBills } from '@/hooks/use-bills';
-import { updateBillStatusServerAction } from '@/services/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 
 interface Props {
@@ -16,7 +15,7 @@ interface Props {
 export default function AIUpdateSingleButton({ bill } : Props) {
   const [loading, setLoading] = useState<boolean>(false); // State for dialog visibility
   const { toast } = useToast();  
-  const { bills, setBills, setTempBills } = useBills()
+  const { setBills, setTempBills } = useBills()
   
 
   // Helper function to get column index based on status ID

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Bill, BillStatus, TempBill } from '@/types/legislation';
+import type { Bill, TempBill } from '@/types/legislation';
 import { KanbanCard } from './kanban-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Draggable } from '@hello-pangea/dnd';
@@ -10,12 +10,11 @@ import RefreshColumnButton from '../scraper/update-column-button';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
 
 interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
-  columnId: BillStatus;
   title: string;
   bills: Bill[];
   tempBills: TempBill[]
   isDraggingOver: boolean;
-  draggingBillId: string | null;
+  // draggingBillId: string | null;
   children?: React.ReactNode; // For Droppable placeholder
   onCardClick: (bill: Bill) => void; // Add callback prop
   onTempCardClick: (bill: TempBill) => void; // Add callback prop
@@ -23,7 +22,7 @@ interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
 
 
 export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-    ({ columnId, title, bills, tempBills, isDraggingOver, draggingBillId, onCardClick, onTempCardClick, children, className, ...props }, ref) => {
+    ({ title, bills, tempBills, isDraggingOver, onCardClick, onTempCardClick, children, className, ...props }, ref) => {
       const [refreshing, setRefreshing] = useState<boolean>(false)
     return (
       <div
@@ -56,7 +55,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
         <ScrollArea className="flex-1 p-2">
           <div className="flex flex-col gap-2">
 
-            {tempBills.map((bill, index) => (
+            {tempBills.map((bill) => (
               <div key={`temp-${bill.id}`}>
                 <TempBillCard tempBill={bill} onTempCardClick={onTempCardClick}/>
               </div>

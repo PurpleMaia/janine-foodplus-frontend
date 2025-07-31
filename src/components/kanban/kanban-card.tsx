@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import type { Bill } from '@/types/legislation';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Removed unused imports
+import { CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Removed unused imports
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkles, X, Check } from 'lucide-react';
-import { COLUMN_TITLES } from '@/lib/kanban-columns'; // Keep for status text if needed briefly
 import { Badge } from '../ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider } from '../ui/tooltip';
 import { useBills } from '@/hooks/use-bills';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -28,17 +27,17 @@ const getStatusIcon = (status: Bill['current_status']): React.ReactNode => {
 };
 
 // Function to get status color variant
-const getStatusVariant = (status: Bill['current_status']): "default" | "secondary" | "destructive" | "outline" => {
-  if (status.includes('passedCommittees') || status.includes('governorSigns') || status.includes('lawWithoutSignature')) return "default";
-  if (status.includes('deferred') || status.includes('vetoList')) return "destructive";
-  if (status.includes('scheduled') || status.includes('transmittedGovernor')) return "secondary";
-  return "outline";
-};
+// const getStatusVariant = (status: Bill['current_status']): "default" | "secondary" | "destructive" | "outline" => {
+//   if (status.includes('passedCommittees') || status.includes('governorSigns') || status.includes('lawWithoutSignature')) return "default";
+//   if (status.includes('deferred') || status.includes('vetoList')) return "destructive";
+//   if (status.includes('scheduled') || status.includes('transmittedGovernor')) return "secondary";
+//   return "outline";
+// };
 
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     ({ bill, isDragging, onCardClick, className, style, ...props }, ref) => {
 
-    const [formattedDate, setFormattedDate] = useState<string>('N/A');
+    const [, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
     const { acceptLLMChange, rejectLLMChange } = useBills()
 
@@ -53,7 +52,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
               if (!isNaN(parsedDate.getTime())) {
                 dateToFormat = parsedDate;
               }
-          } catch (e) {
+          } catch {
               console.warn("Could not parse date string:", bill.updated_at);
           }
       }

@@ -131,7 +131,7 @@ export const GridSpreadsheetSkeleton: React.FC<SpreadsheetSkeletonProps> = ({
           <div key={`grid-row-${rowIndex}`} className="grid grid-cols-4 gap-4">
             {Array.from({ length: columns }).map((_, colIndex) => (
               <div key={`grid-cell-${rowIndex}-${colIndex}`}>
-                <SpreadsheetCellSkeleton variant={colIndex % 4} />
+                <div className="h-5 w-14 bg-muted rounded-full animate-pulse"></div>
               </div>
             ))}
           </div>

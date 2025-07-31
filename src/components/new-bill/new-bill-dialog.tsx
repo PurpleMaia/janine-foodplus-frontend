@@ -104,6 +104,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             const result = await insertNewBill(billPreview)           
             if (result) {
                 const newBills = bills.push(result)                
+                console.log('made newBills', newBills)
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create bill card');
@@ -260,7 +261,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                             
                             { !billPreview?.food_related && (
                                 <>
-                                    <p className="my-4">However, it is not flagged as a food-related bill. Click "Yes" if you want this bill in our Kanban Board/Spreadsheet.</p>
+                                    <p className="my-4">However, it is not flagged as a food-related bill. Click &quot;Yes&quot; if you want this bill in our Kanban Board/Spreadsheet.</p>
                                 </>
                                 
                             )}

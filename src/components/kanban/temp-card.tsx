@@ -1,10 +1,9 @@
 
 import React from 'react';
-import type { TempBill, Bill } from '@/types/legislation';
+import type { TempBill } from '@/types/legislation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Eye, Ghost } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { useBills } from '@/hooks/use-bills';
 

@@ -1,6 +1,6 @@
 'use server';
 
-import type { Bill, BillStatus, BillDraft, Introducer, NewsArticle, StatusUpdate } from '@/types/legislation';
+import type { Bill, BillStatus, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -12,30 +12,30 @@ if (typeof window === 'undefined') {
 }
 
 // Helper function to create placeholder introducers
-const createIntroducers = (names: string[]): Introducer[] =>
-    names.map((name, index) => ({
-        name,
-        // Placeholder image URL using picsum.photos - requires next.config.js update if not already present
-        imageUrl: `https://picsum.photos/seed/${name.replace(/\s+/g, '')}/40/40`,
-    }));
+// const createIntroducers = (names: string[]): Introducer[] =>
+//     names.map((name, index) => ({
+//         name,
+//         // Placeholder image URL using picsum.photos - requires next.config.js update if not already present
+//         imageUrl: `https://picsum.photos/seed/${name.replace(/\s+/g, '')}/40/40`,
+//     }));
 
 // Helper function to create placeholder bill drafts
-const createBillDrafts = (billId: string, versions: string[]): BillDraft[] =>
-    versions.map((version, index) => ({
-        version,
-        htmlUrl: `/bills/${billId}/drafts/${version}.html`, // Placeholder links
-        pdfUrl: `/bills/${billId}/drafts/${version}.pdf`, // Placeholder links
-        date: new Date(2024, 5, 25 - index * 5), // Stagger dates
-    }));
+// const createBillDrafts = (billId: string, versions: string[]): BillDraft[] =>
+//     versions.map((version, index) => ({
+//         version,
+//         htmlUrl: `/bills/${billId}/drafts/${version}.html`, // Placeholder links
+//         pdfUrl: `/bills/${billId}/drafts/${version}.pdf`, // Placeholder links
+//         date: new Date(2024, 5, 25 - index * 5), // Stagger dates
+//     }));
 
 // Helper function to create placeholder news articles
-const createNewsArticles = (count: number): NewsArticle[] =>
-    Array.from({ length: count }, (_, index) => ({
-        title: `Article Title ${index + 1} about the Bill`,
-        url: `https://news.example.com/article${index + 1}`, // Placeholder links
-        source: index % 2 === 0 ? 'Honolulu Star-Advertiser' : 'Civil Beat',
-        date: new Date(2024, 5, 28 - index * 3),
-    }));
+// const createNewsArticles = (count: number): NewsArticle[] =>
+//     Array.from({ length: count }, (_, index) => ({
+//         title: `Article Title ${index + 1} about the Bill`,
+//         url: `https://news.example.com/article${index + 1}`, // Placeholder links
+//         source: index % 2 === 0 ? 'Honolulu Star-Advertiser' : 'Civil Beat',
+//         date: new Date(2024, 5, 28 - index * 3),
+//     }));
 
 
 /**
@@ -62,13 +62,13 @@ const createNewsArticles = (count: number): NewsArticle[] =>
  * @returns A promise that resolves to an array of all Bill objects.
  */
 
-const FOOD_KEYWORDS = [
-  'agriculture', 'food', 'farm', 'pesticides', 'eating', 'edible', 'meal',
-  'crop', 'harvest', 'organic', 'nutrition', 'diet', 'restaurant', 'cafe',
-  'kitchen', 'cooking', 'beverage', 'drink', 'produce', 'vegetable', 'fruit',
-  'meat', 'dairy', 'grain', 'seed', 'fertilizer', 'irrigation', 'livestock',
-  'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
-];
+// const FOOD_KEYWORDS = [
+//   'agriculture', 'food', 'farm', 'pesticides', 'eating', 'edible', 'meal',
+//   'crop', 'harvest', 'organic', 'nutrition', 'diet', 'restaurant', 'cafe',
+//   'kitchen', 'cooking', 'beverage', 'drink', 'produce', 'vegetable', 'fruit',
+//   'meat', 'dairy', 'grain', 'seed', 'fertilizer', 'irrigation', 'livestock',
+//   'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
+// ];
 
 export async function getAllBills(): Promise<Bill[]> {    
 
@@ -135,16 +135,16 @@ export async function getAllBills(): Promise<Bill[]> {
     )
     
     // Sort by updated_at date descending (most recent first) before returning
-    let sortedBills = [...dataWithStatusUpdates].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
+    const sortedBills = [...dataWithStatusUpdates].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
     // sortedBills = sortedBills.slice(0,9)
     // console.log('sortedBills', sortedBills)
     return sortedBills; // Returning only 5
 }
 
-const containsFoodKeywords = (bill: Bill) => {
-  const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
-  return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
-}
+// const containsFoodKeywords = (bill: Bill) => {
+//   const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
+//   return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
+// }
 
 
 /**

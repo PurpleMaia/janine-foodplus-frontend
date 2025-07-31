@@ -13,7 +13,7 @@ export default function AIUpdateButton() {
   const [shouldStop, setShouldStop] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();  
-  const { loadingBills, bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges, resetBills } = useBills()
+  const { bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges, resetBills } = useBills()
 
   // Helper function to get column index based on status ID
   const getColumnIndex = (statusId: BillStatus): number => {
@@ -164,7 +164,7 @@ export default function AIUpdateButton() {
         const batch = bills.slice(i, i + MAX_REQUESTS)
 
         // Process current batch in parallel
-        const batchResults = await Promise.allSettled(
+        await Promise.allSettled(
           batch.map(bill => processBill(bill, abortControllerRef.current?.signal))
         );     
 

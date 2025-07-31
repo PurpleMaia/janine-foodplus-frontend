@@ -1,11 +1,7 @@
 'use client'
 
-import { getAllBills } from '@/services/legislation';
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { KanbanHeader } from '@/components/kanban/kanban-header';
-import AIUpdateButton from '@/components/llm/llm-update-button';
 import { KanbanBoardOrSpreadsheet } from './KanbanBoardOrSpreadsheet';
 import { Button } from '@/components/ui/button';
 import NewBillButton from '@/components/new-bill/new-bill-button';

@@ -7,27 +7,21 @@ import { KanbanColumn } from './kanban-column';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { updateBillStatusServerAction, searchBills } from '@/services/legislation';
-import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
 import { useKanbanBoard } from '@/hooks/use-kanban-board';
-import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 import { useToast } from "@/hooks/use-toast"; // Import useToast
 import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
 import { Button } from '@/components/ui/button';
 import { useBills } from '@/hooks/use-bills';
-import * as refs from '@/types/column-refs';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
 
-interface KanbanBoardProps {
-  initialBills: Bill[];
-}
-
-export function KanbanBoard({ initialBills }: KanbanBoardProps) {
+export function KanbanBoard() {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   // const [bills, setBills] = useState<Bill[]>(initialBills);
   const { loadingBills, setLoadingBills, bills, setBills, tempBills, setTempBills } = useBills()
-  const [error, setError] = useState<string | null>(null);
-  const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
+  const [, setDraggingBillId] = useState<string | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null); // State for selected bill
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false); // State for dialog visibility
 
@@ -103,7 +97,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
     return () => {
       clearTimeout(handler);     
     };
-  }, [searchQuery]); // Rerun when searchQuery or initialBills change
+  }, [searchQuery, setLoadingBills]); // Rerun when searchQuery or initialBills change
 
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
@@ -245,7 +239,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
            variant: "destructive",
          });
     } 
-  }, [bills, toast, filteredBills, searchQuery]);
+  }, [bills, toast, filteredBills, searchQuery, setBills, setTempBills]);
 
    // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
@@ -284,12 +278,10 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
                             <KanbanColumn
                               ref={provided.innerRef}
                               {...provided.droppableProps}
-                              columnId={column.id as BillStatus}
                               title={column.title}
                               bills={billsByColumn[column.id as BillStatus] || []}
                               tempBills={tempBillsByColumn[column.id as BillStatus] || []}
                               isDraggingOver={snapshot.isDraggingOver}
-                              draggingBillId={draggingBillId}
                               onCardClick={handleCardClick}
                               onTempCardClick={handleTempCardClick}
                             >

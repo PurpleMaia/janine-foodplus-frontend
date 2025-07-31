@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import type { Bill, BillStatus } from '@/types/legislation';
+import type { BillStatus } from '@/types/legislation';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { FileText, RefreshCw, WandSparkles } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMemo, useState } from 'react';
@@ -74,8 +74,7 @@ const getCurrentStageName = (status: BillStatus): string => {
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
   const { bills, setBills, setTempBills } = useBills()
   const [selectedStatus, setSelectedStatus] = useState<string>('')
-  const [saving, setSaving] = useState<boolean>(false)
-  const [loading, setLoading] = useState<boolean>(false)  
+  const [, setSaving] = useState<boolean>(false)
 
   const bill = useMemo(() => {
 
@@ -88,7 +87,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
       if (isOpen && bill) {
           setSelectedStatus(bill.current_status || '');
       }
-  }, [isOpen, bill?.current_status, bill?.id]);
+  }, [isOpen, bill, bill?.current_status, bill?.id]);
   
   useEffect(() => {
       if (!isOpen) {
@@ -372,7 +371,7 @@ interface CommentSectionProps {
   billId: string;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ billId }) => {
+const CommentSection: React.FC<CommentSectionProps> = () => {
   const [comment, setComment] = React.useState('');
   const [comments, setComments] = React.useState<string[]>([]);
 

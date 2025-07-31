@@ -70,7 +70,3 @@ export default function RefreshStatusesButton({ bill } : Props) {
         </>
     )
 }
-
-function setBills(arg0: (prevBills: any) => any) {
-    throw new Error("Function not implemented.");
-}

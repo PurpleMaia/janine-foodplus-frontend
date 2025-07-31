@@ -26,7 +26,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     // const [billStatuses, setBillStatuses] = useState<BillStatus[]>([])   
     const [bills, setBills] = useState<Bill[]>([]);
     const [tempBills, setTempBills] = useState<TempBill[]>([])
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [loadingBills, setLoadingBills] = useState(false);    
 
     const acceptLLMChange = async(billId: string) => {
