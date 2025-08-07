@@ -15,9 +15,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up SSH key and known hosts
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_SANDBOX_DOKKU }}
+          SSH_PASSPHRASE: ${{ secrets.SSH_JK_PASSPHRASE_SANDBOX_DOKKU }}
+        run: |
+          echo "$SSH_KEY" > id_rsa
+          chmod 600 id_rsa
+          eval "$(ssh-agent -s)"
+          sudo apt-get update && sudo apt-get install -y expect
+          expect <<EOF
+          spawn ssh-add id_rsa
+          expect "Enter passphrase"
+          send "$SSH_PASSPHRASE\r"
+          expect eof
+          EOF
+          mkdir -p ~/.ssh
+          ssh-keyscan dokku-pmf-sandbox.westus2.cloudapp.azure.com >> ~/.ssh/known_hosts
+
       - name: Push to dokku
-        uses: dokku/github-action@master
-        with:
-          git_remote_url: 'ssh://dokku@dokku-pmf-sandbox.westus2.cloudapp.azure.com:22/bill-tracker'
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_SANDBOX_DOKKU }}
-          ssh_passphrase: ${{ secrets.SSH_JK_PASSPHRASE_SANDBOX_DOKKU }}
+        run: git push ssh://dokku@dokku-pmf-sandbox.westus2.cloudapp.azure.com:22/bill-tracker main:master
