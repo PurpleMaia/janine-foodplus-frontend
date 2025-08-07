@@ -16,7 +16,10 @@ export function KanbanHeader() {
 
   return (
     <header className="sticky top-0 z-10 flex shrink-0 items-center justify-between px-4">
-      <h1 className="text-xl font-semibold">Legislation Tracker</h1>
+      <div>
+        <h1 className="text-xl font-semibold">Legislation Tracker</h1>
+        <h2 className="text-sm font-light">Track and manage bills effectively</h2>
+      </div>
       
       <div className='flex gap-2'>        
         <div className="relative ml-auto w-full max-w-sm">
