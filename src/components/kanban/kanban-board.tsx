@@ -19,9 +19,10 @@ import KanbanBoardSkeleton from './skeletons/skeleton-board';
 
 interface KanbanBoardProps {
   initialBills: Bill[];
+  readOnly?: boolean;
 }
 
-export function KanbanBoard({ initialBills }: KanbanBoardProps) {
+export function KanbanBoard({ initialBills, readOnly = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   // const [bills, setBills] = useState<Bill[]>(initialBills);
@@ -155,6 +156,11 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
 
   const onDragEnd = useCallback(async (result: DropResult) => {
+    // Prevent drag and drop in read-only mode
+    if (readOnly) {
+      return;
+    }
+
     setDraggingBillId(null); // Reset dragging state
     const { source, destination, draggableId } = result;
 
@@ -245,7 +251,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
            variant: "destructive",
          });
     } 
-  }, [bills, toast, filteredBills, searchQuery]);
+  }, [bills, toast, filteredBills, searchQuery, readOnly]);
 
    // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
@@ -261,7 +267,7 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
 
    return (
     <>
-        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        {readOnly ? (
           <ScrollArea className="h-full w-full whitespace-nowrap p-4">
             <ScrollAreaPrimitive.Viewport
               ref={viewportRef}
@@ -279,24 +285,21 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
                             columnRefs.current[idx] = el
                           }} 
                         className="inline-block">
-                        <Droppable droppableId={column.id}>
-                          {(provided, snapshot) => (
-                            <KanbanColumn
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              columnId={column.id as BillStatus}
-                              title={column.title}
-                              bills={billsByColumn[column.id as BillStatus] || []}
-                              tempBills={tempBillsByColumn[column.id as BillStatus] || []}
-                              isDraggingOver={snapshot.isDraggingOver}
-                              draggingBillId={draggingBillId}
-                              onCardClick={handleCardClick}
-                              onTempCardClick={handleTempCardClick}
-                            >
-                              {provided.placeholder}
-                            </KanbanColumn>
-                          )}
-                        </Droppable>
+                        <div className="min-w-[300px]">
+                          <KanbanColumn
+                            columnId={column.id as BillStatus}
+                            title={column.title}
+                            bills={billsByColumn[column.id as BillStatus] || []}
+                            tempBills={tempBillsByColumn[column.id as BillStatus] || []}
+                            isDraggingOver={false}
+                            draggingBillId={null}
+                            onCardClick={handleCardClick}
+                            onTempCardClick={handleTempCardClick}
+                            readOnly={true}
+                          >
+                            <div />
+                          </KanbanColumn>
+                        </div>
                       </div>                    
                     );
                   })}
@@ -305,7 +308,54 @@ export function KanbanBoard({ initialBills }: KanbanBoardProps) {
             </ScrollAreaPrimitive.Viewport>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-        </DragDropContext>
+        ) : (
+          <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+            <ScrollArea className="h-full w-full whitespace-nowrap p-4">
+              <ScrollAreaPrimitive.Viewport
+                ref={viewportRef}
+                className="h-full w-full max-w-[100vw] rounded-[inherit]"
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                { loadingBills ? (
+                  <KanbanBoardSkeleton />
+                ) : (
+                  <div className="flex space-x-4 pb-4">
+                    {KANBAN_COLUMNS.map((column, idx) => {
+                      return (
+                        <div key={column.id} 
+                          ref={(el) => {
+                              columnRefs.current[idx] = el
+                            }} 
+                          className="inline-block">
+                          <Droppable droppableId={column.id}>
+                            {(provided, snapshot) => (
+                              <KanbanColumn
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                columnId={column.id as BillStatus}
+                                title={column.title}
+                                bills={billsByColumn[column.id as BillStatus] || []}
+                                tempBills={tempBillsByColumn[column.id as BillStatus] || []}
+                                isDraggingOver={snapshot.isDraggingOver}
+                                draggingBillId={draggingBillId}
+                                onCardClick={handleCardClick}
+                                onTempCardClick={handleTempCardClick}
+                                readOnly={false}
+                              >
+                                {provided.placeholder}
+                              </KanbanColumn>
+                            )}
+                          </Droppable>
+                        </div>                    
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollAreaPrimitive.Viewport>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </DragDropContext>
+        )}
 
         {/* Bottom scroll bar */}
         <div className="fixed bottom-0 left-0 w-full flex justify-center gap-4 bg-background/90 p-2 z-20 border-t">

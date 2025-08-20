@@ -89,7 +89,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
             ref={ref}
             className={cn(
                 "rounded-md border bg-card text-card-foreground shadow-sm transition-all duration-200",
-                "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 w-full", // Focus state
+                "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2", // Focus state
                 isDragging ? "opacity-80 shadow-xl rotate-3 scale-105 cursor-grabbing" : "hover:shadow-md cursor-grab",
                 bill.updates && bill.updates.length > 0 && "ring-1 ring-green-200/50", // Subtle glow for active bills
                  className
@@ -116,40 +116,40 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                      <div className="items-start flex justify-between gap-2">
                          <div className="flex items-center gap-2">
                              <CardTitle className="text-sm font-bold" title={bill.bill_title}>
-                                {bill.bill_number}                             
+                                {bill.bill_number}
                              </CardTitle>
                              {/* Recent activity indicator */}
-                             {/* {bill.updates && bill.updates.length > 0 && (
+                             {bill.updates && bill.updates.length > 0 && (
                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                             )} */}
+                             )}
                          </div>
                          {/* Status indicator */}
-                         <div className="flex items-center gap-1 mt-1">
+                         <div className="flex items-center gap-1">
                              {getStatusIcon(bill.current_status)}
-                             {/* {bill.updates && bill.updates.length > 0 && (
+                             {bill.updates && bill.updates.length > 0 && (
                                  <Badge variant="outline" className="text-xs h-4 px-1.5 min-w-0">
                                      {bill.updates.length}
                                  </Badge>
-                             )} */}
+                             )}
                          </div>                                              
                      </div>
                 </CardHeader>
                 <CardContent className="p-0 mt-1 gap-2">
                     <p className='text-sm text-foreground text-wrap mb-3 line-clamp-2'>{bill.description}</p>
-                    
+
                     {/* Status Information */}
                     <div className="flex items-center justify-between mb-2">
                         <TooltipProvider>
                             <Tooltip>
-                                {/* <TooltipTrigger asChild>
-                                    <Badge 
+                                <TooltipTrigger asChild>
+                                    <Badge
                                         variant={getStatusVariant(bill.current_status)}
                                         className="text-xs font-medium cursor-help"
                                     >
                                         {getStatusIcon(bill.current_status)}
                                         <span className="ml-1">{bill.current_status_string || bill.current_status}</span>
                                     </Badge>
-                                </TooltipTrigger> */}
+                                </TooltipTrigger>
                                 <TooltipContent>
                                     <p className="max-w-xs">
                                         <strong>Current Status:</strong> {bill.current_status_string || bill.current_status}
@@ -160,11 +160,12 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
+                        <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
                     </div>
 
                     {/* Latest Status Update Preview */}
                     {bill.updates && bill.updates.length > 0 && (
-                        <div className="bg-muted/30 rounded-md mb-2">
+                        <div className="bg-muted/30 rounded-md p-2 mb-2">
                             <div className="flex items-start gap-2">
                                 <div className="w-2 h-2 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
                                 <div className="flex-1 min-w-0">
@@ -178,7 +179,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                                             </Badge>
                                         )}
                                     </div>
-                                    <p className="text-xs text-foreground line-clamp-2 text-wrap">
+                                    <p className="text-xs text-foreground line-clamp-2 leading-relaxed">
                                         {bill.updates[0].statustext}
                                     </p>
                                 </div>
