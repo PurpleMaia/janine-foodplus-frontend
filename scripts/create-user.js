@@ -15,7 +15,7 @@ async function createUser() {
     
     // Create user
     await sql`
-      INSERT INTO "user" (id, email, created_at) 
+      INSERT INTO "user" (id, email, created_at)
       VALUES (${userId}, ${email}, NOW())
     `;
     

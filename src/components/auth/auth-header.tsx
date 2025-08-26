@@ -5,8 +5,11 @@ import { LoginDialog } from './login-dialog';
 import { UserMenu } from './user-menu';
 
 export function AuthHeader() {
+
+  //gets auth state from context
   const { user, loading } = useAuth();
 
+  //shows loading spinner while checking auth
   if (loading) {
     return (
       <div className="flex items-center space-x-4">
@@ -15,12 +18,14 @@ export function AuthHeader() {
     );
   }
 
+
+  //sows different UI based on auth states
   return (
     <div className="flex items-center space-x-4">
       {user ? (
-        <UserMenu />
+        <UserMenu />   //shows user menu if logged in 
       ) : (
-        <LoginDialog />
+        <LoginDialog />   //shoes login button if not logged in
       )}
     </div>
   );

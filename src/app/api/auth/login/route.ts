@@ -3,8 +3,10 @@ import { authenticateUser, createSession, setSessionCookie } from '@/lib/simple-
 
 export async function POST(request: NextRequest) {
   try {
+    //recieves post request with email/password
     const { email, password } = await request.json();
 
+    //validates input
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
@@ -13,6 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate user
+    //Calls authenticateUser() from simple-auth.ts
     const user = await authenticateUser(email, password);
     if (!user) {
       return NextResponse.json(
@@ -21,9 +24,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create session
+    //creates new session in database
     const sessionId = await createSession(user.id);
 
+
+    //Returns success with user info AND sets cookie
     return NextResponse.json(
       { success: true, user: { id: user.id, email: user.email } },
       {

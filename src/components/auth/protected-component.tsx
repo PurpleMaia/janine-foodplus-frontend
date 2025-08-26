@@ -11,6 +11,7 @@ interface ProtectedComponentProps {
 export function ProtectedComponent({ children, fallback = null }: ProtectedComponentProps) {
   const { user, loading } = useAuth();
 
+  //shows the loading while checking auth
   if (loading) {
     return <div className="animate-pulse">Loading...</div>;
   }

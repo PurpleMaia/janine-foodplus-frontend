@@ -3,14 +3,19 @@ import { getSessionCookie, validateSession } from '@/lib/simple-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    //gets session id from cookie 
     const sessionId = getSessionCookie(request);
     
+    //if there is no cookie, user is not logged in
     if (!sessionId) {
       return NextResponse.json({ user: null });
     }
 
+    //validates session in the databse 
     const user = await validateSession(sessionId);
     
+
+    //returns user info if valid, null if invalid
     if (!user) {
       return NextResponse.json({ user: null });
     }

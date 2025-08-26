@@ -6,6 +6,11 @@ import { Toaster } from "@/components/ui/toaster" // Import Toaster for potentia
 import { BillsProvider } from '@/hooks/use-bills';
 import { AuthProvider } from '@/contexts/auth-context';
 
+
+
+//Wraps entire app with authentication context 
+//Makes auth state avalible to all components
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],

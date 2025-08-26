@@ -21,16 +21,22 @@ export function LoginDialog() {
     setIsLoading(true);
 
     try {
+
+      //calls login from suth context
       const success = await login(email, password);
       if (success) {
+        //shows success message
         toast({
           title: 'Success!',
           description: 'You are now logged in.',
         });
+
+        //closes dialog and clears form
         setIsOpen(false);
         setEmail('');
         setPassword('');
       } else {
+        //shows error message
         toast({
           title: 'Login failed',
           description: 'Please check your email and password.',

@@ -17,6 +17,13 @@ import { useBills } from '@/hooks/use-bills';
 import * as refs from '@/types/column-refs';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
 
+
+
+//Adds readOnly prop to control functionality
+// Disables drag and drop when readOnly=true
+// Shows same content but without editing capabilities
+
+
 interface KanbanBoardProps {
   initialBills: Bill[];
   readOnly?: boolean;

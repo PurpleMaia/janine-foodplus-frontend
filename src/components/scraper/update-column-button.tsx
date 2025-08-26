@@ -1,11 +1,12 @@
 'use client'
 import { useState } from "react"
 import { Button } from "../ui/button"
-import { ListRestart, RefreshCw } from "lucide-react";
+import { ListRestart, RefreshCw, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Bill } from "@/types/legislation";
 import { scrapeForUpdates } from "@/services/scraper";
 import { useBills } from "@/hooks/use-bills";
+import { useAuth } from "@/contexts/auth-context";
 
 interface Props {
     bills: Bill[]
@@ -16,8 +17,19 @@ interface Props {
 export default function RefreshColumnButton({ bills, onRefreshStart, onRefreshEnd  } : Props) {
     const [loading, setLoading] = useState<boolean>(false)
     const { setBills } = useBills()
+    const { user } = useAuth() // Add this line to get authentication state
 
     const handleScrapeBillsStatuses = async () => {
+        // Prevent scraping if not authenticated
+        if (!user) {
+            toast({
+                title: "Authentication Required",
+                description: "Please log in to refresh bill statuses.",
+                variant: 'destructive',
+            });
+            return;
+        }
+
         for (const bill of bills) {
             toast({
                 title: `Checking ${bill.bill_number}`,
@@ -55,6 +67,21 @@ export default function RefreshColumnButton({ bills, onRefreshStart, onRefreshEn
             }
         }
     }
+
+    // If not authenticated, show disabled button with lock icon
+    if (!user) {
+        return (
+            <Button
+                variant='ghost'
+                disabled={true}
+                className="opacity-50 cursor-not-allowed"
+                title="Login required to refresh statuses"
+            >
+                <Lock className="h-4 w-4" />
+            </Button>
+        );
+    }
+
     return (
         <>
             <Button

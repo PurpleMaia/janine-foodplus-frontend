@@ -9,6 +9,11 @@ import { ListRestart, TriangleAlert } from 'lucide-react';
 import RefreshColumnButton from '../scraper/update-column-button';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
 
+
+//Adds readOnlu prop to control card rendering 
+// When readOnly=true, cards arent wrapped in Draggable components
+
+
 interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
   columnId: BillStatus;
   title: string;

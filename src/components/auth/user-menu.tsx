@@ -7,10 +7,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { LogOut, User } from 'lucide-react';
 
 export function UserMenu() {
+  //gets user info and logout function from context 
   const { user, logout } = useAuth();
 
+  //shows nothing if no user (safety check)
   if (!user) return null;
 
+  //creates avatar with users first initial
   const handleLogout = async () => {
     await logout();
   };

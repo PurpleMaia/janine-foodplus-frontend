@@ -13,6 +13,14 @@ import { AuthHeader } from '@/components/auth/auth-header';
 import { useBills } from '@/hooks/use-bills';
 import { ProtectedComponent } from '@/components/auth/protected-component';
 
+
+
+
+//Adds login/logout button in top-right
+// Protects NewBillButton (only shows when logged in)
+// Replaces your old kanban component with protected version
+
+
 export default function Home() {
   const [view, setView] = useState<'kanban' | 'spreadsheet'>('kanban');
   const { bills } = useBills();

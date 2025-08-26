@@ -3,14 +3,17 @@ import { getSessionCookie, deleteSession, clearSessionCookie } from '@/lib/simpl
 
 export async function POST(request: NextRequest) {
   try {
+    //Gets session ID from cookie
     const sessionId = getSessionCookie(request);
     
+    //Delete session from database
     if (sessionId) {
       // Delete session from database
       await deleteSession(sessionId);
     }
 
     // Clear session cookie
+    //Clears cookie in browser
     const clearCookie = clearSessionCookie();
 
     return NextResponse.json(
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest) {
       {
         status: 200,
         headers: {
-          'Set-Cookie': clearCookie,
+          'Set-Cookie': clearCookie, //clears session cookie
         },
       }
     );
