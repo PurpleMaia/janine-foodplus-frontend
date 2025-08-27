@@ -401,16 +401,22 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
       return [];
     }
 
+    console.log('getUserAdoptedBills called with userId:', userId);
+    console.log('userId type:', typeof userId);
+
     // Get all bills that the user has adopted
     const adoptedBills = await sql<Bill[]>`
       SELECT b.* FROM bills b
       INNER JOIN user_bills ub ON b.id = ub.bill_id
       WHERE ub.user_id = ${userId}
     `;
+    
+    console.log('SQL query result - adoptedBills count:', adoptedBills.length);
+    console.log('SQL query result - adoptedBills:', adoptedBills);
 
     // Add status updates for each adopted bill
     const billsWithUpdates = await Promise.all(
-      adoptedBills.map(async (bill) => {
+      adoptedBills.map(async (bill: Bill) => {
         try {
           const result = await sql<StatusUpdate[]>`
             SELECT id, chamber, date, statustext FROM status_updates su

@@ -19,6 +19,7 @@ interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 // Function to get an appropriate icon based on status
 const getStatusIcon = (status: Bill['current_status']): React.ReactNode => {
+  if (!status) return <FileText className="h-3 w-3 text-muted-foreground" />; // Handle undefined/null
   if (status.includes('scheduled')) return <Calendar className="h-3 w-3 text-blue-600" />;
   if (status.includes('deferred') || status.includes('vetoList')) return <Clock className="h-3 w-3 text-orange-600" />;
   if (status.includes('passedCommittees')) return <CheckCircle className="h-3 w-3 text-green-600" />;
@@ -31,6 +32,7 @@ const getStatusIcon = (status: Bill['current_status']): React.ReactNode => {
 
 // Function to get status color variant
 const getStatusVariant = (status: Bill['current_status']): "default" | "secondary" | "destructive" | "outline" => {
+  if (!status) return "outline"; // Handle undefined/null
   if (status.includes('passedCommittees') || status.includes('governorSigns') || status.includes('lawWithoutSignature')) return "default";
   if (status.includes('deferred') || status.includes('vetoList')) return "destructive";
   if (status.includes('scheduled') || status.includes('transmittedGovernor')) return "secondary";

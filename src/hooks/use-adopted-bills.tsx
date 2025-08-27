@@ -19,6 +19,7 @@ export function useAdoptedBills() {
     }
 
     console.log('fetchAdoptedBills called for user:', user.id);
+    console.log('User object:', user);
     setLoading(true);
     setError(null);
     
