@@ -7,6 +7,7 @@ import { KanbanSpreadsheet } from './kanban-spreadsheet';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 import { AdoptBillDialog } from './adopt-bill-dialog';
 import type { Bill } from '@/types/legislation';
+import { KanbanBoardOrSpreadsheet } from '@/app/KanbanBoardOrSpreadsheet';
 
 interface ProtectedKanbanBoardProps {
   initialBills: Bill[];
@@ -42,6 +43,7 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
             Login to adopt and manage bills.
           </p>
         </div>
+      <KanbanBoardOrSpreadsheet view={view} bills={initialBills} /> 
         {view === 'kanban' ? (
           <KanbanBoard initialBills={initialBills} readOnly={true} />
         ) : (
@@ -80,6 +82,8 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
         <h2>Your Adopted Bills</h2>
         <AdoptBillDialog onBillAdopted={refreshBills} />
       </div>
+
+      {/* <KanbanBoardOrSpreadsheet view={view} bills={adoptedBills} />  */}
       {view === 'kanban' ? (
         <KanbanBoard 
           initialBills={adoptedBills}  // ← THIS is where bills are passed!

@@ -78,6 +78,8 @@ export function useAdoptedBills() {
     bills,
     loading,
     error,
+    setLoading,
+    setBills,
     adoptBill: handleAdoptBill,
     unadoptBill: handleUnadoptBill,
     refreshBills: fetchAdoptedBills,
