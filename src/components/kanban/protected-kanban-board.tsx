@@ -43,7 +43,6 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
             Login to adopt and manage bills.
           </p>
         </div>
-      <KanbanBoardOrSpreadsheet view={view} bills={initialBills} /> 
         {view === 'kanban' ? (
           <KanbanBoard initialBills={initialBills} readOnly={true} />
         ) : (

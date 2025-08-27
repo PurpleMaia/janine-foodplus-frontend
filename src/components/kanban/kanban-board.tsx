@@ -25,7 +25,7 @@ import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
 interface KanbanBoardProps {
   initialBills: Bill[];
-  readOnly?: boolean;
+  readOnly: boolean;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
 }
@@ -38,12 +38,12 @@ let globalContainer: {
 };
 
 
-export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
+export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   // const [bills, setBills] = useState<Bill[]>(initialBills);
-  if (readOnly) {
-    const { loadingBills, setLoadingBills, bills, setBills, tempBills, setTempBills } = useBills()
+  if (readOnly === true) {
+    const { loadingBills, setLoadingBills, bills, setBills } = useBills()
     globalContainer = {
       bills,
       loading: loadingBills,
@@ -51,7 +51,7 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
       setBills,
     };
 
-  } else if (!readOnly) {
+  } else if (readOnly === false) {
     const { loading: loadingAdopted, setLoading: setLoadingAdopted, bills: adoptedBills, setBills: setAdoptedBills } = useAdoptedBills();
   
     // Update global container
