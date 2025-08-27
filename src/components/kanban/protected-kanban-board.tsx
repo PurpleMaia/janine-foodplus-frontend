@@ -86,6 +86,7 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
       {/* <KanbanBoardOrSpreadsheet view={view} bills={adoptedBills} />  */}
       {view === 'kanban' ? (
         <KanbanBoard 
+          key={adoptedBills.length}
           initialBills={adoptedBills}  // ← THIS is where bills are passed!
           readOnly={false} 
           onUnadopt={unadoptBill}
