@@ -27,9 +27,11 @@ import KanbanBoardSkeleton from './skeletons/skeleton-board';
 interface KanbanBoardProps {
   initialBills: Bill[];
   readOnly?: boolean;
+  onUnadopt?: (billId: string) => void;
+  showUnadoptButton?: boolean;
 }
 
-export function KanbanBoard({ initialBills, readOnly = false }: KanbanBoardProps) {
+export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   // const [bills, setBills] = useState<Bill[]>(initialBills);
@@ -302,6 +304,8 @@ export function KanbanBoard({ initialBills, readOnly = false }: KanbanBoardProps
                             draggingBillId={null}
                             onCardClick={handleCardClick}
                             onTempCardClick={handleTempCardClick}
+                            onUnadopt={onUnadopt}
+                            showUnadoptButton={showUnadoptButton}
                             readOnly={true}
                           >
                             <div />
@@ -347,6 +351,8 @@ export function KanbanBoard({ initialBills, readOnly = false }: KanbanBoardProps
                                 draggingBillId={draggingBillId}
                                 onCardClick={handleCardClick}
                                 onTempCardClick={handleTempCardClick}
+                                onUnadopt={onUnadopt}
+                                showUnadoptButton={showUnadoptButton}
                                 readOnly={false}
                               >
                                 {provided.placeholder}

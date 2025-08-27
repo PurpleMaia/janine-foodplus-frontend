@@ -329,3 +329,111 @@ export async function PATCH(
     return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
   }
 }
+
+// Bill adoption functions
+export async function adoptBill(userId: string, billUrl: string): Promise<boolean> {
+  try {
+    if (!sql) {
+      console.error('SQL connection not available');
+      return false;
+    }
+
+    // First find the bill by URL
+    const billResult = await sql`
+      SELECT id FROM bills WHERE bill_url = ${billUrl}
+    `;
+    
+    if (!billResult || billResult.length === 0) {
+      console.log('Bill not found with URL:', billUrl);
+      return false;
+    }
+
+    const billId = billResult[0].id;
+
+    // Check if already adopted
+    const alreadyAdopted = await sql`
+      SELECT id FROM user_bills WHERE user_id = ${userId} AND bill_id = ${billId}
+    `;
+
+    if (alreadyAdopted && alreadyAdopted.length > 0) {
+      console.log('Bill already adopted by user');
+      return false;
+    }
+
+    // Add the adoption record
+    await sql`
+      INSERT INTO user_bills (user_id, bill_id)
+      VALUES (${userId}, ${billId})
+    `;
+
+    console.log(`Successfully adopted bill ${billId} for user ${userId}`);
+    return true;
+  } catch (error) {
+    console.error('Failed to adopt bill:', error);
+    return false;
+  }
+}
+
+export async function unadoptBill(userId: string, billId: string): Promise<boolean> {
+  try {
+    if (!sql) {
+      console.error('SQL connection not available');
+      return false;
+    }
+
+    const result = await sql`
+      DELETE FROM user_bills 
+      WHERE user_id = ${userId} AND bill_id = ${billId}
+    `;
+
+    console.log(`Successfully unadopted bill ${billId} for user ${userId}`);
+    return true;
+  } catch (error) {
+    console.error('Failed to unadopt bill:', error);
+    return false;
+  }
+}
+
+export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
+  try {
+    if (!sql) {
+      console.error('SQL connection not available');
+      return [];
+    }
+
+    // Get all bills that the user has adopted
+    const adoptedBills = await sql<Bill[]>`
+      SELECT b.* FROM bills b
+      INNER JOIN user_bills ub ON b.id = ub.bill_id
+      WHERE ub.user_id = ${userId}
+    `;
+
+    // Add status updates for each adopted bill
+    const billsWithUpdates = await Promise.all(
+      adoptedBills.map(async (bill) => {
+        try {
+          const result = await sql<StatusUpdate[]>`
+            SELECT id, chamber, date, statustext FROM status_updates su
+            WHERE su.bill_id = ${bill.id}
+          `;
+          return {
+            ...bill,
+            updates: result
+          };
+        } catch (e) {
+          console.log('Status update fetch did not work for:', bill.id, e);
+          return {
+            ...bill,
+            updates: []
+          };
+        }
+      })
+    );
+
+    // Sort by updated_at date descending (most recent first)
+    return billsWithUpdates.sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
+  } catch (error) {
+    console.error('Failed to get user adopted bills:', error);
+    return [];
+  }
+}

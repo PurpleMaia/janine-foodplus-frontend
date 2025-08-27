@@ -305,7 +305,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               </div>
             )}
           </div>
-          
+
           <div className='flex gap-4'>
             <Select 
               value={selectedStatus} 

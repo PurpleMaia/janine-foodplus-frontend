@@ -13,6 +13,8 @@ interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   bill: Bill;
   isDragging: boolean;
   onCardClick: (bill: Bill) => void;
+  onUnadopt?: (billId: string) => void;
+  showUnadoptButton?: boolean;
 }
 
 // Function to get an appropriate icon based on status
@@ -36,7 +38,7 @@ const getStatusVariant = (status: Bill['current_status']): "default" | "secondar
 };
 
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
-    ({ bill, isDragging, onCardClick, className, style, ...props }, ref) => {
+    ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, className, style, ...props }, ref) => {
 
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -123,13 +125,27 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                              )}
                          </div>
-                         {/* Status indicator */}
+                         {/* Status indicator and unadopt button */}
                          <div className="flex items-center gap-1">
                              {getStatusIcon(bill.current_status)}
                              {bill.updates && bill.updates.length > 0 && (
                                  <Badge variant="outline" className="text-xs h-4 px-1.5 min-w-0">
                                      {bill.updates.length}
                                  </Badge>
+                             )}
+                             {showUnadoptButton && onUnadopt && (
+                                 <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={(e) => {
+                                         e.stopPropagation();
+                                         onUnadopt(bill.id);
+                                     }}
+                                     className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                     title="Unadopt bill"
+                                 >
+                                     <X className="h-3 w-3" />
+                                 </Button>
                              )}
                          </div>                                              
                      </div>

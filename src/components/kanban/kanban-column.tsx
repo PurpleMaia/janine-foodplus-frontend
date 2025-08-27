@@ -25,11 +25,13 @@ interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
   onCardClick: (bill: Bill) => void; // Add callback prop
   onTempCardClick: (bill: TempBill) => void; // Add callback prop
   readOnly?: boolean;
+  onUnadopt?: (billId: string) => void;
+  showUnadoptButton?: boolean;
 }
 
 
 export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-    ({ columnId, title, bills, tempBills, isDraggingOver, draggingBillId, onCardClick, onTempCardClick, children, className, readOnly = false, ...props }, ref) => {
+    ({ columnId, title, bills, tempBills, isDraggingOver, draggingBillId, onCardClick, onTempCardClick, onUnadopt, showUnadoptButton = false, children, className, readOnly = false, ...props }, ref) => {
       const [refreshing, setRefreshing] = useState<boolean>(false)
     return (
       <div
@@ -80,6 +82,8 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                   bill={bill}
                   isDragging={false}
                   onCardClick={onCardClick}
+                  onUnadopt={onUnadopt}
+                  showUnadoptButton={showUnadoptButton}
                 />
               ) : (
                 <Draggable key={bill.id} draggableId={bill.id} index={index}>
@@ -91,6 +95,8 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                       bill={bill}
                       isDragging={snapshot.isDragging}
                       onCardClick={onCardClick}
+                      onUnadopt={onUnadopt}
+                      showUnadoptButton={showUnadoptButton}
                       style={{
                         ...provided.draggableProps.style,
                       }}
