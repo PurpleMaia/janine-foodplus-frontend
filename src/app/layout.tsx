@@ -4,6 +4,12 @@ import './globals.css';
 import { KanbanBoardProvider } from '@/hooks/use-kanban-board'; // Import the provider
 import { Toaster } from "@/components/ui/toaster" // Import Toaster for potential notifications
 import { BillsProvider } from '@/hooks/use-bills';
+import { AuthProvider } from '@/contexts/auth-context';
+
+
+
+//Wraps entire app with authentication context 
+//Makes auth state avalible to all components
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,11 +35,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning={true}>
       {/* Add suppressHydrationWarning to body to ignore extension-injected attributes */}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning={true}>
-        <KanbanBoardProvider> {/* Wrap children with the provider */}
-          <BillsProvider>
-            {children}
-          </BillsProvider>
-        </KanbanBoardProvider>
+        <AuthProvider>
+          <KanbanBoardProvider> {/* Wrap children with the provider */}
+            <BillsProvider>
+              {children}
+            </BillsProvider>
+          </KanbanBoardProvider>
+        </AuthProvider>
         <Toaster /> {/* Add toaster for notifications */}
       </body>
     </html>

@@ -13,13 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { FileText } from 'lucide-react';
+import { FileText, RefreshCw, WandSparkles, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMemo, useState } from 'react';
 import AIUpdateSingleButton from '../llm/llm-update-single-button';
 import RefreshStatusesButton from '../scraper/scrape-updates-button';
 import { useBills } from '@/hooks/use-bills';
+import { useAuth } from '@/contexts/auth-context';
 import { COLUMN_TITLES, KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import {
   Select,
@@ -73,6 +74,7 @@ const getCurrentStageName = (status: BillStatus): string => {
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
   const { bills, setBills, setTempBills } = useBills()
+  const { user } = useAuth() // Add this line to get authentication state
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
 
@@ -278,34 +280,59 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
           </div>
 
         </ScrollArea>
+        {/* Status Change Section - Now conditionally editable */}
         <div className="z-10 border-t justify-center align-middle space-y-4 p-4">
-          
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">New Status</h3>
-          <div className='flex gap-4'>
-              <Select value={selectedStatus} onValueChange={handleOnValueChange}>
-                  <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a new status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      {KANBAN_COLUMNS.map((column) => (
-                          <SelectItem key={column.id} value={column.id}>
-                              {column.title}
-                          </SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground">New Status</h3>
+            {!user && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" />
+                <span>Login required to edit</span>
+              </div>
+            )}
+          </div>
 
-              <Button onClick={handleSave}>
-                Save
-              </Button>
+          <div className='flex gap-4'>
+            <Select 
+              value={selectedStatus} 
+              onValueChange={handleOnValueChange}
+              disabled={!user} // Disable when not authenticated
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={user ? "Select a new status" : "Login to edit status"} />
+              </SelectTrigger>
+              <SelectContent>
+                {KANBAN_COLUMNS.map((column) => (
+                  <SelectItem key={column.id} value={column.id}>
+                    {column.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button 
+              onClick={handleSave}
+              disabled={!user || !selectedStatus} // Disable when not authenticated or no status selected
+            >
+              Save
+            </Button>
           </div>
         </div>
 
-        {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
-        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
+        {/* Footer - Also conditionally show admin buttons */}
+        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between">
           <div className='flex gap-2'>
-            <AIUpdateSingleButton bill={bill} />
-            <RefreshStatusesButton bill={bill} />
+            {user ? (
+              <>
+                <AIUpdateSingleButton bill={bill} />
+                <RefreshStatusesButton bill={bill} />
+              </>
+            ) : (
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Lock className="h-3 w-3" />
+                <span>Admin features require login</span>
+              </div>
+            )}
           </div>
           <Button variant="outline" onClick={onClose}>
             Close
@@ -361,8 +388,18 @@ interface CommentSectionProps {
 const CommentSection: React.FC<CommentSectionProps> = () => {
   const [comment, setComment] = React.useState('');
   const [comments, setComments] = React.useState<string[]>([]);
+  const { user } = useAuth(); // Add this line to get authentication state
 
   const handlePost = () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to post comments.",
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (comment.trim()) {
       setComments([...comments, comment.trim()]);
       setComment('');
@@ -371,20 +408,40 @@ const CommentSection: React.FC<CommentSectionProps> = () => {
 
   return (
     <div>
-      <textarea
-        className="w-full border rounded p-2 text-sm mb-2"
-        rows={2}
-        placeholder="Write a comment..."
-        value={comment}
-        onChange={e => setComment(e.target.value)}
-      />
-      <button
-        className="bg-primary text-white px-3 py-1 rounded text-sm mb-2"
-        onClick={handlePost}
-        type="button"
-      >
-        Post
-      </button>
+      {user ? (
+        // Authenticated user - can write comments
+        <>
+          <textarea
+            className="w-full border rounded p-2 text-sm mb-2"
+            rows={2}
+            placeholder="Write a comment..."
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+          />
+          <button
+            className="bg-primary text-white px-3 py1 rounded text-sm mb-2"
+            onClick={handlePost}
+            type="button"
+          >
+            Post
+          </button>
+        </>
+      ) : (
+        // Non-authenticated user - show disabled state
+        <div className="space-y-2 mb-2">
+          <textarea
+            className="w-full border rounded p-2 text-sm bg-muted/50 cursor-not-allowed"
+            rows={2}
+            placeholder="Login to write comments..."
+            disabled={true}
+          />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Lock className="h-3 w-3" />
+            <span>Login required to post comments</span>
+          </div>
+        </div>
+      )}
+      
       <div className="space-y-1 mt-2">
         {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments yet.</div>}
         {comments.map((c, i) => (

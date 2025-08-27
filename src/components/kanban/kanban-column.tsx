@@ -9,7 +9,14 @@ import { ListRestart, TriangleAlert } from 'lucide-react';
 import RefreshColumnButton from '../scraper/update-column-button';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
 
+
+//Adds readOnlu prop to control card rendering 
+// When readOnly=true, cards arent wrapped in Draggable components
+
+
 interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
+  columnId: any
+  draggingBillId: any
   title: string;
   bills: Bill[];
   tempBills: TempBill[]
@@ -18,11 +25,14 @@ interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode; // For Droppable placeholder
   onCardClick: (bill: Bill) => void; // Add callback prop
   onTempCardClick: (bill: TempBill) => void; // Add callback prop
+  readOnly?: boolean;
+  onUnadopt?: (billId: string) => void;
+  showUnadoptButton?: boolean;
 }
 
 
 export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-    ({ title, bills, tempBills, isDraggingOver, onCardClick, onTempCardClick, children, className, ...props }, ref) => {
+    ({ columnId, title, bills, tempBills, isDraggingOver, draggingBillId, onCardClick, onTempCardClick, onUnadopt, showUnadoptButton = false, children, className, readOnly = false, ...props }, ref) => {
       const [refreshing, setRefreshing] = useState<boolean>(false)
     return (
       <div
@@ -67,6 +77,15 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                 <div key={bill.id}>
                   <KanbanCardSkeleton />
                 </div>
+              ) : readOnly ? (
+                <KanbanCard
+                  key={bill.id}
+                  bill={bill}
+                  isDragging={false}
+                  onCardClick={onCardClick}
+                  onUnadopt={onUnadopt}
+                  showUnadoptButton={showUnadoptButton}
+                />
               ) : (
                 <Draggable key={bill.id} draggableId={bill.id} index={index}>
                   {(provided, snapshot) => (
@@ -77,6 +96,8 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                       bill={bill}
                       isDragging={snapshot.isDragging}
                       onCardClick={onCardClick}
+                      onUnadopt={onUnadopt}
+                      showUnadoptButton={showUnadoptButton}
                       style={{
                         ...provided.draggableProps.style,
                       }}
