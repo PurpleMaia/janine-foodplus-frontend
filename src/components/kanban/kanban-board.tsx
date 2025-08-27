@@ -30,38 +30,19 @@ interface KanbanBoardProps {
   showUnadoptButton?: boolean;
 }
 
-let globalContainer: {
-  bills: any;
-  loading: boolean;
-  setLoading: (loading: boolean) => void;
-  setBills: (bills: any) => void;
-};
-
-
 export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
-  // const [bills, setBills] = useState<Bill[]>(initialBills);
-  if (readOnly === true) {
-    const { loadingBills, setLoadingBills, bills, setBills } = useBills()
-    globalContainer = {
-      bills,
-      loading: loadingBills,
-      setLoading: setLoadingBills,
-      setBills,
-    };
-
-  } else if (readOnly === false) {
-    const { loading: loadingAdopted, setLoading: setLoadingAdopted, bills: adoptedBills, setBills: setAdoptedBills } = useAdoptedBills();
   
-    // Update global container
-      globalContainer = {
-        bills: adoptedBills,
-        loading: loadingAdopted,
-        setLoading: setLoadingAdopted,
-        setBills: setAdoptedBills,
-    };
-  }
+  // Always call all hooks at the top level
+  const { loadingBills, setLoadingBills, bills: allBills, setBills: setAllBills } = useBills();
+  const { loading: loadingAdopted, setLoading: setLoadingAdopted, bills: adoptedBills, setBills: setAdoptedBills } = useAdoptedBills();
+  
+  // Use conditional logic for data, not for hooks
+  const bills = readOnly ? allBills : adoptedBills;
+  const loading = readOnly ? loadingBills : loadingAdopted;
+  const setBills = readOnly ? setAllBills : setAdoptedBills;
+  const setLoading = readOnly ? setLoadingBills : setLoadingAdopted;
 
   const [, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
@@ -124,7 +105,7 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
     
     setError(null);
     const handler = setTimeout(async () => {
-      globalContainer.setLoading(true)
+      setLoading(true)
       try {
         const results = await searchBills(searchQuery);
         setFilteredBills(results);        
@@ -133,19 +114,19 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
         setError("Failed to search bills.");
         setFilteredBills(null); // Revert to initial on error        
       } finally {
-        globalContainer.setLoading(false)      
+        setLoading(false)      
       }
     }, 300); // Debounce search requests
     
     return () => {
       clearTimeout(handler);     
     };
-  }, [searchQuery, globalContainer.setLoading]); // Rerun when searchQuery or initialBills change
+  }, [searchQuery, setLoading]); // Rerun when searchQuery or initialBills change
 
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
     KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
-    const billsTobeGrouped = (searchQuery.trim() && filteredBills) ? filteredBills : globalContainer.bills;
+    const billsTobeGrouped = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
     console.log('grouping', billsTobeGrouped)
     console.log('filteredBills', filteredBills, 'searchQuery', searchQuery)
 
@@ -164,7 +145,7 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
     // Sort bills within each column if needed, e.g., by ID or name
     // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.bill_title.localeCompare(b.bill_title)));
     return grouped;
-  }, [globalContainer.bills, filteredBills, searchQuery]);
+  }, [bills, filteredBills, searchQuery]);
 
   // const tempBillsByColumn = useMemo(() => {
   //   const grouped: { [key in BillStatus]?: TempBill[] } = {};
@@ -215,13 +196,13 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
 
     const sourceColumnId = source.droppableId as BillStatus;
     const destinationColumnId = destination.droppableId as BillStatus;
-    const movedBill = globalContainer.bills.find(b => b.id === draggableId)
+    const movedBill = bills.find(b => b.id === draggableId)
 
     if (!movedBill) return; // Should not happen
 
     // --- Optimistic UI Update ---
     // edit the global bill status
-    const newBills = Array.from(globalContainer.bills)
+    const newBills = Array.from(bills)
     const billIndex = newBills.findIndex(b => b.id === draggableId);
     
     console.log('newBills', newBills)
@@ -234,7 +215,7 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
           llm_suggested: false 
         };
         newBills.splice(billIndex, 1, updatedBill);
-        globalContainer.setBills(newBills)
+        setBills(newBills)
 
         // Also update filteredBills if it exists
         console.log('ON_DRAG_END: filteredBills', filteredBills, 'searchQuery', searchQuery)
@@ -274,12 +255,12 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
         console.error("Failed to update bill status:", error);
         setError("Failed to update bill status. Please try again.");
         // Revert optimistic update on error
-        const revertedBills = Array.from(globalContainer.bills);
+        const revertedBills = Array.from(bills);
         const billToRevertIndex = revertedBills.findIndex(b => b.id === draggableId);
          if (billToRevertIndex > -1) {
             const revertedBill = { ...revertedBills[billToRevertIndex], current_status: sourceColumnId };
             revertedBills.splice(billToRevertIndex, 1, revertedBill);
-            globalContainer.setBills(revertedBills);
+            setBills(revertedBills);
          }
          toast({
            title: "Update Failed",
@@ -288,7 +269,7 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
          });
     } 
   // }, [bills, toast, filteredBills, searchQuery, setBills, setTempBills]);
-  }, [globalContainer.bills, toast, filteredBills, searchQuery, readOnly]);
+  }, [bills, toast, filteredBills, searchQuery, readOnly, setBills, setLoading]);
 
    // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
@@ -311,7 +292,7 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
               className="h-full w-full max-w-[100vw] rounded-[inherit]"
               style={{ scrollBehavior: 'smooth' }}
             >
-              { globalContainer.loading ? (
+              { loading ? (
                 <KanbanBoardSkeleton />
               ) : (
                 <div className="flex space-x-4 pb-4">
@@ -353,7 +334,7 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
                 className="h-full w-full max-w-[100vw] rounded-[inherit]"
                 style={{ scrollBehavior: 'smooth' }}
               >
-                { globalContainer.loading ? (
+                { loading ? (
                   <KanbanBoardSkeleton />
                 ) : (
                   <div className="flex space-x-4 pb-4">

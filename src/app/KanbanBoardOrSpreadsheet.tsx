@@ -16,7 +16,7 @@ export function KanbanBoardOrSpreadsheet({ bills, view }: KanbanBoardOrSpreadshe
     <div className="flex h-screen flex-col overflow-hidden">
       <main className="flex-1 overflow-hidden">                
             {view === 'kanban' ? (
-              <KanbanBoard initialBills={bills} />
+              <KanbanBoard initialBills={bills} readOnly={false} />
             ) : (
               <KanbanSpreadsheet bills={bills} />
             )}    
