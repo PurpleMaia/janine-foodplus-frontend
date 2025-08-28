@@ -14,6 +14,7 @@ import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dia
 import { Button } from '@/components/ui/button';
 import { useBills } from '@/hooks/use-bills';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
+import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
 
 
@@ -24,16 +25,25 @@ import KanbanBoardSkeleton from './skeletons/skeleton-board';
 
 interface KanbanBoardProps {
   initialBills: Bill[];
-  readOnly?: boolean;
+  readOnly: boolean;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
 }
 
-export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
+export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
-  // const [bills, setBills] = useState<Bill[]>(initialBills);
-  const { loadingBills, setLoadingBills, bills, setBills, tempBills, setTempBills } = useBills()
+  
+  // Always call all hooks at the top level
+  const { loadingBills, setLoadingBills, bills: allBills, setBills: setAllBills } = useBills();
+  const { loading: loadingAdopted, setLoading: setLoadingAdopted, bills: adoptedBills, setBills: setAdoptedBills } = useAdoptedBills();
+  
+  // Use conditional logic for data, not for hooks
+  const bills = readOnly ? allBills : adoptedBills;
+  const loading = readOnly ? loadingBills : loadingAdopted;
+  const setBills = readOnly ? setAllBills : setAdoptedBills;
+  const setLoading = readOnly ? setLoadingBills : setLoadingAdopted;
+
   const [, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null); // State for selected bill
@@ -95,7 +105,7 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
     
     setError(null);
     const handler = setTimeout(async () => {
-      setLoadingBills(true)
+      setLoading(true)
       try {
         const results = await searchBills(searchQuery);
         setFilteredBills(results);        
@@ -104,14 +114,14 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
         setError("Failed to search bills.");
         setFilteredBills(null); // Revert to initial on error        
       } finally {
-        setLoadingBills(false)      
+        setLoading(false)      
       }
     }, 300); // Debounce search requests
     
     return () => {
       clearTimeout(handler);     
     };
-  }, [searchQuery, setLoadingBills]); // Rerun when searchQuery or initialBills change
+  }, [searchQuery, setLoading]); // Rerun when searchQuery or initialBills change
 
   const billsByColumn = useMemo(() => {
     const grouped: { [key in BillStatus]?: Bill[] } = {};
@@ -137,25 +147,25 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
     return grouped;
   }, [bills, filteredBills, searchQuery]);
 
-  const tempBillsByColumn = useMemo(() => {
-    const grouped: { [key in BillStatus]?: TempBill[] } = {};
-    KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
-    tempBills.forEach(bill => {
-      // Ensure bill.current_status is a valid key
-      const statusKey = bill.current_status as BillStatus;
-      if (grouped.hasOwnProperty(statusKey)) {
-        grouped[statusKey]?.push(bill);
-      } else {
-        // Handle potentially invalid status (optional, depends on data integrity)
-        console.warn(`Bill ${bill.id} has invalid status: ${bill.current_status}`);
-        // Place it in a default column like 'introduced' or handle as needed
-        grouped['introduced']?.push(bill);
-      }
-    });
-    // Sort bills within each column if needed, e.g., by ID or name
-    // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.bill_title.localeCompare(b.bill_title)));
-    return grouped;
-  }, [tempBills])
+  // const tempBillsByColumn = useMemo(() => {
+  //   const grouped: { [key in BillStatus]?: TempBill[] } = {};
+  //   KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
+  //   tempBills.forEach(bill => {
+  //     // Ensure bill.current_status is a valid key
+  //     const statusKey = bill.current_status as BillStatus;
+  //     if (grouped.hasOwnProperty(statusKey)) {
+  //       grouped[statusKey]?.push(bill);
+  //     } else {
+  //       // Handle potentially invalid status (optional, depends on data integrity)
+  //       console.warn(`Bill ${bill.id} has invalid status: ${bill.current_status}`);
+  //       // Place it in a default column like 'introduced' or handle as needed
+  //       grouped['introduced']?.push(bill);
+  //     }
+  //   });
+  //   // Sort bills within each column if needed, e.g., by ID or name
+  //   // Object.values(grouped).forEach(billArray => billArray?.sort((a, b) => a.bill_title.localeCompare(b.bill_title)));
+  //   return grouped;
+  // }, [tempBills])
 
   const onDragStart = useCallback((start: any) => {
       setDraggingBillId(start.draggableId);
@@ -221,9 +231,9 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
           console.log('filteredBills after setting', filteredBills)
         }
 
-        setTempBills(prevTempBills => 
-          prevTempBills.filter(tb => tb.id !== updatedBill.id)
-        );
+        // setTempBills(prevTempBills => 
+        //   prevTempBills.filter(tb => tb.id !== updatedBill.id)
+        // );
     } else {
         console.error("Bill not found for optimistic update");
         return;
@@ -259,7 +269,7 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
          });
     } 
   // }, [bills, toast, filteredBills, searchQuery, setBills, setTempBills]);
-  }, [bills, toast, filteredBills, searchQuery, readOnly]);
+  }, [bills, toast, filteredBills, searchQuery, readOnly, setBills, setLoading]);
 
    // Updated handler to open the dialog
    const handleCardClick = useCallback((bill: Bill) => {
@@ -282,7 +292,7 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
               className="h-full w-full max-w-[100vw] rounded-[inherit]"
               style={{ scrollBehavior: 'smooth' }}
             >
-              { loadingBills ? (
+              { loading ? (
                 <KanbanBoardSkeleton />
               ) : (
                 <div className="flex space-x-4 pb-4">
@@ -298,11 +308,9 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
                             columnId={column.id as BillStatus}
                             title={column.title}
                             bills={billsByColumn[column.id as BillStatus] || []}
-                            tempBills={tempBillsByColumn[column.id as BillStatus] || []}
                             isDraggingOver={false}
                             draggingBillId={null}
                             onCardClick={handleCardClick}
-                            onTempCardClick={handleTempCardClick}
                             onUnadopt={onUnadopt}
                             showUnadoptButton={showUnadoptButton}
                             readOnly={true}
@@ -326,7 +334,7 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
                 className="h-full w-full max-w-[100vw] rounded-[inherit]"
                 style={{ scrollBehavior: 'smooth' }}
               >
-                { loadingBills ? (
+                { loading ? (
                   <KanbanBoardSkeleton />
                 ) : (
                   <div className="flex space-x-4 pb-4">
@@ -345,11 +353,9 @@ export function KanbanBoard({ initialBills, readOnly = false, onUnadopt, showUna
                                 columnId={column.id as BillStatus}
                                 title={column.title}
                                 bills={billsByColumn[column.id as BillStatus] || []}
-                                tempBills={tempBillsByColumn[column.id as BillStatus] || []}
                                 isDraggingOver={snapshot.isDraggingOver}
                                 draggingBillId={draggingBillId}
                                 onCardClick={handleCardClick}
-                                onTempCardClick={handleTempCardClick}
                                 onUnadopt={onUnadopt}
                                 showUnadoptButton={showUnadoptButton}
                                 readOnly={false}

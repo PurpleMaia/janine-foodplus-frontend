@@ -19,12 +19,12 @@ interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
   draggingBillId: any
   title: string;
   bills: Bill[];
-  tempBills: TempBill[]
+  // tempBills: TempBill[]
   isDraggingOver: boolean;
   // draggingBillId: string | null;
   children?: React.ReactNode; // For Droppable placeholder
   onCardClick: (bill: Bill) => void; // Add callback prop
-  onTempCardClick: (bill: TempBill) => void; // Add callback prop
+  // onTempCardClick: (bill: TempBill) => void; // Add callback prop
   readOnly?: boolean;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
@@ -32,7 +32,7 @@ interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
 
 
 export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-    ({ columnId, title, bills, tempBills, isDraggingOver, draggingBillId, onCardClick, onTempCardClick, onUnadopt, showUnadoptButton = false, children, className, readOnly = false, ...props }, ref) => {
+    ({ columnId, title, bills, isDraggingOver, draggingBillId, onCardClick, onUnadopt, showUnadoptButton = false, children, className, readOnly = false, ...props }, ref) => {
       const [refreshing, setRefreshing] = useState<boolean>(false)
     return (
       <div
@@ -65,11 +65,11 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
         <ScrollArea className="flex-1 p-2">
           <div className="flex flex-col gap-2">
 
-            {tempBills.map((bill) => (
+            {/* {tempBills.map((bill) => (
               <div key={`temp-${bill.id}`}>
                 <TempBillCard tempBill={bill} onTempCardClick={onTempCardClick}/>
               </div>
-            ))}
+            ))} */}
 
             {bills.map((bill, index) => (
               refreshing ? (
