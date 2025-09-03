@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/contexts/auth-context';
 import { LoginDialog } from './login-dialog';
+import { RegisterDialog } from './register-dialog';
 import { UserMenu } from './user-menu';
 
 export function AuthHeader() {
@@ -25,7 +26,10 @@ export function AuthHeader() {
       {user ? (
         <UserMenu />   //shows user menu if logged in 
       ) : (
-        <LoginDialog />   //shoes login button if not logged in
+        <div className='flex items-center space-x-2'>
+          <RegisterDialog />  
+          <LoginDialog />   
+        </div>
       )}
     </div>
   );
