@@ -13,6 +13,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { RequestAdminAccessButton } from "@/components/auth/request-admin-access";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -91,6 +92,11 @@ export default function RegisterPage() {
               </SelectContent>
             </Select>
           </div>
+
+          { role === "admin" && email && (
+            <RequestAdminAccessButton email={email} />
+          )}
+          
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Registering..." : "Register"}
           </Button>
