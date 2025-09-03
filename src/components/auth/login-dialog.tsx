@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export function LoginDialog() {
   const [email, setEmail] = useState('');
@@ -85,6 +86,9 @@ export function LoginDialog() {
               placeholder="Enter your password"
               required
             />
+          </div>
+          <div className='space-y-2 text-center text-sm'>
+            Don't have an account? Please <Link href="/register" className='text-blue-500 hover:underline'>Register</Link>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Logging in...' : 'Login'}

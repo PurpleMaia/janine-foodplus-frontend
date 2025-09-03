@@ -26,10 +26,7 @@ export function AuthHeader() {
       {user ? (
         <UserMenu />   //shows user menu if logged in 
       ) : (
-        <div className='flex items-center space-x-2'>
-          <RegisterDialog />  
           <LoginDialog />   
-        </div>
       )}
     </div>
   );
