@@ -3,13 +3,13 @@ import { getSessionCookie, deleteSession, clearSessionCookie } from '@/lib/simpl
 
 export async function POST(request: NextRequest) {
   try {
-    //Gets session ID from cookie
-    const sessionId = getSessionCookie(request);
+    //Gets session token from cookie
+    const token = getSessionCookie(request);
     
     //Delete session from database
-    if (sessionId) {
+    if (token) {
       // Delete session from database
-      await deleteSession(sessionId);
+      await deleteSession(token);
     }
 
     // Clear session cookie

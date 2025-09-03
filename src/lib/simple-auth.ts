@@ -69,8 +69,9 @@ export async function validateSession(token: string): Promise<User | null> {
   }
 }
 
-export async function deleteSession(sessionId: number): Promise<void> {
-  await db.deleteFrom('sessions').where('id', '=', sessionId).execute();
+export async function deleteSession(token: string): Promise<void> {
+  const hashedToken = createHash('sha256').update(token).digest('hex');
+  await db.deleteFrom('sessions').where('session_token', '=', hashedToken).execute();
 }
 
 export async function authenticateUser(email: string, password: string): Promise<User | null> {
