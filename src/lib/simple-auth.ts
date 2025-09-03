@@ -111,21 +111,33 @@ export async function authenticateUser(email: string, password: string): Promise
 export async function registerUser(email: string, password: string): Promise<User | null> {
   try {
     //1. Check if user already exists
-    const existingUser = await sql`SELECT * FROM "user" WHERE email = ${email}`;
-    if (existingUser && existingUser.length > 0) {
+    const existingUser = await db.selectFrom('user')
+      .selectAll()
+      .where('email', '=', email).
+      executeTakeFirst();
+
+    if (existingUser) {
       return null; // User already exists
     }
 
     //2. Create new user
-    const userId = 'user_' + Math.random().toString(36).substr(2, 9);
-    console.log('Generated user ID:', userId);
-    await sql`INSERT INTO "user" (id, email) VALUES (${userId}, ${email})`;
+    const userResult = await db.insertInto('user').values({
+      email, 
+      created_at: new Date(),
+      role: 'user',
+      username: email.split('@')[0], // Simple username from email
+      requested_admin: false
+    }).returning('id').executeTakeFirst();
+
+    if (!userResult || !userResult.id) {
+      throw new Error('Failed to create user');
+    }
+
+    const userId = userResult.id;
 
     //3. Hash password and store in auth_key table
     const hashedPassword = await bcrypt.hash(password, 10);
-    const keyId = 'key_' + Math.random().toString(36).substr(2, 9);
-    console.log('Generated key ID:', keyId);
-    await sql`INSERT INTO auth_key (id, user_id, hashed_password) VALUES (${keyId}, ${userId}, ${hashedPassword})`;
+    await db.insertInto('auth_key').values({ user_id: userId, hashed_password: hashedPassword }).execute();
 
     return { id: userId, email }; // Return the new user
   } catch (error) {
