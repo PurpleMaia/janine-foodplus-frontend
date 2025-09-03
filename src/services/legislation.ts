@@ -3,6 +3,9 @@
 import type { Bill, BillStatus, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '../../db/kysely/client';
+import { Bills } from '../../db/types';
+import { mapBillsToBill } from '@/lib/utils';
 
 // Helper function to create placeholder introducers
 // const createIntroducers = (names: string[]): Introducer[] =>
@@ -63,24 +66,21 @@ import { NextRequest, NextResponse } from 'next/server';
 //   'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
 // ];
 
-export async function getAllBills(): Promise<Bill[]> {    
-
-    // Server-side database query
-    let data: Bill[] = [];
+export async function getAllBills(): Promise<Bill[]> {
+    let rawData: Bills[] = [];
     try {
-        if (sql) {
-            data = await sql<Bill[]>`
-                SELECT * FROM bills
-                WHERE food_related = true
-            `;
-        } else {
-            console.log('SQL connection not available');            
-        }
+        rawData = (await db.selectFrom('bills').selectAll()
+            .where('food_related', '=', true) // Only food-related bills
+            .execute()).map((bill: any) => ({
+                ...bill,
+                created_at: new Date(bill.created_at),
+                updated_at: new Date(bill.updated_at),
+            }));
     } catch (e) {
-        console.log('Data fetch did not work: ', e);                
-    }   
+        console.log('Data fetch did not work: ', e);
+    }
 
-    // filtering the bill results only by food-related keywords    
+    // filtering the bill results only by food-related keywords
     
     // ----- Holding this code here if need to set the flags based on the filter ----------
     // const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
@@ -98,25 +98,20 @@ export async function getAllBills(): Promise<Bill[]> {
       // ----- Holding this code here if need to set the flags based on the filter again ----------
 
     // update each bill object with its status updates
-    const dataWithStatusUpdates = await Promise.all(
-        data.map(async(bill) => {
+
+    const bills: Bill[] = rawData.map(mapBillsToBill)
+    const dataWithStatusUpdates: Bill[] = await Promise.all(
+        bills.map(async(bill) => {
         try {
-          if (sql) {
-            const result = await sql<StatusUpdate[]>`
-                SELECT id, chamber, date, statustext FROM status_updates su
-                WHERE su.bill_id = ${bill.id}
-            `
+            const result = await db.selectFrom('status_updates').selectAll()
+              .where('bill_id', '=', bill.id)
+              .orderBy('date', 'desc')
+              .execute();
+
             return {
               ...bill,
               updates: result
             }
-          } else {
-            console.log('SQL Connection not available, setting updates to []')
-            return {
-              ...bill,
-              updates: []
-            }
-          }
         } catch (e) {
           console.log('Status update fetch did not work for: ', bill.id, e)
           return {
@@ -128,7 +123,7 @@ export async function getAllBills(): Promise<Bill[]> {
     )
     
     // Sort by updated_at date descending (most recent first) before returning
-    const sortedBills = [...dataWithStatusUpdates].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
+    const sortedBills = dataWithStatusUpdates.sort((a, b) => b.updated_at!.getTime() - a.updated_at!.getTime());
     // sortedBills = sortedBills.slice(0,9)
     // console.log('sortedBills', sortedBills)
     return sortedBills; // Returning only 5
