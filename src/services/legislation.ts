@@ -3,13 +3,9 @@
 import type { Bill, BillStatus, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { NextRequest, NextResponse } from 'next/server';
-
-let sql: any = null;
-if (typeof window === 'undefined') {
-  // Server-side only
-  const postgres = require('postgres');
-  sql = postgres(process.env.DATABASE_URL!);
-}
+import { db } from '../../db/kysely/client';
+import { Bills } from '../../db/types';
+import { mapBillsToBill } from '@/lib/utils';
 
 // Helper function to create placeholder introducers
 // const createIntroducers = (names: string[]): Introducer[] =>
@@ -70,24 +66,43 @@ if (typeof window === 'undefined') {
 //   'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
 // ];
 
-export async function getAllBills(): Promise<Bill[]> {    
-
-    // Server-side database query
-    let data: Bill[] = [];
+export async function getAllBills(): Promise<Bill[]> {
     try {
-        if (sql) {
-            data = await sql<Bill[]>`
-                SELECT * FROM bills
-                WHERE food_related = true
-            `;
-        } else {
-            console.log('SQL connection not available');            
-        }
-    } catch (e) {
-        console.log('Data fetch did not work: ', e);                
-    }   
+        const rawData = await db.selectFrom('bills').selectAll()
+            .where('food_related', '=', true) // Only food-related bills
+            .execute()
 
-    // filtering the bill results only by food-related keywords    
+        const bills: Bill[] = rawData.map(item => mapBillsToBill(item as unknown as Bills))
+         
+        const dataWithStatusUpdates: Bill[] = await Promise.all(
+          bills.map(async(bill) => {
+          try {
+              const result = await db.selectFrom('status_updates').selectAll()
+                .where('bill_id', '=', bill.id)
+                .orderBy('date', 'desc')
+                .execute();
+
+              return {
+                ...bill,
+                updates: result
+              }
+          } catch (e) {
+            console.log('Status update fetch did not work for: ', bill.id, e)
+            return {
+              ...bill,
+              updates: []
+            }
+          }
+        })
+      )
+
+      const sortedBills = dataWithStatusUpdates.sort((a, b) => b.updated_at!.getTime() - a.updated_at!.getTime());
+
+      return sortedBills;
+    } catch (e) {
+        console.log('Data fetch did not work: ', e);
+        return [];
+    }
     
     // ----- Holding this code here if need to set the flags based on the filter ----------
     // const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
@@ -103,42 +118,6 @@ export async function getAllBills(): Promise<Bill[]> {
         //   }
         // }
       // ----- Holding this code here if need to set the flags based on the filter again ----------
-
-    // update each bill object with its status updates
-    const dataWithStatusUpdates = await Promise.all(
-        data.map(async(bill) => {
-        try {
-          if (sql) {
-            const result = await sql<StatusUpdate[]>`
-                SELECT id, chamber, date, statustext FROM status_updates su
-                WHERE su.bill_id = ${bill.id}
-            `
-            return {
-              ...bill,
-              updates: result
-            }
-          } else {
-            console.log('SQL Connection not available, setting updates to []')
-            return {
-              ...bill,
-              updates: []
-            }
-          }
-        } catch (e) {
-          console.log('Status update fetch did not work for: ', bill.id, e)
-          return {
-            ...bill,
-            updates: []
-          }
-        }
-      })
-    )
-    
-    // Sort by updated_at date descending (most recent first) before returning
-    const sortedBills = [...dataWithStatusUpdates].sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
-    // sortedBills = sortedBills.slice(0,9)
-    // console.log('sortedBills', sortedBills)
-    return sortedBills; // Returning only 5
 }
 
 // const containsFoodKeywords = (bill: Bill) => {
@@ -193,29 +172,21 @@ export async function updateBillStatusServerAction(billId: string, newStatus: Bi
     }
 
     try {
-        // Update the database using the same approach as getAllBills
-        if (sql) {
-            const result = await sql<Bill[]>`
-                UPDATE bills 
-                SET current_status = ${newStatus}, updated_at = NOW()
-                WHERE id = ${billId}
-                RETURNING *
-            `;
+        const updatedBill = await db.updateTable('bills')
+        .set({
+            current_status: newStatus,
+            updated_at: new Date()
+        })
+        .where('id', '=', billId)
+        .returningAll()
+        .executeTakeFirst();
+
+        if (updatedBill) {
             
-            if (result && result.length > 0) {
-                const updatedBill = result[0];
-                // Ensure dates are Date objects
-                updatedBill.created_at = new Date(updatedBill.created_at);
-                updatedBill.updated_at = new Date(updatedBill.updated_at);
-                
-                console.log(`Successfully updated bill ${billId} to status ${newStatus} in database`);
-                return updatedBill;
-            } else {
-                console.error(`Bill with ID ${billId} not found in database.`);
-                return null;
-            }
+            console.log(`Successfully updated bill ${billId} to status ${newStatus} in database`);
+            return mapBillsToBill(updatedBill as unknown as Bills);
         } else {
-            console.error('SQL connection not available');
+            console.error(`Bill with ID ${billId} not found in database.`);
             return null;
         }
     } catch (error) {
@@ -226,23 +197,18 @@ export async function updateBillStatusServerAction(billId: string, newStatus: Bi
 
 export async function findExistingBillByURL(billURl: string): Promise<Bill | null> {
   try {
-    if (sql) {
-      const result = await sql`
-        SELECT * FROM bills
-        WHERE bill_url LIKE ${billURl + '%'}       
-        LIMIT 1       
-      `
+    const result = await db.selectFrom('bills')
+      .selectAll()
+      .where('bill_url', 'like', `${billURl}%`)      
+      .executeTakeFirst();
 
-      if (result) {
-        return result[0]
-      } else {
-        console.log('Could not find bill in database based on: ', billURl)
-        return null
-      } 
+    if (result) {
+      console.log(`Found existing bill in database based on: `, billURl)
+      return mapBillsToBill(result as unknown as Bills);
     } else {
-      console.error('SQL connection not available');
-      return null;
-  }
+      console.log('Could not find bill in database based on: ', billURl)
+      return null
+    }
   } catch (error) {
     console.error('Database search failed', error)
     return null
@@ -251,24 +217,18 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
 
 export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean | null) {
   try {
-    if (sql) {
-      const result = await sql`
-       UPDATE bills 
-       SET food_related = ${state} 
-       WHERE bill_url = ${billURL}
-       RETURNING * 
-      `
+    const result = await db.updateTable('bills')
+      .set({ food_related: state })
+      .where('bill_url', '=', billURL)
+      .returningAll()
+      .executeTakeFirst();
 
-      if (result) {
-        console.log(`Successfully updated bill ${result[0].bill_number} to food_related ${state} in database`)
-        return result[0]
-      } else {
-        console.log('Could not find bill in database based on: ', billURL)
-        return null
-      } 
+    if (result) {
+      console.log(`Successfully updated bill ${result.bill_number} to food_related ${state} in database`)
+      return mapBillsToBill(result as unknown as Bills)
     } else {
-      console.error('SQL connection not available');
-      return null;
+      console.log('Could not find bill in database based on: ', billURL)
+      return null
     }
   } catch (error) {
     console.error('Database update failed', error)
@@ -278,82 +238,36 @@ export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean
 
 export async function insertNewBill(bill: Bill): Promise<Bill | null> {
   try {
-    if (sql) {
-      const result = await sql`
-        INSERT INTO bills
-        VALUES ${sql(bill)}
-      `
+    const result = await db.insertInto('bills').values(bill).returningAll().executeTakeFirst();
 
-      return result
-    } else {
-      console.error('SQL connection not available')
-      return null
-    }
+    console.log(`Successfully inserted new bill ${bill.bill_number} into database`)
+    return mapBillsToBill(result as unknown as Bills);
   } catch (error) {
     console.error('Database insert failed', error)
     return null
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const { status } = await request.json();
-    const billId = params.id;
-
-    console.log('Updating bill:', { billId, status });
-
-    const result = await sql`
-      UPDATE bills 
-      SET current_status = ${status}, updated_at = NOW()
-      WHERE id = ${billId}
-      RETURNING *
-    `;
-
-    if (result && result.length > 0) {
-      const updatedBill = result[0];
-      // Ensure dates are Date objects
-      updatedBill.created_at = new Date(updatedBill.created_at);
-      updatedBill.updated_at = new Date(updatedBill.updated_at);
-      
-      console.log('Successfully updated bill:', updatedBill);
-      return NextResponse.json(updatedBill);
-    } else {
-      console.error('Bill not found:', billId);
-      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
-    }
-  } catch (error) {
-    console.error('Database update failed:', error);
-    return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
-  }
-}
-
 // Bill adoption functions
-export async function adoptBill(userId: string, billUrl: string): Promise<boolean> {
+export async function adoptBill(userId: number, billUrl: string): Promise<boolean> {
   try {
-    if (!sql) {
-      console.error('SQL connection not available');
-      return false;
-    }
 
     // First find the bill by URL
-    const billResult = await sql`
-      SELECT id FROM bills WHERE bill_url = ${billUrl}
-    `;
-    
-    if (!billResult || billResult.length === 0) {
+    const billResult = await db.selectFrom('bills').select(['id'])
+      .where('bill_url', '=', billUrl).executeTakeFirst();
+
+    if (!billResult) {
       console.log('Bill not found with URL:', billUrl);
       return false;
     }
 
-    const billId = billResult[0].id;
+    const billId = billResult.id;
 
     // Check if already adopted
-    const alreadyAdopted = await sql`
-      SELECT id FROM user_bills WHERE user_id = ${userId} AND bill_id = ${billId}
-    `;
+    const alreadyAdopted = await db.selectFrom('user_bills').selectAll()
+      .where('user_id', '=', userId)
+      .where('bill_id', '=', billId)
+      .execute();
 
     if (alreadyAdopted && alreadyAdopted.length > 0) {
       console.log('Bill already adopted by user');
@@ -361,10 +275,10 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
     }
 
     // Add the adoption record
-    await sql`
-      INSERT INTO user_bills (user_id, bill_id)
-      VALUES (${userId}, ${billId})
-    `;
+    await db.insertInto('user_bills').values({
+      user_id: userId,
+      bill_id: billId
+    }).execute();
 
     console.log(`Successfully adopted bill ${billId} for user ${userId}`);
     return true;
@@ -374,17 +288,12 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
   }
 }
 
-export async function unadoptBill(userId: string, billId: string): Promise<boolean> {
+export async function unadoptBill(userId: number, billId: string): Promise<boolean> {
   try {
-    if (!sql) {
-      console.error('SQL connection not available');
-      return false;
-    }
-
-    const result = await sql`
-      DELETE FROM user_bills 
-      WHERE user_id = ${userId} AND bill_id = ${billId}
-    `;
+    const result = await db.deleteFrom('user_bills')
+      .where('user_id', '=', userId)
+      .where('bill_id', '=', billId)
+      .execute();
 
     console.log(`Successfully unadopted bill ${billId} for user ${userId}`);
     return true;
@@ -394,34 +303,33 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
   }
 }
 
-export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
+export async function getUserAdoptedBills(userId: number): Promise<Bill[]> {
   try {
-    if (!sql) {
-      console.error('SQL connection not available');
-      return [];
-    }
-
     console.log('getUserAdoptedBills called with userId:', userId);
     console.log('userId type:', typeof userId);
 
     // Get all bills that the user has adopted
-    const adoptedBills = await sql<Bill[]>`
-      SELECT b.* FROM bills b
-      INNER JOIN user_bills ub ON b.id = ub.bill_id
-      WHERE ub.user_id = ${userId}
-    `;
-    
-    console.log('SQL query result - adoptedBills count:', adoptedBills.length);
-    console.log('SQL query result - adoptedBills:', adoptedBills);
+    const rawAdoptedBills = await db.selectFrom('bills as b')
+      .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
+      .where('ub.user_id', '=', userId)
+      .selectAll()
+      .execute();
+
+    console.log('SQL query result - adoptedBills count:', rawAdoptedBills.length);
+    console.log('SQL query result - adoptedBills:', rawAdoptedBills);
+
+    const adoptedBills: Bill[] = rawAdoptedBills.map(item => mapBillsToBill(item as unknown as Bills))
+
 
     // Add status updates for each adopted bill
-    const billsWithUpdates = await Promise.all(
-      adoptedBills.map(async (bill: Bill) => {
+    const billsWithUpdates: Bill[] = await Promise.all(
+      adoptedBills.map(async (bill) => {
         try {
-          const result = await sql<StatusUpdate[]>`
-            SELECT id, chamber, date, statustext FROM status_updates su
-            WHERE su.bill_id = ${bill.id}
-          `;
+          const result = await db.selectFrom('status_updates').selectAll()
+              .where('bill_id', '=', bill.id)
+              .orderBy('date', 'desc')
+              .execute();
+
           return {
             ...bill,
             updates: result
@@ -437,7 +345,9 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
     );
 
     // Sort by updated_at date descending (most recent first)
-    return billsWithUpdates.sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
+    const sortedBills = billsWithUpdates.sort((a, b) => b.updated_at!.getTime() - a.updated_at!.getTime());
+
+      return sortedBills;
   } catch (error) {
     console.error('Failed to get user adopted bills:', error);
     return [];

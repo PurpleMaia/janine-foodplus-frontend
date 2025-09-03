@@ -1,13 +1,7 @@
 'use server'
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { OpenAI } from 'openai';
-
-let sql: any = null;
-if (typeof window === 'undefined') {
-  // Server-side only
-  const postgres = require('postgres');
-  sql = postgres(process.env.DATABASE_URL!);
-}
+import { db } from '../../db/kysely/client';
 
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -107,11 +101,12 @@ const SYSTEM_PROMPT = [
 async function getContext(billId: string) {
     console.log('getting context...')
     try {
-        const data = await sql`
-            select chamber, date, statustext from status_updates su 
-            where su.bill_id = ${billId}
-            limit 5
-        `;       
+        const data = await db.selectFrom('status_updates')
+            .select(['chamber', 'date', 'statustext'])
+            .where('bill_id', '=', billId)
+            .orderBy('date', 'desc')
+            .limit(5)
+            .execute();                
         console.log('# of status updates', data.length) 
         // Format as tab-separated string, one row per line
         return data.map((row: any) => `${row.chamber}\t${row.date}\t${row.statustext}`).join('\n');
@@ -122,7 +117,7 @@ async function getContext(billId: string) {
 }
 export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retryDelay = 1000) {    
     const context = await getContext(billId);
-    const currStatus = context.split(/\r?\n/)[0];
+    const currStatus = context ? context.split(/\r?\n/)[0] : '';
     let attempt = 0;
     // console.log('CONTEXT:\n', context)
     console.log('awaiting llm...', process.env.VLLM)   
