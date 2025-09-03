@@ -4,13 +4,6 @@ import type { Bill, BillStatus, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { NextRequest, NextResponse } from 'next/server';
 
-let sql: any = null;
-if (typeof window === 'undefined') {
-  // Server-side only
-  const postgres = require('postgres');
-  sql = postgres(process.env.DATABASE_URL!);
-}
-
 // Helper function to create placeholder introducers
 // const createIntroducers = (names: string[]): Introducer[] =>
 //     names.map((name, index) => ({

@@ -2,13 +2,6 @@
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { OpenAI } from 'openai';
 
-let sql: any = null;
-if (typeof window === 'undefined') {
-  // Server-side only
-  const postgres = require('postgres');
-  sql = postgres(process.env.DATABASE_URL!);
-}
-
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL

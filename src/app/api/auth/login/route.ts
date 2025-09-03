@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     //creates new session in database
-    const sessionId = await createSession(user.id);
+    const token = await createSession(user.id);
 
 
     //Returns success with user info AND sets cookie
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       {
         status: 200,
         headers: {
-          'Set-Cookie': setSessionCookie(sessionId),
+          'Set-Cookie': setSessionCookie(token),
         },
       }
     );
