@@ -58,7 +58,7 @@ export function LoginDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Login</Button>
+        <Button variant="outline">Login / Sign Up</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -88,7 +88,7 @@ export function LoginDialog() {
             />
           </div>
           <div className='space-y-2 text-center text-sm'>
-            Don't have an account? Please <Link href="/register" className='text-blue-500 hover:underline'>Register</Link>
+            Don't have an account? Please sign up <Link href="/register" className='text-blue-500 hover:underline'>here</Link>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Logging in...' : 'Login'}
