@@ -97,7 +97,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     const handler = setTimeout(async () => {
       setLoading(true)
       try {
-        const results = await searchBills(searchQuery);
+        const results = await searchBills(bills, searchQuery);
         setFilteredBills(results);        
       } catch (err) {
         console.error("Error searching bills:", err);

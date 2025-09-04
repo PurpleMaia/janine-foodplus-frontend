@@ -153,20 +153,14 @@ export async function getAllBills(): Promise<Bill[]> {
  * @param query The search query.
  * @returns A promise that resolves to an array of matching Bill objects.
  */
-export async function searchBills(query: string): Promise<Bill[]> {
-
-  const allBills = await getAllBills()
+export async function searchBills(bills: Bill[], query: string): Promise<Bill[]> {
 
   if (!query) {
-    return allBills; // Return all sorted bills if query is empty
+    return bills; // Return all sorted bills if query is empty
   }
-  const lowerCaseQuery = query.toLowerCase();
+  const lowerCaseQuery = query.toLowerCase();  
 
-  if (!allBills) {
-    throw new Error('Error fetching data')
-  }
-
-  return allBills.filter(bill =>
+  return bills.filter(bill =>
     bill.id.toLowerCase().includes(lowerCaseQuery) ||
     bill.bill_number.toLowerCase().includes(lowerCaseQuery) ||
     bill.bill_title.toLowerCase().includes(lowerCaseQuery) ||
