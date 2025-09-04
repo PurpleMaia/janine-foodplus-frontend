@@ -68,63 +68,50 @@ import { mapBillsToBill } from '@/lib/utils';
 
 export async function getAllBills(): Promise<Bill[]> {
     try {
-        const rawData = await db.selectFrom('bills').selectAll()
-            .where('food_related', '=', true) // Only food-related bills
-            .execute()
+        const rawData = await db
+          .selectFrom('bills as b')
+          .select([
+            'b.bill_number',
+            'b.bill_title',
+            'b.bill_url',
+            'b.committee_assignment',
+            'b.created_at',
+            'b.current_status',
+            'b.current_status_string',
+            'b.description',
+            'b.food_related',
+            'b.id',
+            'b.introducer',
+            'b.nickname',
+            'b.updated_at',
+          ])            
+          .where('food_related', '=', true) // Only food-related bills
+          .orderBy('b.updated_at', 'desc')  // Most recently updated first
+          .execute()    
+          
+        const bills = rawData.map(row => mapBillsToBill(row as unknown as Bills));
 
-        const bills: Bill[] = rawData.map(item => mapBillsToBill(item as unknown as Bills))
-         
-        const dataWithStatusUpdates: Bill[] = await Promise.all(
-          bills.map(async(bill) => {
-          try {
-              const result = await db.selectFrom('status_updates').selectAll()
-                .where('bill_id', '=', bill.id)
-                .orderBy('date', 'desc')
-                .execute();
-
-              return {
-                ...bill,
-                updates: result
-              }
-          } catch (e) {
-            console.log('Status update fetch did not work for: ', bill.id, e)
-            return {
-              ...bill,
-              updates: []
-            }
-          }
-        })
-      )
-
-      const sortedBills = dataWithStatusUpdates.sort((a, b) =>
-        {
-          const dateA = a.updated_at ? a.updated_at.getTime() : 0;
-          const dateB = b.updated_at ? b.updated_at.getTime() : 0;
-          return dateB - dateA; // Descending order
-        }
-      );
-
-      return sortedBills;
-    } catch (e) {
+        return bills; 
+      } catch (e) {
         console.log('Data fetch did not work: ', e);
         return [];
+      }
     }
     
-    // ----- Holding this code here if need to set the flags based on the filter ----------
-    // const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
-    // const billIds = filteredData.map(bill => bill.id)
-    // if (billIds.length > 0) {
-      //   if (billIds.length > 0) {
-        //     const result = await sql`
-        //       UPDATE bills 
-        //       SET food_related = true 
-        //       WHERE id = ANY(${billIds})
-        //     `;
-        //     console.log(`Updated ${result.count} rows`);
-        //   }
-        // }
-      // ----- Holding this code here if need to set the flags based on the filter again ----------
-}
+// ----- Holding this code here if need to set the flags based on the filter ----------
+// const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
+// const billIds = filteredData.map(bill => bill.id)
+// if (billIds.length > 0) {
+  //   if (billIds.length > 0) {
+    //     const result = await sql`
+    //       UPDATE bills 
+    //       SET food_related = true 
+    //       WHERE id = ANY(${billIds})
+    //     `;
+    //     console.log(`Updated ${result.count} rows`);
+    //   }
+    // }
+  // ----- Holding this code here if need to set the flags based on the filter again ----------
 
 // const containsFoodKeywords = (bill: Bill) => {
 //   const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
