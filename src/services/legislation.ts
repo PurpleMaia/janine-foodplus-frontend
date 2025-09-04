@@ -96,7 +96,13 @@ export async function getAllBills(): Promise<Bill[]> {
         })
       )
 
-      const sortedBills = dataWithStatusUpdates.sort((a, b) => b.updated_at!.getTime() - a.updated_at!.getTime());
+      const sortedBills = dataWithStatusUpdates.sort((a, b) =>
+        {
+          const dateA = a.updated_at ? a.updated_at.getTime() : 0;
+          const dateB = b.updated_at ? b.updated_at.getTime() : 0;
+          return dateB - dateA; // Descending order
+        }
+      );
 
       return sortedBills;
     } catch (e) {
@@ -345,8 +351,13 @@ export async function getUserAdoptedBills(userId: number): Promise<Bill[]> {
     );
 
     // Sort by updated_at date descending (most recent first)
-    const sortedBills = billsWithUpdates.sort((a, b) => b.updated_at!.getTime() - a.updated_at!.getTime());
-
+    const sortedBills = billsWithUpdates.sort((a, b) =>
+        {
+          const dateA = a.updated_at ? a.updated_at.getTime() : 0;
+          const dateB = b.updated_at ? b.updated_at.getTime() : 0;
+          return dateB - dateA; // Descending order
+        }
+      );
       return sortedBills;
   } catch (error) {
     console.error('Failed to get user adopted bills:', error);
