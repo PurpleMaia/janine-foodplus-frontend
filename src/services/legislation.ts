@@ -326,10 +326,10 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
 
 export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
   try {
-
-    // Get all bills that the user has adopted
-    const rawAdoptedBills = await db.selectFrom('bills as b')
+    const rawData = await db
+      .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
+      .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
       .where('ub.user_id', '=', userId)
       .select([
         'b.bill_number',
@@ -344,44 +344,43 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
         'b.id',
         'b.introducer',
         'b.nickname',
-        'b.updated_at'
+        'b.updated_at',
+        'su.id as status_update_id',
+        'su.statustext',
+        'su.date',
+        'su.chamber'
       ])
+      .orderBy('b.updated_at', 'desc')
+      .orderBy('su.date', 'desc')
       .execute();
 
-    const adoptedBills: Bill[] = rawAdoptedBills.map(item => mapBillsToBill(item as unknown as Bills))
+    // Map rawData to Bill objects using Map to handle duplicates
+    const billObject = new Map<string, Bill>();
 
-    // Add status updates for each adopted bill
-    const billsWithUpdates: Bill[] = await Promise.all(
-      adoptedBills.map(async (bill) => {
-        try {
-          const result = await db.selectFrom('status_updates').selectAll()
-              .where('bill_id', '=', bill.id)
-              .orderBy('date', 'desc')
-              .execute();
+    rawData.forEach(row => {
+      // If bill not already added to client-side bill object, map to client container
+      if (!billObject.has(row.id)) {
+        billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
+      }
 
-          return {
-            ...bill,
-            updates: result
-          };
-        } catch (e) {
-          console.log('Status update fetch did not work for:', bill.id, e);
-          return {
-            ...bill,
-            updates: []
-          };
+      // Add status update if it exists
+      if (row.status_update_id) {
+        const bill = billObject.get(row.id);
+        if (bill) {
+          if (!bill.updates) {
+            bill.updates = [];
+          }
+          bill.updates.push({
+            id: row.status_update_id,
+            statustext: row.statustext || '',
+            date: row.date || '',
+            chamber: row.chamber || ''
+          });
         }
-      })
-    );
+      }
+    });
 
-    // Sort by updated_at date descending (most recent first)
-    const sortedBills = billsWithUpdates.sort((a, b) =>
-        {
-          const dateA = a.updated_at ? a.updated_at.getTime() : 0;
-          const dateB = b.updated_at ? b.updated_at.getTime() : 0;
-          return dateB - dateA; // Descending order
-        }
-      );
-      return sortedBills;
+    return Array.from(billObject.values());
   } catch (error) {
     console.error('Failed to get user adopted bills:', error);
     return [];
