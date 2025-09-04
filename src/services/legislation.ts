@@ -70,6 +70,7 @@ export async function getAllBills(): Promise<Bill[]> {
     try {
         const rawData = await db
           .selectFrom('bills as b')
+          .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
           .select([
             'b.bill_number',
             'b.bill_title',
@@ -84,14 +85,41 @@ export async function getAllBills(): Promise<Bill[]> {
             'b.introducer',
             'b.nickname',
             'b.updated_at',
+            'su.id as status_update_id', 
+            'su.statustext',
+            'su.date',
+            'su.chamber'
           ])            
           .where('food_related', '=', true) // Only food-related bills
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
-          .execute()    
-          
-        const bills = rawData.map(row => mapBillsToBill(row as unknown as Bills));
+          .orderBy('su.date', 'desc')       // Then most recently created
+          .execute()
+        
+        // Map rawData to Bill objects
+        const billObject = new Map<string, Bill>();
 
-        return bills; 
+        rawData.forEach(row => {
+
+          // If bill not already added to client-side bill object, map to client container
+          if (!billObject.has(row.id)) {
+            billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
+          }
+
+          // Add status update if it exists
+          if (row.status_update_id) {
+              const bill = billObject.get(row.id);
+              if (bill) {
+                  bill.updates.push({
+                      id: row.status_update_id,
+                      statustext: row.statustext || '',
+                      date: row.date || '',
+                      chamber: row.chamber || ''
+                  });
+              }
+          }
+        });
+
+        return Array.from(billObject.values());
       } catch (e) {
         console.log('Data fetch did not work: ', e);
         return [];
