@@ -64,7 +64,7 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
           <p className="text-muted-foreground max-w-md">
-            You haven't adopted any bills yet. Use the button below to start tracking bills that interest you.
+            You haven`&apos;`t adopted any bills yet. Use the button below to start tracking bills that interest you.
           </p>
         </div>
         <div className="w-64">
