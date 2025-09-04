@@ -12,7 +12,7 @@ import { useKanbanBoard } from '@/hooks/use-kanban-board';
 import { useToast } from "@/hooks/use-toast"; // Import useToast
 import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
 import { Button } from '@/components/ui/button';
-import { useBills } from '@/hooks/use-bills';
+import { useBills } from '@/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
@@ -24,13 +24,12 @@ import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
 
 interface KanbanBoardProps {
-  initialBills: Bill[];
   readOnly: boolean;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
 }
 
-export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
+export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   

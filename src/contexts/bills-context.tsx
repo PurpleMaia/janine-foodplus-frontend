@@ -1,9 +1,10 @@
 'use client';
 
-import { getAllBills, updateBillStatusServerAction } from '@/services/legislation';
+import { getAllBills, getUserAdoptedBills, updateBillStatusServerAction } from '@/services/legislation';
 import React, { createContext, useContext, useState, ReactNode, Dispatch, SetStateAction, useEffect, useMemo } from 'react';
 import type { Bill, TempBill } from '@/types/legislation';
-import { toast } from './use-toast';
+import { toast } from '../hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 
 interface BillsContextType {
   loadingBills: boolean
@@ -27,7 +28,8 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     const [bills, setBills] = useState<Bill[]>([]);
     const [tempBills, setTempBills] = useState<TempBill[]>([])
     const [, setError] = useState<string | null>(null);
-    const [loadingBills, setLoadingBills] = useState(false);    
+    const [loadingBills, setLoadingBills] = useState(false);   
+    const { user } = useAuth();
 
     const acceptLLMChange = async(billId: string) => {
       const bill = bills.find(b => b.id === billId)
@@ -145,6 +147,13 @@ export function BillsProvider({ children }: { children : ReactNode }) {
       setLoadingBills(true)
       setError(null);        
       try {
+        if (user) {
+          const results = await getUserAdoptedBills(user.id);
+          setBills(results);
+          console.log('User adopted bills set in context')
+          console.log(results)
+          return;   
+        }
         const results = await getAllBills();
         setBills(results);
         console.log('successful results set in context')
@@ -163,6 +172,14 @@ export function BillsProvider({ children }: { children : ReactNode }) {
         setError(null);        
         const handler = setTimeout(async () => {
             try {
+              if (user) {
+                const results = await getUserAdoptedBills(user.id);
+                setBills(results);
+                console.log('User adopted bills set in context')
+                console.log(results)
+                return;   
+              }
+
               const results = await getAllBills();
               setBills(results);
               console.log('successful results set in context')
@@ -180,7 +197,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
             clearTimeout(handler);
           };
 
-    }, [])
+    }, [user])
 
     const value = useMemo(() => ({
       loadingBills, setLoadingBills, bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills, refreshBills

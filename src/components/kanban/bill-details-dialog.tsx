@@ -19,7 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useMemo, useState } from 'react';
 import AIUpdateSingleButton from '../llm/llm-update-single-button';
 import RefreshStatusesButton from '../scraper/scrape-updates-button';
-import { useBills } from '@/hooks/use-bills';
+import { useBills } from '@/contexts/bills-context';
 import { useAuth } from '@/contexts/auth-context';
 import { COLUMN_TITLES, KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import {
@@ -78,6 +78,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
 
+  // Find the bill based on billID
   const bill = useMemo(() => {
 
     const found = bills.find(b => b.id === billID)    
@@ -85,12 +86,14 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     return found
   }, [bills, billID])
       
+  // Sync selectedStatus with bill's current_status when dialog opens or bill changes
   useEffect(() => {
       if (isOpen && bill) {
           setSelectedStatus(bill.current_status || '');
       }
   }, [isOpen, bill, bill?.current_status, bill?.id]);
   
+  // Clear selectedStatus when dialog closes
   useEffect(() => {
       if (!isOpen) {
           setSelectedStatus('');
@@ -203,9 +206,9 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 <DetailItem label="Description" value={bill.description} />
                 <DetailItem label="Status" value={bill.current_status} badge />
                 <DetailItem label="Committee Assignment" value={bill.committee_assignment} />
-                <DetailItem label="Introducers" value={bill.introducers} />
-                <DetailItem label="Created" value={bill.created_at.toLocaleDateString()} />
-                <DetailItem label="Last Updated" value={bill.updated_at.toLocaleDateString()} />
+                <DetailItem label="Introducers" value={bill.introducer} />
+                <DetailItem label="Created" value={bill.created_at ? bill.created_at.toLocaleDateString() : ''} />
+                <DetailItem label="Last Updated" value={bill.updated_at ? bill.updated_at.toLocaleDateString() : ''} />
               </div>                
             </div>
 

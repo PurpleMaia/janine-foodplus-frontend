@@ -16,7 +16,7 @@ import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
 import { findExistingBillByURL, insertNewBill, updateFoodRelatedFlagByURL } from "@/services/legislation";
-import { useBills } from "@/hooks/use-bills";
+import { useBills } from "@/contexts/bills-context";
 
 
 interface NewBillDialogProps {
@@ -238,11 +238,11 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label className="text-sm font-medium text-muted-foreground">Created at</Label>
-                                <p className="font-mono text-sm">{billPreview.created_at.toDateString()}</p>
+                                <p className="font-mono text-sm">{billPreview.created_at ? billPreview.created_at.toDateString() : 'N/A'}</p>
                             </div>
                             <div>
                                 <Label className="text-sm font-medium text-muted-foreground">Last Updated</Label>
-                                <p className="font-mono text-sm">{billPreview.updated_at.toDateString()}</p>
+                                <p className="font-mono text-sm">{billPreview.updated_at ? billPreview.updated_at.toDateString() : 'N/A'}</p>
                             </div>                                                        
                         </div>
 

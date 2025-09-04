@@ -5,10 +5,11 @@ import { useAuth } from '@/contexts/auth-context';
 import { getUserAdoptedBills, adoptBill, unadoptBill } from '@/services/legislation';
 import { useToast } from '@/hooks/use-toast';
 import type { Bill } from '@/types/legislation';
+import { useBills } from '@/contexts/bills-context';
 
 export function useAdoptedBills() {
-  const { user } = useAuth();
-  const [bills, setBills] = useState<Bill[]>([]);
+  const { user } = useAuth();  
+  const { bills, setBills } = useBills();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();

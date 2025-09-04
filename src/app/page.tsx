@@ -6,7 +6,7 @@ import { ProtectedKanbanBoard } from '@/components/kanban/protected-kanban-board
 import { Button } from '@/components/ui/button';
 import NewBillButton from '@/components/new-bill/new-bill-button';
 import { AuthHeader } from '@/components/auth/auth-header';
-import { useBills } from '@/hooks/use-bills';
+import { useBills } from '@/contexts/bills-context';
 import { ProtectedComponent } from '@/components/auth/protected-component';
 
 

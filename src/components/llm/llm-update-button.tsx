@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { CircleStop, RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
-import { useBills } from '@/hooks/use-bills';
+import { useBills } from '@/contexts/bills-context';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 
 export default function AIUpdateButton() {
