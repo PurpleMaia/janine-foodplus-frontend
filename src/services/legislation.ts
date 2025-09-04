@@ -255,17 +255,15 @@ export async function insertNewBill(bill: Bill): Promise<Bill | null> {
 }
 
 // Bill adoption functions
-export async function adoptBill(userId: number, billUrl: string): Promise<boolean> {
+export async function adoptBill(userId: string, billUrl: string): Promise<boolean> {
   try {
 
     // First find the bill by URL
-    const billResult = await db.selectFrom('bills').select(['id'])
-      .where('bill_url', '=', billUrl).executeTakeFirst();
-
+    const billResult = await findExistingBillByURL(billUrl);
     if (!billResult) {
       console.log('Bill not found with URL:', billUrl);
       return false;
-    }
+    }    
 
     const billId = billResult.id;
 
@@ -283,7 +281,8 @@ export async function adoptBill(userId: number, billUrl: string): Promise<boolea
     // Add the adoption record
     await db.insertInto('user_bills').values({
       user_id: userId,
-      bill_id: billId
+      bill_id: billId,
+      adopted_at: new Date()
     }).execute();
 
     console.log(`Successfully adopted bill ${billId} for user ${userId}`);
@@ -294,12 +293,13 @@ export async function adoptBill(userId: number, billUrl: string): Promise<boolea
   }
 }
 
-export async function unadoptBill(userId: number, billId: string): Promise<boolean> {
+export async function unadoptBill(userId: string, billId: string): Promise<boolean> {
   try {
+    console.log('unadoptBill called with:', { userId, billId });
     const result = await db.deleteFrom('user_bills')
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
-      .execute();
+      .executeTakeFirstOrThrow();
 
     console.log(`Successfully unadopted bill ${billId} for user ${userId}`);
     return true;
@@ -309,7 +309,7 @@ export async function unadoptBill(userId: number, billId: string): Promise<boole
   }
 }
 
-export async function getUserAdoptedBills(userId: number): Promise<Bill[]> {
+export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
   try {
     console.log('getUserAdoptedBills called with userId:', userId);
     console.log('userId type:', typeof userId);
@@ -318,14 +318,27 @@ export async function getUserAdoptedBills(userId: number): Promise<Bill[]> {
     const rawAdoptedBills = await db.selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
       .where('ub.user_id', '=', userId)
-      .selectAll()
+      .select([
+        'b.bill_number',
+        'b.bill_title',
+        'b.bill_url',
+        'b.committee_assignment',
+        'b.created_at',
+        'b.current_status',
+        'b.current_status_string',
+        'b.description',
+        'b.food_related',
+        'b.id',
+        'b.introducer',
+        'b.nickname',
+        'b.updated_at'
+      ])
       .execute();
 
     console.log('SQL query result - adoptedBills count:', rawAdoptedBills.length);
     console.log('SQL query result - adoptedBills:', rawAdoptedBills);
 
     const adoptedBills: Bill[] = rawAdoptedBills.map(item => mapBillsToBill(item as unknown as Bills))
-
 
     // Add status updates for each adopted bill
     const billsWithUpdates: Bill[] = await Promise.all(

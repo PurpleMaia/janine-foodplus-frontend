@@ -16,8 +16,8 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 export interface AuthKey {
   created_at: Generated<Timestamp | null>;
   hashed_password: string;
-  id: Generated<number>;
-  user_id: Generated<number>;
+  id: Generated<string>;
+  user_id: string | null;
 }
 
 export interface Bills {
@@ -53,9 +53,9 @@ export interface ScrapingStats {
 export interface Sessions {
   created_at: Generated<Timestamp | null>;
   expires_at: Timestamp;
-  id: Generated<number>;
+  id: Generated<string>;
   session_token: string;
-  user_id: Generated<number>;
+  user_id: string | null;
 }
 
 export interface StatusUpdates {
@@ -69,7 +69,7 @@ export interface StatusUpdates {
 export interface User {
   created_at: Generated<Timestamp | null>;
   email: string;
-  id: Generated<number>;
+  id: Generated<string>;
   requested_admin: Generated<boolean>;
   role: Generated<string>;
   username: string;
@@ -78,8 +78,8 @@ export interface User {
 export interface UserBills {
   adopted_at: Generated<Timestamp | null>;
   bill_id: string | null;
-  id: Generated<number>;
-  user_id: Generated<number>;
+  id: Generated<string>;
+  user_id: string | null;
 }
 
 export interface DB {

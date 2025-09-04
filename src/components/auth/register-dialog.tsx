@@ -7,14 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
 
-export function LoginDialog() {
+export function RegisterDialog() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const { login } = useAuth();
+  const { register } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,25 +21,19 @@ export function LoginDialog() {
     setIsLoading(true);
 
     try {
-
-      //calls login from suth context
-      const success = await login(email, password);
+      const success = await register(email, password);
       if (success) {
-        //shows success message
         toast({
-          title: 'Success!',
-          description: 'You are now logged in.',
+          title: 'Registration successful!',
+          description: 'You can now log in with your new account.',
         });
-
-        //closes dialog and clears form
         setIsOpen(false);
         setEmail('');
         setPassword('');
       } else {
-        //shows error message
         toast({
-          title: 'Login failed',
-          description: 'Please check your email and password.',
+          title: 'Registration failed',
+          description: 'Please try again with a different email.',
           variant: 'destructive',
         });
       }
@@ -58,17 +51,17 @@ export function LoginDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Login / Sign Up</Button>
+        <Button variant="outline">Register</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Login</DialogTitle>
+          <DialogTitle>Register</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="register-email">Email</Label>
             <Input
-              id="email"
+              id="register-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -77,9 +70,9 @@ export function LoginDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="register-password">Password</Label>
             <Input
-              id="password"
+              id="register-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -87,11 +80,8 @@ export function LoginDialog() {
               required
             />
           </div>
-          <div className='space-y-2 text-center text-sm'>
-            Don`&apos;`t have an account? Please sign up <Link href="/register" className='text-blue-500 hover:underline'>here</Link>
-          </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? 'Registering...' : 'Register'}
           </Button>
         </form>
       </DialogContent>

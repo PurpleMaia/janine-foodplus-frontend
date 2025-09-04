@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { getUserAdoptedBills, adoptBill, unadoptBill } from '@/services/legislation';
+import { useToast } from '@/hooks/use-toast';
 import type { Bill } from '@/types/legislation';
 
 export function useAdoptedBills() {
@@ -10,6 +11,8 @@ export function useAdoptedBills() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
 
   const fetchAdoptedBills = useCallback(async () => {
     if (!user) {
@@ -43,6 +46,10 @@ export function useAdoptedBills() {
       if (success) {
         // Refresh the bills list after successful adoption
         await fetchAdoptedBills();
+        toast({
+          title: 'Bill adopted',
+          description: 'The bill was successfully added to your list.',
+        });
         return true;
       }
       return false;
@@ -54,12 +61,15 @@ export function useAdoptedBills() {
 
   const handleUnadoptBill = useCallback(async (billId: string) => {
     if (!user) return false;
-
     try {
       const success = await unadoptBill(user.id, billId);
       if (success) {
         // Remove the bill from the local state
         setBills(prev => prev.filter(bill => bill.id !== billId));
+        toast({
+          title: 'Bill removed',
+          description: 'The bill was successfully removed from your adopted list.',
+        });
         return true;
       }
       return false;

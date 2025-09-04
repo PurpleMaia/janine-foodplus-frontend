@@ -4,17 +4,17 @@ import { db } from '../../db/kysely/client';
 import { createHash } from 'crypto';
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
 }
 
 export interface Session {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   expiresAt: Date;
 }
 
-export async function createSession(userId: number): Promise<string> {
+export async function createSession(userId: string): Promise<string> {
 
   // Generate a secure random token
   const bytes = new Uint8Array(20);
@@ -37,14 +37,14 @@ export async function createSession(userId: number): Promise<string> {
     throw new Error('Failed to create session');
   }
 
-  return result.session_token;
+  return rawToken;
 }
 
 
 
 export async function validateSession(token: string): Promise<User | null> {
   try {
-    // Hash the token from the cookie
+    // // Hash the token from the cookie
     const hashedToken = createHash('sha256').update(token).digest('hex');
 
     // Query the database for the session and associated user
@@ -69,8 +69,9 @@ export async function validateSession(token: string): Promise<User | null> {
   }
 }
 
-export async function deleteSession(sessionId: number): Promise<void> {
-  await db.deleteFrom('sessions').where('id', '=', sessionId).execute();
+export async function deleteSession(token: string): Promise<void> {
+  const hashedToken = createHash('sha256').update(token).digest('hex');
+  await db.deleteFrom('sessions').where('session_token', '=', hashedToken).execute();
 }
 
 export async function authenticateUser(email: string, password: string): Promise<User | null> {
@@ -104,6 +105,44 @@ export async function authenticateUser(email: string, password: string): Promise
     return { id: userResult.id, email: userResult.email };  //Success
   } catch (error) {
     console.error('Authentication error:', error);
+    return null;
+  }
+}
+
+export async function registerUser(email: string, password: string): Promise<User | null> {
+  try {
+    //1. Check if user already exists
+    const existingUser = await db.selectFrom('user')
+      .selectAll()
+      .where('email', '=', email)
+      .executeTakeFirst();
+
+    if (existingUser) {
+      return null; // User already exists
+    }
+
+    //2. Create new user
+    const userResult = await db.insertInto('user').values({
+      email, 
+      created_at: new Date(),
+      role: 'user',
+      username: email.split('@')[0], // Simple username from email
+      requested_admin: false
+    }).returning('id').executeTakeFirst();
+
+    if (!userResult || !userResult.id) {
+      throw new Error('Failed to create user');
+    }
+
+    const userId = userResult.id;
+
+    //3. Hash password and store in auth_key table
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await db.insertInto('auth_key').values({ user_id: userId, hashed_password: hashedPassword }).execute();
+
+    return { id: userId, email }; // Return the new user
+  } catch (error) {
+    console.error('Registration error:', error);
     return null;
   }
 }

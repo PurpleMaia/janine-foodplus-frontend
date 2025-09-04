@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     //gets session token from cookie 
     const session_token = getSessionCookie(request);
+    console.log('Session token from cookie:', session_token);
     
     //if there is no cookie, user is not logged in
     if (!session_token) {
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
 
     //validates session in the databse 
     const user = await validateSession(session_token);
+    console.log('Validated user from session token:', user);
     
 
     //returns user info if valid, null if invalid
