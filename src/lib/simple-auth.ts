@@ -53,13 +53,12 @@ export async function validateSession(token: string): Promise<User | null> {
       .select(['u.id', 'u.email'])
       .where('s.session_token', '=', hashedToken)
       .where('s.expires_at', '>', new Date())
-      .execute();    
+      .executeTakeFirst();    
     
-    if (result && result.length > 0) {
-      const row = result[0];
+    if (result) {      
       return {
-        id: row.id,
-        email: row.email
+        id: result.id,
+        email: result.email
       };
     }
     return null;
