@@ -68,63 +68,78 @@ import { mapBillsToBill } from '@/lib/utils';
 
 export async function getAllBills(): Promise<Bill[]> {
     try {
-        const rawData = await db.selectFrom('bills').selectAll()
-            .where('food_related', '=', true) // Only food-related bills
-            .execute()
+        const rawData = await db
+          .selectFrom('bills as b')
+          .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
+          .select([
+            'b.bill_number',
+            'b.bill_title',
+            'b.bill_url',
+            'b.committee_assignment',
+            'b.created_at',
+            'b.current_status',
+            'b.current_status_string',
+            'b.description',
+            'b.food_related',
+            'b.id',
+            'b.introducer',
+            'b.nickname',
+            'b.updated_at',
+            'su.id as status_update_id', 
+            'su.statustext',
+            'su.date',
+            'su.chamber'
+          ])            
+          .where('food_related', '=', true) // Only food-related bills
+          .orderBy('b.updated_at', 'desc')  // Most recently updated first
+          .orderBy('su.date', 'desc')       // Then most recently created
+          .execute()
+        
+        // Map rawData to Bill objects
+        const billObject = new Map<string, Bill>();
 
-        const bills: Bill[] = rawData.map(item => mapBillsToBill(item as unknown as Bills))
-         
-        const dataWithStatusUpdates: Bill[] = await Promise.all(
-          bills.map(async(bill) => {
-          try {
-              const result = await db.selectFrom('status_updates').selectAll()
-                .where('bill_id', '=', bill.id)
-                .orderBy('date', 'desc')
-                .execute();
+        rawData.forEach(row => {
 
-              return {
-                ...bill,
-                updates: result
-              }
-          } catch (e) {
-            console.log('Status update fetch did not work for: ', bill.id, e)
-            return {
-              ...bill,
-              updates: []
-            }
+          // If bill not already added to client-side bill object, map to client container
+          if (!billObject.has(row.id)) {
+            billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
           }
-        })
-      )
 
-      const sortedBills = dataWithStatusUpdates.sort((a, b) =>
-        {
-          const dateA = a.updated_at ? a.updated_at.getTime() : 0;
-          const dateB = b.updated_at ? b.updated_at.getTime() : 0;
-          return dateB - dateA; // Descending order
-        }
-      );
+          // Add status update if it exists
+          if (row.status_update_id) {
+              const bill = billObject.get(row.id);
+              if (bill) {
+                  bill.updates.push({
+                      id: row.status_update_id,
+                      statustext: row.statustext || '',
+                      date: row.date || '',
+                      chamber: row.chamber || ''
+                  });
+              }
+          }
+        });
 
-      return sortedBills;
-    } catch (e) {
+        return Array.from(billObject.values());
+      } catch (e) {
         console.log('Data fetch did not work: ', e);
         return [];
+      }
     }
     
-    // ----- Holding this code here if need to set the flags based on the filter ----------
-    // const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
-    // const billIds = filteredData.map(bill => bill.id)
-    // if (billIds.length > 0) {
-      //   if (billIds.length > 0) {
-        //     const result = await sql`
-        //       UPDATE bills 
-        //       SET food_related = true 
-        //       WHERE id = ANY(${billIds})
-        //     `;
-        //     console.log(`Updated ${result.count} rows`);
-        //   }
-        // }
-      // ----- Holding this code here if need to set the flags based on the filter again ----------
-}
+// ----- Holding this code here if need to set the flags based on the filter ----------
+// const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
+// const billIds = filteredData.map(bill => bill.id)
+// if (billIds.length > 0) {
+  //   if (billIds.length > 0) {
+    //     const result = await sql`
+    //       UPDATE bills 
+    //       SET food_related = true 
+    //       WHERE id = ANY(${billIds})
+    //     `;
+    //     console.log(`Updated ${result.count} rows`);
+    //   }
+    // }
+  // ----- Holding this code here if need to set the flags based on the filter again ----------
 
 // const containsFoodKeywords = (bill: Bill) => {
 //   const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
@@ -138,20 +153,14 @@ export async function getAllBills(): Promise<Bill[]> {
  * @param query The search query.
  * @returns A promise that resolves to an array of matching Bill objects.
  */
-export async function searchBills(query: string): Promise<Bill[]> {
-
-  const allBills = await getAllBills()
+export async function searchBills(bills: Bill[], query: string): Promise<Bill[]> {
 
   if (!query) {
-    return allBills; // Return all sorted bills if query is empty
+    return bills; // Return all sorted bills if query is empty
   }
-  const lowerCaseQuery = query.toLowerCase();
+  const lowerCaseQuery = query.toLowerCase();  
 
-  if (!allBills) {
-    throw new Error('Error fetching data')
-  }
-
-  return allBills.filter(bill =>
+  return bills.filter(bill =>
     bill.id.toLowerCase().includes(lowerCaseQuery) ||
     bill.bill_number.toLowerCase().includes(lowerCaseQuery) ||
     bill.bill_title.toLowerCase().includes(lowerCaseQuery) ||
@@ -283,7 +292,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
       user_id: userId,
       bill_id: billId,
       adopted_at: new Date()
-    }).execute();
+    }).executeTakeFirst();
 
     console.log(`Successfully adopted bill ${billId} for user ${userId}`);
     return true;
@@ -311,12 +320,10 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
 
 export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
   try {
-    console.log('getUserAdoptedBills called with userId:', userId);
-    console.log('userId type:', typeof userId);
-
-    // Get all bills that the user has adopted
-    const rawAdoptedBills = await db.selectFrom('bills as b')
+    const rawData = await db
+      .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
+      .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
       .where('ub.user_id', '=', userId)
       .select([
         'b.bill_number',
@@ -331,47 +338,43 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
         'b.id',
         'b.introducer',
         'b.nickname',
-        'b.updated_at'
+        'b.updated_at',
+        'su.id as status_update_id',
+        'su.statustext',
+        'su.date',
+        'su.chamber'
       ])
+      .orderBy('b.updated_at', 'desc')
+      .orderBy('su.date', 'desc')
       .execute();
 
-    console.log('SQL query result - adoptedBills count:', rawAdoptedBills.length);
-    console.log('SQL query result - adoptedBills:', rawAdoptedBills);
+    // Map rawData to Bill objects using Map to handle duplicates
+    const billObject = new Map<string, Bill>();
 
-    const adoptedBills: Bill[] = rawAdoptedBills.map(item => mapBillsToBill(item as unknown as Bills))
+    rawData.forEach(row => {
+      // If bill not already added to client-side bill object, map to client container
+      if (!billObject.has(row.id)) {
+        billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
+      }
 
-    // Add status updates for each adopted bill
-    const billsWithUpdates: Bill[] = await Promise.all(
-      adoptedBills.map(async (bill) => {
-        try {
-          const result = await db.selectFrom('status_updates').selectAll()
-              .where('bill_id', '=', bill.id)
-              .orderBy('date', 'desc')
-              .execute();
-
-          return {
-            ...bill,
-            updates: result
-          };
-        } catch (e) {
-          console.log('Status update fetch did not work for:', bill.id, e);
-          return {
-            ...bill,
-            updates: []
-          };
+      // Add status update if it exists
+      if (row.status_update_id) {
+        const bill = billObject.get(row.id);
+        if (bill) {
+          if (!bill.updates) {
+            bill.updates = [];
+          }
+          bill.updates.push({
+            id: row.status_update_id,
+            statustext: row.statustext || '',
+            date: row.date || '',
+            chamber: row.chamber || ''
+          });
         }
-      })
-    );
+      }
+    });
 
-    // Sort by updated_at date descending (most recent first)
-    const sortedBills = billsWithUpdates.sort((a, b) =>
-        {
-          const dateA = a.updated_at ? a.updated_at.getTime() : 0;
-          const dateB = b.updated_at ? b.updated_at.getTime() : 0;
-          return dateB - dateA; // Descending order
-        }
-      );
-      return sortedBills;
+    return Array.from(billObject.values());
   } catch (error) {
     console.error('Failed to get user adopted bills:', error);
     return [];

@@ -6,30 +6,19 @@ import { KanbanBoard } from './kanban-board';
 import { KanbanSpreadsheet } from './kanban-spreadsheet';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 import { AdoptBillDialog } from './adopt-bill-dialog';
-import type { Bill } from '@/types/legislation';
-import { KanbanBoardOrSpreadsheet } from '@/app/KanbanBoardOrSpreadsheet';
+import { useBills } from '@/contexts/bills-context';
 
 interface ProtectedKanbanBoardProps {
-  initialBills: Bill[];
   view: 'kanban' | 'spreadsheet';
 }
 
-export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoardProps) {
+export function ProtectedKanbanBoard({ view }: ProtectedKanbanBoardProps) {
   const { user, loading } = useAuth();
-  const { bills: adoptedBills, loading: adoptedBillsLoading, refreshBills, unadoptBill } = useAdoptedBills();
-
-  // Debug logging
-  console.log('ProtectedKanbanBoard Debug:', {
-    user: user?.email,
-    loading,
-    adoptedBillsLoading,
-    adoptedBillsLength: adoptedBills?.length || 0,
-    adoptedBills: adoptedBills,
-    initialBillsLength: initialBills?.length || 0
-  });
+  const { bills, loadingBills } = useBills();
+  const { unadoptBill } = useAdoptedBills();
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading...</div>;
+    return null
   }
 
   // If not authenticated, show read-only view of all bills
@@ -44,31 +33,26 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
           </p>
         </div>
         {view === 'kanban' ? (
-          <KanbanBoard initialBills={initialBills} readOnly={true} />
+          <KanbanBoard readOnly={true} />
         ) : (
-          <KanbanSpreadsheet bills={initialBills} />
+          <KanbanSpreadsheet />
         )}
       </div>
     );
   }
 
-  // If authenticated, show only adopted bills
-  if (adoptedBillsLoading) {
-    return <div className="flex items-center justify-center h-full">Loading your bills...</div>;
-  }
-
   // Show adopted bills if user has any, otherwise show empty state with adopt button
-  if (adoptedBills.length === 0) {
+  if (user && bills.length === 0 && !loadingBills) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
           <p className="text-muted-foreground max-w-md">
-            You haven`&apos;`t adopted any bills yet. Use the button below to start tracking bills that interest you.
+            You haven&apos;t adopted any bills yet. Use the button below to start tracking bills that interest you.
           </p>
         </div>
         <div className="w-64">
-          <AdoptBillDialog onBillAdopted={refreshBills} />
+          <AdoptBillDialog />
         </div>
       </div>
     );
@@ -79,20 +63,18 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2>Your Adopted Bills</h2>
-        <AdoptBillDialog onBillAdopted={refreshBills} />
+        <AdoptBillDialog />
       </div>
 
       {/* <KanbanBoardOrSpreadsheet view={view} bills={adoptedBills} />  */}
       {view === 'kanban' ? (
         <KanbanBoard 
-          key={adoptedBills.length}
-          initialBills={adoptedBills}  // ← THIS is where bills are passed!
           readOnly={false} 
           onUnadopt={unadoptBill}
           showUnadoptButton={true}
         />
       ) : (
-        <KanbanSpreadsheet bills={adoptedBills} />
+        <KanbanSpreadsheet />
       )}
     </div>
   );

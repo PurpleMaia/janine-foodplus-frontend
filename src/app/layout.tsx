@@ -3,8 +3,11 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { KanbanBoardProvider } from '@/hooks/use-kanban-board'; // Import the provider
 import { Toaster } from "@/components/ui/toaster" // Import Toaster for potential notifications
-import { BillsProvider } from '@/hooks/use-bills';
+import { BillsProvider } from '@/contexts/bills-context';
 import { AuthProvider } from '@/contexts/auth-context';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/react-query';
+import { Providers } from '@/lib/providers';
 
 
 
@@ -35,13 +38,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning={true}>
       {/* Add suppressHydrationWarning to body to ignore extension-injected attributes */}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning={true}>
-        <AuthProvider>
-          <KanbanBoardProvider> {/* Wrap children with the provider */}
-            <BillsProvider>
-              {children}
-            </BillsProvider>
-          </KanbanBoardProvider>
-        </AuthProvider>
+        <Providers>
+          {children}
+        </Providers>
         <Toaster /> {/* Add toaster for notifications */}
       </body>
     </html>

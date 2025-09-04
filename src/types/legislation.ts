@@ -53,7 +53,7 @@ export interface Bill {
   updated_at: Date | null;
 
   // client side attributes
-  updates?: StatusUpdate[]
+  updates: StatusUpdate[]
   previous_status?: string;  
   llm_suggested?: boolean;  
   llm_processing?: boolean;  

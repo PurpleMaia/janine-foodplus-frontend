@@ -12,9 +12,8 @@ import { useKanbanBoard } from '@/hooks/use-kanban-board';
 import { useToast } from "@/hooks/use-toast"; // Import useToast
 import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
 import { Button } from '@/components/ui/button';
-import { useBills } from '@/hooks/use-bills';
+import { useBills } from '@/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
-import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
 
 
@@ -24,25 +23,16 @@ import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
 
 interface KanbanBoardProps {
-  initialBills: Bill[];
   readOnly: boolean;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
 }
 
-export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
+export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   
-  // Always call all hooks at the top level
-  const { loadingBills, setLoadingBills, bills: allBills, setBills: setAllBills } = useBills();
-  const { loading: loadingAdopted, setLoading: setLoadingAdopted, bills: adoptedBills, setBills: setAdoptedBills } = useAdoptedBills();
-  
-  // Use conditional logic for data, not for hooks
-  const bills = readOnly ? allBills : adoptedBills;
-  const loading = readOnly ? loadingBills : loadingAdopted;
-  const setBills = readOnly ? setAllBills : setAdoptedBills;
-  const setLoading = readOnly ? setLoadingBills : setLoadingAdopted;
+  const { loadingBills: loading, setLoadingBills: setLoading, bills, setBills } = useBills();
 
   const [, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
@@ -107,7 +97,7 @@ export function KanbanBoard({ initialBills, readOnly, onUnadopt, showUnadoptButt
     const handler = setTimeout(async () => {
       setLoading(true)
       try {
-        const results = await searchBills(searchQuery);
+        const results = await searchBills(bills, searchQuery);
         setFilteredBills(results);        
       } catch (err) {
         console.error("Error searching bills:", err);

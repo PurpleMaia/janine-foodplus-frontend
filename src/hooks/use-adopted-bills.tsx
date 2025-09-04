@@ -5,14 +5,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { getUserAdoptedBills, adoptBill, unadoptBill } from '@/services/legislation';
 import { useToast } from '@/hooks/use-toast';
 import type { Bill } from '@/types/legislation';
+import { useBills } from '@/contexts/bills-context';
 
 export function useAdoptedBills() {
-  const { user } = useAuth();
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();  
+  const { setBills, setLoadingBills: setLoading } = useBills(); // Set to the main bills context
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
 
   const fetchAdoptedBills = useCallback(async () => {
     if (!user) {
@@ -30,6 +29,7 @@ export function useAdoptedBills() {
       const adoptedBills = await getUserAdoptedBills(user.id);
       console.log('Fetched adopted bills:', adoptedBills.length, adoptedBills);
       setBills(adoptedBills);
+
     } catch (err) {
       setError('Failed to fetch adopted bills');
       console.error('Error fetching adopted bills:', err);
@@ -45,11 +45,7 @@ export function useAdoptedBills() {
       const success = await adoptBill(user.id, billUrl);
       if (success) {
         // Refresh the bills list after successful adoption
-        await fetchAdoptedBills();
-        toast({
-          title: 'Bill adopted',
-          description: 'The bill was successfully added to your list.',
-        });
+        await fetchAdoptedBills();        
         return true;
       }
       return false;
@@ -85,11 +81,7 @@ export function useAdoptedBills() {
   }, [fetchAdoptedBills]);
 
   return {
-    bills,
-    loading,
     error,
-    setLoading,
-    setBills,
     adoptBill: handleAdoptBill,
     unadoptBill: handleUnadoptBill,
     refreshBills: fetchAdoptedBills,

@@ -6,7 +6,7 @@ import { ProtectedKanbanBoard } from '@/components/kanban/protected-kanban-board
 import { Button } from '@/components/ui/button';
 import NewBillButton from '@/components/new-bill/new-bill-button';
 import { AuthHeader } from '@/components/auth/auth-header';
-import { useBills } from '@/hooks/use-bills';
+import { useBills } from '@/contexts/bills-context';
 import { ProtectedComponent } from '@/components/auth/protected-component';
 
 
@@ -19,7 +19,6 @@ import { ProtectedComponent } from '@/components/auth/protected-component';
 
 export default function Home() {
   const [view, setView] = useState<'kanban' | 'spreadsheet'>('kanban');
-  const { bills } = useBills();
   // const initialBills = await getAllBills();
 
   return (
@@ -51,7 +50,7 @@ export default function Home() {
         </Button>
         </div>
       <main className="flex-1 overflow-hidden">
-          <ProtectedKanbanBoard view={view} initialBills={bills}/>        
+          <ProtectedKanbanBoard view={view}/>        
       </main>
     </div>
   );
