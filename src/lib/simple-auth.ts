@@ -114,8 +114,8 @@ export async function registerUser(email: string, password: string): Promise<Use
     //1. Check if user already exists
     const existingUser = await db.selectFrom('user')
       .selectAll()
-      .where('email', '=', email).
-      executeTakeFirst();
+      .where('email', '=', email)
+      .executeTakeFirst();
 
     if (existingUser) {
       return null; // User already exists

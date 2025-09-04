@@ -88,7 +88,7 @@ export function LoginDialog() {
             />
           </div>
           <div className='space-y-2 text-center text-sm'>
-            Don't have an account? Please sign up <Link href="/register" className='text-blue-500 hover:underline'>here</Link>
+            Don`&apos;`t have an account? Please sign up <Link href="/register" className='text-blue-500 hover:underline'>here</Link>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Logging in...' : 'Login'}
