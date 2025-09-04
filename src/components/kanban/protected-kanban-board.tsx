@@ -16,17 +16,7 @@ interface ProtectedKanbanBoardProps {
 
 export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoardProps) {
   const { user, loading } = useAuth();
-  const { bills: adoptedBills, loading: adoptedBillsLoading, refreshBills, unadoptBill } = useAdoptedBills();
-
-  // Debug logging
-  console.log('ProtectedKanbanBoard Debug:', {
-    user: user?.email,
-    loading,
-    adoptedBillsLoading,
-    adoptedBillsLength: adoptedBills?.length || 0,
-    adoptedBills: adoptedBills,
-    initialBillsLength: initialBills?.length || 0
-  });
+  const { unadoptBill, refreshBills } = useAdoptedBills();
 
   if (loading) {
     return <div className="flex items-center justify-center h-full">Loading...</div>;
@@ -44,21 +34,16 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
           </p>
         </div>
         {view === 'kanban' ? (
-          <KanbanBoard initialBills={initialBills} readOnly={true} />
+          <KanbanBoard readOnly={true} />
         ) : (
-          <KanbanSpreadsheet bills={initialBills} />
+          <KanbanSpreadsheet />
         )}
       </div>
     );
   }
 
-  // If authenticated, show only adopted bills
-  if (adoptedBillsLoading) {
-    return <div className="flex items-center justify-center h-full">Loading your bills...</div>;
-  }
-
   // Show adopted bills if user has any, otherwise show empty state with adopt button
-  if (adoptedBills.length === 0) {
+  if (initialBills.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
         <div className="text-center space-y-4">
@@ -85,14 +70,12 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
       {/* <KanbanBoardOrSpreadsheet view={view} bills={adoptedBills} />  */}
       {view === 'kanban' ? (
         <KanbanBoard 
-          key={adoptedBills.length}
-          initialBills={adoptedBills}  // ← THIS is where bills are passed!
           readOnly={false} 
           onUnadopt={unadoptBill}
           showUnadoptButton={true}
         />
       ) : (
-        <KanbanSpreadsheet bills={adoptedBills} />
+        <KanbanSpreadsheet />
       )}
     </div>
   );

@@ -10,13 +10,12 @@ import {
 } from '@/components/ui/table';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useState } from 'react';
+import { useBills } from '@/contexts/bills-context';
 
-interface KanbanSpreadsheetProps {
-  bills: Bill[];
-}
 
-export function KanbanSpreadsheet({ bills }: KanbanSpreadsheetProps) {
+export function KanbanSpreadsheet() {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
+  const { bills } = useBills();
 
   return (
     <div className="h-full w-full overflow-auto">
@@ -73,9 +72,9 @@ export function KanbanSpreadsheet({ bills }: KanbanSpreadsheetProps) {
                 </TableCell>
                 <TableCell>{bill.current_status}</TableCell>
                 <TableCell>{bill.committee_assignment}</TableCell>
-                <TableCell>{bill.introducers}</TableCell>
-                <TableCell>{new Date(bill.created_at).toLocaleDateString()}</TableCell>
-                <TableCell>{new Date(bill.updated_at).toLocaleDateString()}</TableCell>
+                <TableCell>{bill.introducer}</TableCell>
+                <TableCell>{bill.created_at ? new Date(bill.created_at).toLocaleDateString() : 'N/A'}</TableCell>
+                <TableCell>{bill.updated_at ? new Date(bill.updated_at).toLocaleDateString() : 'N/A'}</TableCell>
               </TableRow>
             ))}
           </TableBody>

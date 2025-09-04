@@ -34,14 +34,8 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   const { toast } = useToast(); // Get toast function
   
   // Always call all hooks at the top level
-  const { loadingBills, setLoadingBills, bills: allBills, setBills: setAllBills } = useBills();
-  const { loading: loadingAdopted, setLoading: setLoadingAdopted, bills: adoptedBills, setBills: setAdoptedBills } = useAdoptedBills();
+  const { loadingBills: loading, setLoadingBills: setLoading, bills, setBills } = useBills();
   
-  // Use conditional logic for data, not for hooks
-  const bills = readOnly ? allBills : adoptedBills;
-  const loading = readOnly ? loadingBills : loadingAdopted;
-  const setBills = readOnly ? setAllBills : setAdoptedBills;
-  const setLoading = readOnly ? setLoadingBills : setLoadingAdopted;
 
   const [, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);

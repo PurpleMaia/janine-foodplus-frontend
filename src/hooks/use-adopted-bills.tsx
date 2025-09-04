@@ -9,11 +9,10 @@ import { useBills } from '@/contexts/bills-context';
 
 export function useAdoptedBills() {
   const { user } = useAuth();  
-  const { bills, setBills } = useBills();
+  const { setBills } = useBills(); // Set to the main bills context
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
 
   const fetchAdoptedBills = useCallback(async () => {
     if (!user) {
@@ -86,7 +85,6 @@ export function useAdoptedBills() {
   }, [fetchAdoptedBills]);
 
   return {
-    bills,
     loading,
     error,
     setLoading,
