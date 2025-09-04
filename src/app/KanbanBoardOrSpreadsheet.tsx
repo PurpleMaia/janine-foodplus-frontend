@@ -5,19 +5,18 @@ import { KanbanSpreadsheet } from '@/components/kanban/kanban-spreadsheet';
 import { Bill } from '@/types/legislation';
 
 interface KanbanBoardOrSpreadsheetProps {
-  bills: Bill[]
   view: 'kanban' | 'spreadsheet'
 
 }
-export function KanbanBoardOrSpreadsheet({ bills, view }: KanbanBoardOrSpreadsheetProps) {  
-  
+export function KanbanBoardOrSpreadsheet({ view }: KanbanBoardOrSpreadsheetProps) {
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <main className="flex-1 overflow-hidden">                
             {view === 'kanban' ? (
               <KanbanBoard readOnly={false} />
             ) : (
-              <KanbanSpreadsheet bills={bills} />
+              <KanbanSpreadsheet />
             )}    
       </main>
     </div>

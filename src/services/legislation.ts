@@ -264,14 +264,14 @@ export async function insertNewBill(bill: Bill): Promise<Bill | null> {
 }
 
 // Bill adoption functions
-export async function adoptBill(userId: string, billUrl: string) {
+export async function adoptBill(userId: string, billUrl: string): Promise<boolean> {
   try {
 
     // First find the bill by URL
     const billResult = await findExistingBillByURL(billUrl);
     if (!billResult) {
       console.log('Bill not found with URL:', billUrl);
-      return null;
+      return false;
     }    
 
     const billId = billResult.id;
@@ -284,18 +284,18 @@ export async function adoptBill(userId: string, billUrl: string) {
 
     if (alreadyAdopted && alreadyAdopted.length > 0) {
       console.log('Bill already adopted by user');
-      return null;
+      return false;
     }
 
     // Add the adoption record
-    const adoptedBill= await db.insertInto('user_bills').values({
+    await db.insertInto('user_bills').values({
       user_id: userId,
       bill_id: billId,
       adopted_at: new Date()
-    }).returning(['bill_id']).executeTakeFirst();
+    }).executeTakeFirst();
 
     console.log(`Successfully adopted bill ${billId} for user ${userId}`);
-    return adoptedBill;
+    return true;
   } catch (error) {
     console.error('Failed to adopt bill:', error);
     return false;

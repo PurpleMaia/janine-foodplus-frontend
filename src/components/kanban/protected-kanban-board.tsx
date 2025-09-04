@@ -18,7 +18,7 @@ export function ProtectedKanbanBoard({ view }: ProtectedKanbanBoardProps) {
   const { unadoptBill } = useAdoptedBills();
 
   if (loading) {
-    return
+    return null
   }
 
   // If not authenticated, show read-only view of all bills
