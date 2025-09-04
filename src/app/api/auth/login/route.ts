@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
 
     //creates new session in database
     const token = await createSession(user.id);
+    console.log('Created session token:', token);
 
 
     //Returns success with user info AND sets cookie

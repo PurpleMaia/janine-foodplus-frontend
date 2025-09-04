@@ -4,17 +4,17 @@ import { db } from '../../db/kysely/client';
 import { createHash } from 'crypto';
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
 }
 
 export interface Session {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   expiresAt: Date;
 }
 
-export async function createSession(userId: number): Promise<string> {
+export async function createSession(userId: string): Promise<string> {
 
   // Generate a secure random token
   const bytes = new Uint8Array(20);
@@ -37,14 +37,14 @@ export async function createSession(userId: number): Promise<string> {
     throw new Error('Failed to create session');
   }
 
-  return result.session_token;
+  return rawToken;
 }
 
 
 
 export async function validateSession(token: string): Promise<User | null> {
   try {
-    // Hash the token from the cookie
+    // // Hash the token from the cookie
     const hashedToken = createHash('sha256').update(token).digest('hex');
 
     // Query the database for the session and associated user
