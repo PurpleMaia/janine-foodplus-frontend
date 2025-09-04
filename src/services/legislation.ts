@@ -289,6 +289,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
 
 export async function unadoptBill(userId: string, billId: string): Promise<boolean> {
   try {
+    console.log('unadoptBill called with:', { userId, billId });
     const result = await db.deleteFrom('user_bills')
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
@@ -311,7 +312,21 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
     const rawAdoptedBills = await db.selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
       .where('ub.user_id', '=', userId)
-      .selectAll()
+      .select([
+        'b.bill_number',
+        'b.bill_title',
+        'b.bill_url',
+        'b.committee_assignment',
+        'b.created_at',
+        'b.current_status',
+        'b.current_status_string',
+        'b.description',
+        'b.food_related',
+        'b.id',
+        'b.introducer',
+        'b.nickname',
+        'b.updated_at'
+      ])
       .execute();
 
     console.log('SQL query result - adoptedBills count:', rawAdoptedBills.length);
