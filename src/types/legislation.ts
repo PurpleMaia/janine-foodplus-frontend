@@ -1,4 +1,5 @@
 import type { KANBAN_COLUMNS } from '@/lib/kanban-columns';
+import { Timestamp } from '../../db/types';
 
 // Extract column IDs as possible statuses
 export type BillStatus = (typeof KANBAN_COLUMNS)[number]['id'];
@@ -36,22 +37,26 @@ export interface NewsArticle {
  * Represents a bill in the legislative process.
  */
 export interface Bill {
-  id: string;  
+  // attributes from the database
+  bill_number: string;
+  bill_title: string;  
   bill_url: string;
-  description: string; 
+  committee_assignment: string;
+  created_at: Date | null;
   current_status: string;  
   current_status_string: string;
-  created_at: Date;
-  updated_at: Date;
-  committee_assignment: string;
-  bill_title: string;  
-  introducers: string;
-  bill_number: string;
+  description: string; 
+  food_related: boolean | null;
+  id: string;  
+  introducer: string;
+  nickname: string;
+  updated_at: Date | null;
+
+  // client side attributes
   updates?: StatusUpdate[]
   previous_status?: string;  
   llm_suggested?: boolean;  
   llm_processing?: boolean;  
-  food_related: boolean | null;
 }
 
 export interface TempBill {
@@ -62,8 +67,8 @@ export interface TempBill {
 }
 
 export interface StatusUpdate {
-  id: string;
   chamber: string;
   date: string;
+  id: string;
   statustext: string
 }
