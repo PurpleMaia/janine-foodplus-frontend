@@ -9,11 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { adoptBill } from '@/services/legislation';
 import { useAuth } from '@/contexts/auth-context';
 
-interface AdoptBillDialogProps {
-  onBillAdopted: () => void;
-}
-
-export function AdoptBillDialog({ onBillAdopted }: AdoptBillDialogProps) {
+export function AdoptBillDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [billUrl, setBillUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +46,6 @@ export function AdoptBillDialog({ onBillAdopted }: AdoptBillDialogProps) {
         });
         setBillUrl('');
         setIsOpen(false);
-        onBillAdopted(); // Refresh the bills list
       } else {
         toast({
           title: "Adoption Failed",

@@ -6,20 +6,19 @@ import { KanbanBoard } from './kanban-board';
 import { KanbanSpreadsheet } from './kanban-spreadsheet';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 import { AdoptBillDialog } from './adopt-bill-dialog';
-import type { Bill } from '@/types/legislation';
-import { KanbanBoardOrSpreadsheet } from '@/app/KanbanBoardOrSpreadsheet';
+import { useBills } from '@/contexts/bills-context';
 
 interface ProtectedKanbanBoardProps {
-  initialBills: Bill[];
   view: 'kanban' | 'spreadsheet';
 }
 
-export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoardProps) {
+export function ProtectedKanbanBoard({ view }: ProtectedKanbanBoardProps) {
   const { user, loading } = useAuth();
-  const { unadoptBill, refreshBills } = useAdoptedBills();
+  const { bills, loadingBills } = useBills();
+  const { unadoptBill } = useAdoptedBills();
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading...</div>;
+    return
   }
 
   // If not authenticated, show read-only view of all bills
@@ -43,7 +42,7 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
   }
 
   // Show adopted bills if user has any, otherwise show empty state with adopt button
-  if (initialBills.length === 0) {
+  if (user && bills.length === 0 && !loadingBills) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
         <div className="text-center space-y-4">
@@ -53,7 +52,7 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
           </p>
         </div>
         <div className="w-64">
-          <AdoptBillDialog onBillAdopted={refreshBills} />
+          <AdoptBillDialog />
         </div>
       </div>
     );
@@ -64,7 +63,7 @@ export function ProtectedKanbanBoard({ initialBills, view }: ProtectedKanbanBoar
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2>Your Adopted Bills</h2>
-        <AdoptBillDialog onBillAdopted={refreshBills} />
+        <AdoptBillDialog />
       </div>
 
       {/* <KanbanBoardOrSpreadsheet view={view} bills={adoptedBills} />  */}

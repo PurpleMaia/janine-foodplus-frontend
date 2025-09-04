@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, ReactNode, Dispatch, SetSta
 import type { Bill, TempBill } from '@/types/legislation';
 import { toast } from '../hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { useAdoptedBills, useAllBills } from '@/hooks/use-query-bills';
 
 interface BillsContextType {
   loadingBills: boolean
@@ -30,6 +31,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     const [, setError] = useState<string | null>(null);
     const [loadingBills, setLoadingBills] = useState(false);   
     const { user } = useAuth();
+    const { data: allBills } = useAllBills();
 
     const acceptLLMChange = async(billId: string) => {
       const bill = bills.find(b => b.id === billId)
@@ -163,7 +165,6 @@ export function BillsProvider({ children }: { children : ReactNode }) {
         setError("Failed to search bills.");
       } finally {
         setLoadingBills(false);    
-                  
       }
     }
     
@@ -172,18 +173,15 @@ export function BillsProvider({ children }: { children : ReactNode }) {
         setError(null);        
         const handler = setTimeout(async () => {
             try {
-              if (user) {
+              if (user) {                
                 const results = await getUserAdoptedBills(user.id);
-                setBills(results);
+                setBills(results); 
                 console.log('User adopted bills set in context')
-                console.log(results)
                 return;   
               }
 
-              const results = await getAllBills();
-              setBills(results);
+              setBills(allBills || []);
               console.log('successful results set in context')
-              console.log(results)
             } catch (err) {
               console.error("Error searching bills:", err);
               setError("Failed to search bills.");

@@ -19,7 +19,6 @@ import { ProtectedComponent } from '@/components/auth/protected-component';
 
 export default function Home() {
   const [view, setView] = useState<'kanban' | 'spreadsheet'>('kanban');
-  const { bills } = useBills();
   // const initialBills = await getAllBills();
 
   return (
@@ -51,7 +50,7 @@ export default function Home() {
         </Button>
         </div>
       <main className="flex-1 overflow-hidden">
-          <ProtectedKanbanBoard view={view} initialBills={bills}/>        
+          <ProtectedKanbanBoard view={view}/>        
       </main>
     </div>
   );

@@ -14,7 +14,6 @@ import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dia
 import { Button } from '@/components/ui/button';
 import { useBills } from '@/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
-import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
 
 
@@ -33,9 +32,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast(); // Get toast function
   
-  // Always call all hooks at the top level
   const { loadingBills: loading, setLoadingBills: setLoading, bills, setBills } = useBills();
-  
 
   const [, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);

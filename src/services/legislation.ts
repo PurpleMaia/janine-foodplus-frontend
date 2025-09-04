@@ -270,14 +270,14 @@ export async function insertNewBill(bill: Bill): Promise<Bill | null> {
 }
 
 // Bill adoption functions
-export async function adoptBill(userId: string, billUrl: string): Promise<boolean> {
+export async function adoptBill(userId: string, billUrl: string) {
   try {
 
     // First find the bill by URL
     const billResult = await findExistingBillByURL(billUrl);
     if (!billResult) {
       console.log('Bill not found with URL:', billUrl);
-      return false;
+      return null;
     }    
 
     const billId = billResult.id;
@@ -290,18 +290,18 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
 
     if (alreadyAdopted && alreadyAdopted.length > 0) {
       console.log('Bill already adopted by user');
-      return false;
+      return null;
     }
 
     // Add the adoption record
-    await db.insertInto('user_bills').values({
+    const adoptedBill= await db.insertInto('user_bills').values({
       user_id: userId,
       bill_id: billId,
       adopted_at: new Date()
-    }).execute();
+    }).returning(['bill_id']).executeTakeFirst();
 
     console.log(`Successfully adopted bill ${billId} for user ${userId}`);
-    return true;
+    return adoptedBill;
   } catch (error) {
     console.error('Failed to adopt bill:', error);
     return false;
@@ -326,8 +326,6 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
 
 export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
   try {
-    console.log('getUserAdoptedBills called with userId:', userId);
-    console.log('userId type:', typeof userId);
 
     // Get all bills that the user has adopted
     const rawAdoptedBills = await db.selectFrom('bills as b')
@@ -349,9 +347,6 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
         'b.updated_at'
       ])
       .execute();
-
-    console.log('SQL query result - adoptedBills count:', rawAdoptedBills.length);
-    console.log('SQL query result - adoptedBills:', rawAdoptedBills);
 
     const adoptedBills: Bill[] = rawAdoptedBills.map(item => mapBillsToBill(item as unknown as Bills))
 

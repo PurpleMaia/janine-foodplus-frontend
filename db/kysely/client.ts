@@ -8,7 +8,7 @@ const pool = new Pool({
   max: 5, // Reduce max connections
   min: 1, // Maintain at least one connection
   connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 60000, // Increase idle timeout to reduce churn
+  idleTimeoutMillis: 30000,
   // Add connection lifecycle management
   maxUses: 7500, // Recycle connections after 7500 queries
 });
