@@ -2,7 +2,7 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/auth-context';
-import { KanbanBoardProvider } from '@/hooks/use-kanban-board';
+import { KanbanBoardProvider } from '@/contexts/kanban-board-context';
 import { BillsProvider } from '@/contexts/bills-context';
 import { queryClient } from '@/lib/react-query';
 

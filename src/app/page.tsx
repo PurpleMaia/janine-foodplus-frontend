@@ -9,7 +9,7 @@ import { AuthHeader } from '@/components/auth/auth-header';
 import { useBills } from '@/contexts/bills-context';
 import { ProtectedAdminComponent, ProtectedComponent } from '@/components/auth/protected-component';
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
-import { useKanbanBoard } from '@/hooks/use-kanban-board';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
 
 
 

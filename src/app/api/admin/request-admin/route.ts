@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to request admin access.' }, { status: 500 });
     }
 
+    console.log(`Admin access requested for email: ${email}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to send request.' }, { status: 500 });

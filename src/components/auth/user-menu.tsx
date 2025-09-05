@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LogOut, User } from 'lucide-react';
-import { useKanbanBoard } from '@/hooks/use-kanban-board';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { RequestAdminAccessButton } from '../admin/request-admin-access';
 import { useEffect, useState } from 'react';
 

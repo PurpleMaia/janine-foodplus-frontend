@@ -1,7 +1,7 @@
 import type {Metadata} from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { KanbanBoardProvider } from '@/hooks/use-kanban-board'; // Import the provider
+import { KanbanBoardProvider } from '@/contexts/kanban-board-context'; // Import the provider
 import { Toaster } from "@/components/ui/toaster" // Import Toaster for potential notifications
 import { BillsProvider } from '@/contexts/bills-context';
 import { AuthProvider } from '@/contexts/auth-context';
