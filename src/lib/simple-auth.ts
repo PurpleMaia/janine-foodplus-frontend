@@ -7,6 +7,7 @@ export interface User {
   id: string;
   email: string;
   role: string | 'admin' | 'user';
+  username: string;
 }
 
 export interface Session {
@@ -51,7 +52,7 @@ export async function validateSession(token: string): Promise<User | null> {
     // Query the database for the session and associated user
     const result = await db.selectFrom('sessions as s')
       .innerJoin('user as u', 's.user_id', 'u.id')
-      .select(['u.id', 'u.role', 'u.email'])
+      .select(['u.id', 'u.role', 'u.email', 'u.username'])
       .where('s.session_token', '=', hashedToken)
       .where('s.expires_at', '>', new Date())
       .executeTakeFirst();    
@@ -60,7 +61,8 @@ export async function validateSession(token: string): Promise<User | null> {
       return {
         id: result.id,
         email: result.email,
-        role: result.role
+        role: result.role,
+        username: result.username
       };
     }
     return null;
@@ -75,13 +77,16 @@ export async function deleteSession(token: string): Promise<void> {
   await db.deleteFrom('sessions').where('session_token', '=', hashedToken).execute();
 }
 
-export async function authenticateUser(email: string, password: string): Promise<User | null> {
+export async function authenticateUser(authString: string, password: string): Promise<User | null> {
   try {
-    //1. Looks up user by email in user table
+    //1. Looks up user by email or username in user table
     const userResult = await db
       .selectFrom('user')
       .selectAll()
-      .where('email', '=', email)
+      .where(eb => eb.or([
+        eb('email', '=', authString),
+        eb('username', '=', authString)  // using email parameter as it could be either email or username
+      ]))
       .executeTakeFirst();      
     if (!userResult) {
       return null;
@@ -103,7 +108,7 @@ export async function authenticateUser(email: string, password: string): Promise
       return null;
     }
 
-    return { id: userResult.id, email: userResult.email, role: userResult.role };  //Success
+    return { id: userResult.id, email: userResult.email, role: userResult.role, username: userResult.username };  //Success
   } catch (error) {
     console.error('Authentication error:', error);
     return null;
@@ -142,7 +147,7 @@ export async function registerUser(email: string, password: string): Promise<Use
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.insertInto('auth_key').values({ user_id: userId, hashed_password: hashedPassword }).execute();
 
-    return { id: userId, email, role: 'user' }; // Return the new user
+    return { id: userId, email, role: 'user', username: email.split('@')[0] }; // Return the new user
   } catch (error) {
     console.error('Registration error:', error);
     return null;

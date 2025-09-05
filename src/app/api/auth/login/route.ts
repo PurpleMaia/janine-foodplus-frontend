@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     //Returns success with user info AND sets cookie
     return NextResponse.json(
-      { success: true, user: { id: user.id, email: user.email, role: user.role } },
+      { success: true, user: { id: user.id, email: user.email, role: user.role, username: user.username } },
       {
         status: 200,
         headers: {

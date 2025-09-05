@@ -1,12 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import type { User } from '@/lib/simple-auth';
 
-interface User {
-  id: string;
-  role: string;
-  email: string;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -87,7 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        console.log('Registration successful:', data);
+        // setUser(data.user);
         return true;
       } else {
         const errorData = await response.json();

@@ -14,9 +14,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Create session and set cookie
-    const sessionId = await createSession(user.id);
+    // const sessionId = await createSession(user.id);
     const res = NextResponse.json({ user });
-    res.headers.set('Set-Cookie', setSessionCookie(sessionId));
+    // res.headers.set('Set-Cookie', setSessionCookie(sessionId));
     return res;
   } catch (error) {
     return NextResponse.json({ error: 'Registration error.' }, { status: 500 });

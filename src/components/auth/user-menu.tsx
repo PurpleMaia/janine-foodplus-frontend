@@ -21,8 +21,8 @@ export function UserMenu() {
     await logout();
   };
 
-  const getInitials = (email: string) => {
-    return email.charAt(0).toUpperCase();
+  const getInitials = (username: string) => {
+    return username.charAt(0).toUpperCase();
   };
 
   return (
@@ -30,13 +30,14 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+            <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
+          <div className="flex flex-col space-y-2">
+            <p className="text-sm font-bold leading-none">{user.username}</p>
             <p className="text-sm font-medium leading-none">{user.email}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.role === 'admin' ? 'Admin' : 'User'}
