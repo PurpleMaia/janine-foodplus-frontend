@@ -9,16 +9,21 @@ interface ProtectedComponentProps {
 }
 
 export function ProtectedComponent({ children, fallback = null }: ProtectedComponentProps) {
-  const { user, loading } = useAuth();
-
-  //shows the loading while checking auth
-  if (loading) {
-    return <div className="animate-pulse">Loading...</div>;
-  }
+  const { user } = useAuth();
 
   if (!user) {
     return fallback;
-  }
+  }  
+
+  return <>{children}</>;
+}
+
+export function ProtectedAdminComponent({ children, fallback = null }: ProtectedComponentProps) {
+  const { user } = useAuth();
+
+  if (!user || user.role !== 'admin') {
+    return fallback;
+  }  
 
   return <>{children}</>;
 }

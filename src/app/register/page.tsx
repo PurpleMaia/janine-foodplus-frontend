@@ -33,7 +33,7 @@ export default function RegisterPage() {
       if (success) {
         toast({
           title: "Registration successful!",
-          description: "You can now log in with your new account.",
+          description: "Please wait while we approve of your account.",
         });
         setEmail("");
         setPassword("");

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import NewBillButton from '@/components/new-bill/new-bill-button';
 import { AuthHeader } from '@/components/auth/auth-header';
 import { useBills } from '@/contexts/bills-context';
-import { ProtectedComponent } from '@/components/auth/protected-component';
+import { ProtectedAdminComponent, ProtectedComponent } from '@/components/auth/protected-component';
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
 
 
@@ -19,7 +19,8 @@ import { AdminDashboard } from '@/components/admin/admin-dashboard';
 
 
 export default function Home() {
-  const [view, setView] = useState<string>('kanban');
+  const [view, setView] = useState<'kanban' | 'spreadsheet' | ''>('kanban');
+  const [adminView, setAdminView] = useState<boolean>(false);
   // const initialBills = await getAllBills();
 
   return (
@@ -39,31 +40,37 @@ export default function Home() {
         <div className="flex items-center gap-2 p-4 border-b bg-background">
         <Button
           variant={view === 'kanban' ? 'default' : 'outline'}
-          onClick={() => setView('kanban')}
+          onClick={() => {
+            setView('kanban')
+            setAdminView(false)
+          }}
         >
           Kanban View
         </Button>
         <Button
           variant={view === 'spreadsheet' ? 'default' : 'outline'}
-          onClick={() => setView('spreadsheet')}
+          onClick={() => {
+            setView('spreadsheet')
+            setAdminView(false)
+          }}
         >
           Spreadsheet View
         </Button>
 
-        <ProtectedComponent>
+        <ProtectedAdminComponent>
           <Button
-            variant={view === 'admin' ? 'default' : 'outline'}
-            onClick={() => setView('admin')}
+            variant={adminView ? 'default' : 'outline'}
+            onClick={() => {setAdminView(!adminView); setView('')}}
           >
             Admin View
           </Button>
-        </ProtectedComponent>
+        </ProtectedAdminComponent>
         </div>
       <main className="flex-1 overflow-hidden">
-          { view === 'admin' ? (
-            <ProtectedComponent>
+          { adminView ? (
+            <ProtectedAdminComponent>
               <AdminDashboard />
-            </ProtectedComponent>
+            </ProtectedAdminComponent>
           ) : (
             <ProtectedKanbanBoardOrSpreadsheet view={view}/>
           )}

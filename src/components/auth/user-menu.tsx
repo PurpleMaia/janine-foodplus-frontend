@@ -36,7 +36,7 @@ export function UserMenu() {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{user.email}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              Admin Access
+              {user.role === 'admin' ? 'Admin' : 'User'}
             </p>
           </div>
         </DropdownMenuLabel>
