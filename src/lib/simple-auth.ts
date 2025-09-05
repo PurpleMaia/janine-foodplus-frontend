@@ -6,6 +6,7 @@ import { createHash } from 'crypto';
 export interface User {
   id: string;
   email: string;
+  role: string | 'admin' | 'user';
 }
 
 export interface Session {
@@ -50,7 +51,7 @@ export async function validateSession(token: string): Promise<User | null> {
     // Query the database for the session and associated user
     const result = await db.selectFrom('sessions as s')
       .innerJoin('user as u', 's.user_id', 'u.id')
-      .select(['u.id', 'u.email'])
+      .select(['u.id', 'u.role', 'u.email'])
       .where('s.session_token', '=', hashedToken)
       .where('s.expires_at', '>', new Date())
       .executeTakeFirst();    
@@ -58,7 +59,8 @@ export async function validateSession(token: string): Promise<User | null> {
     if (result) {      
       return {
         id: result.id,
-        email: result.email
+        email: result.email,
+        role: result.role
       };
     }
     return null;
@@ -101,7 +103,7 @@ export async function authenticateUser(email: string, password: string): Promise
       return null;
     }
 
-    return { id: userResult.id, email: userResult.email };  //Success
+    return { id: userResult.id, email: userResult.email, role: userResult.role };  //Success
   } catch (error) {
     console.error('Authentication error:', error);
     return null;
@@ -140,10 +142,62 @@ export async function registerUser(email: string, password: string): Promise<Use
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.insertInto('auth_key').values({ user_id: userId, hashed_password: hashedPassword }).execute();
 
-    return { id: userId, email }; // Return the new user
+    return { id: userId, email, role: 'user' }; // Return the new user
   } catch (error) {
     console.error('Registration error:', error);
     return null;
+  }
+}
+
+export async function getAdminUserData(request: NextRequest): Promise<User | { error: string } | null> {
+  try {
+    //gets session token from cookie 
+    const session_token = getSessionCookie(request);
+    console.log('Session token from cookie:', session_token);
+    
+    //if there is no cookie, user is not logged in
+    if (!session_token) {
+        return { error: 'Invalid session' };
+    }
+
+    //validates session in the databse 
+    const user = await validateSession(session_token);
+    console.log('Validated user from session token:', user);
+
+    if (!user) {
+        return { error: 'Not authorized' };
+    } else if (user.role !== 'admin') {
+        return { error: 'Unauthorized: Admin Access only' };
+    }
+
+    return user;
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    return null;
+  }
+}
+
+export async function getPendingRequests(userID: string): Promise<User[]> {
+    const pendingRequests = db.selectFrom('user')
+      .selectAll()    
+      .where('account_status', '=', 'pending')
+      .where('id', '!=', userID) // Exclude current user (should never happen)
+      .execute();
+    return pendingRequests;
+} 
+
+export async function approveUser(userIDtoApprove: string): Promise<boolean> {
+  try {
+    const result = await db.updateTable('user')
+      .set({ account_status: 'active' })
+      .where('id', '=', userIDtoApprove)
+      .where('account_status', '=', 'pending')
+      .executeTakeFirst();
+
+    return result.numUpdatedRows > 0;
+  } catch (error) {
+    console.error('Error approving user:', error);
+    return false;
   }
 }
 

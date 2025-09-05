@@ -9,10 +9,10 @@ import { AdoptBillDialog } from './adopt-bill-dialog';
 import { useBills } from '@/contexts/bills-context';
 
 interface ProtectedKanbanBoardProps {
-  view: 'kanban' | 'spreadsheet';
+  view: string | 'kanban' | 'spreadsheet';
 }
 
-export function ProtectedKanbanBoard({ view }: ProtectedKanbanBoardProps) {
+export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoardProps) {
   const { user, loading } = useAuth();
   const { bills, loadingBills } = useBills();
   const { unadoptBill } = useAdoptedBills();

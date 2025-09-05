@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { KanbanHeader } from '@/components/kanban/kanban-header';
-import { ProtectedKanbanBoard } from '@/components/kanban/protected-kanban-board';
+import { ProtectedKanbanBoardOrSpreadsheet } from '@/components/kanban/protected-kanban-board';
 import { Button } from '@/components/ui/button';
 import NewBillButton from '@/components/new-bill/new-bill-button';
 import { AuthHeader } from '@/components/auth/auth-header';
 import { useBills } from '@/contexts/bills-context';
 import { ProtectedComponent } from '@/components/auth/protected-component';
+import { AdminDashboard } from '@/components/admin/admin-dashboard';
 
 
 
@@ -18,7 +19,7 @@ import { ProtectedComponent } from '@/components/auth/protected-component';
 
 
 export default function Home() {
-  const [view, setView] = useState<'kanban' | 'spreadsheet'>('kanban');
+  const [view, setView] = useState<string>('kanban');
   // const initialBills = await getAllBills();
 
   return (
@@ -48,9 +49,24 @@ export default function Home() {
         >
           Spreadsheet View
         </Button>
+
+        <ProtectedComponent>
+          <Button
+            variant={view === 'admin' ? 'default' : 'outline'}
+            onClick={() => setView('admin')}
+          >
+            Admin View
+          </Button>
+        </ProtectedComponent>
         </div>
       <main className="flex-1 overflow-hidden">
-          <ProtectedKanbanBoard view={view}/>        
+          { view === 'admin' ? (
+            <ProtectedComponent>
+              <AdminDashboard />
+            </ProtectedComponent>
+          ) : (
+            <ProtectedKanbanBoardOrSpreadsheet view={view}/>
+          )}
       </main>
     </div>
   );
