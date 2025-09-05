@@ -113,7 +113,7 @@ export async function authenticateUser(authString: string, password: string): Pr
   return { id: userResult.id, email: userResult.email, role: userResult.role, username: userResult.username };  //Success
 } 
 
-export async function registerUser(username: string, email: string, password: string): Promise<User | null> {
+export async function registerUser(email: string, username: string, password: string): Promise<User | null> {
   try {
     //1. Check if user already exists
     const existingUser = await db.selectFrom('user')
@@ -130,11 +130,11 @@ export async function registerUser(username: string, email: string, password: st
 
     //2. Create new user
     const userResult = await db.insertInto('user').values({
-      email, 
+      email: email, 
       created_at: new Date(),
       role: 'user',
       account_status: 'pending',
-      username,
+      username: username,
       requested_admin: false
     }).returning('id').executeTakeFirst();
 

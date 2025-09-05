@@ -28,6 +28,7 @@ export default function RegisterPage() {
           description: "Please wait while we approve of your account.",
         });
         setEmail("");
+        setUsername("");
         setPassword("");
         router.push("/");
       } else {

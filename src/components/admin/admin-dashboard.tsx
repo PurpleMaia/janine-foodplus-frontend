@@ -58,33 +58,33 @@ export function AdminDashboard() {
   // Handle approving user
   const handleApproveUser = async (userId: string) => {
     console.log('Approving user with ID:', userId);
-    // try {
-    //   const response = await fetch('/api/admin/approve-user', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({ userIDtoApprove: userId }),
-    //   });
+    try {
+      const response = await fetch('/api/admin/approve-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userIDtoApprove: userId }),
+      });
 
-    //   if (!response.ok) {
-    //     throw new Error('Failed to approve user');
-    //   }
+      if (!response.ok) {
+        throw new Error('Failed to approve user');
+      }
 
-    //   toast({
-    //     title: 'Success',
-    //     description: 'User has been approved',
-    //   });
+      toast({
+        title: 'Success',
+        description: 'User has been approved',
+      });
 
-    //   // Refresh the pending requests
-    //   fetchPendingRequests();
-    // } catch (error) {
-    //   toast({
-    //     title: 'Error',
-    //     description: 'Failed to approve user',
-    //     variant: 'destructive',
-    //   });
-    // }
+      // Refresh the pending requests
+      fetchPendingRequests();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to approve user',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Handle denying user
