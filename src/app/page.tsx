@@ -21,7 +21,6 @@ import { useKanbanBoard } from '@/hooks/use-kanban-board';
 
 export default function Home() {
   const { view, setView } = useKanbanBoard();
-  // const initialBills = await getAllBills();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">

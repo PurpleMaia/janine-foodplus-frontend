@@ -1,5 +1,5 @@
+import { requestAdminAccess } from '@/lib/admin-utils';
 import { NextRequest, NextResponse } from 'next/server';
-
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,8 +8,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
     }
 
-    
+    const result = await requestAdminAccess(email);
 
+    if (!result) {
+      return NextResponse.json({ error: 'Failed to request admin access.' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

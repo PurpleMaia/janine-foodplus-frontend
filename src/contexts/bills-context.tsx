@@ -5,7 +5,6 @@ import React, { createContext, useContext, useState, ReactNode, Dispatch, SetSta
 import type { Bill, TempBill } from '@/types/legislation';
 import { toast } from '../hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { useAdoptedBills, useAllBills } from '@/hooks/use-query-bills';
 
 interface BillsContextType {
   loadingBills: boolean

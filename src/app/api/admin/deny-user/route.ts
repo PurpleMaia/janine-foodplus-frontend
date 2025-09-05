@@ -1,4 +1,5 @@
-import { denyUser, getSessionCookie, validateSession } from "@/lib/simple-auth";
+import { denyUser } from "@/lib/admin-utils";
+import { getSessionCookie, validateSession } from "@/lib/simple-auth";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {

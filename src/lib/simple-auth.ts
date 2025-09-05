@@ -89,10 +89,10 @@ export async function authenticateUser(authString: string, password: string): Pr
     .executeTakeFirst();      
   if (!userResult) {
     throw new Error('USER_NOT_FOUND');
-  } else if (userResult.account_status !== 'active') {
+  } else if (userResult.account_status !== 'active' && !userResult.requested_admin) {
     console.error('Account not active for user:', userResult.email);
     throw new Error('ACCOUNT_INACTIVE');
-  }
+  } 
 
   //2. Finds auth_key for that user
   const keyResult = await db
@@ -152,73 +152,6 @@ export async function registerUser(username: string, email: string, password: st
   } catch (error) {
     console.error('Registration error:', error);
     return null;
-  }
-}
-
-export async function getAdminUserData(request: NextRequest): Promise<User | { error: string } | null> {
-  try {
-    //gets session token from cookie 
-    const session_token = getSessionCookie(request);
-    console.log('Session token from cookie:', session_token);
-    
-    //if there is no cookie, user is not logged in
-    if (!session_token) {
-        return { error: 'Invalid session' };
-    }
-
-    //validates session in the databse 
-    const user = await validateSession(session_token);
-    console.log('Validated user from session token:', user);
-
-    if (!user) {
-        return { error: 'Not authorized' };
-    } else if (user.role !== 'admin') {
-        return { error: 'Unauthorized: Admin Access only' };
-    }
-
-    return user;
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-    return null;
-  }
-}
-
-export async function getPendingRequests(userID: string): Promise<User[]> {
-    const pendingRequests = db.selectFrom('user')
-      .selectAll()    
-      .where('account_status', '=', 'pending')
-      .where('id', '!=', userID) // Exclude current user (should never happen)
-      .execute();
-    return pendingRequests;
-} 
-
-export async function approveUser(userIDtoApprove: string): Promise<boolean> {
-  try {
-    const result = await db.updateTable('user')
-      .set({ account_status: 'active' })
-      .where('id', '=', userIDtoApprove)
-      .where('account_status', '=', 'pending')
-      .executeTakeFirst();
-
-    return result.numUpdatedRows > 0;
-  } catch (error) {
-    console.error('Error approving user:', error);
-    return false;
-  }
-}
-
-export async function denyUser(userIDtoDeny: string): Promise<boolean> {
-  try {
-    const result = await db.updateTable('user')
-      .set({ account_status: 'denied' })
-      .where('id', '=', userIDtoDeny)
-      .where('account_status', '=', 'pending')
-      .executeTakeFirst();
-
-    return result.numUpdatedRows > 0;
-  } catch (error) {
-    console.error('Error denying user:', error);
-    return false;
   }
 }
 

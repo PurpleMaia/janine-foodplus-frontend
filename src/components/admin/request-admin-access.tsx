@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-export function RequestAdminAccessButton({ email }: { email: string }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [requested, setRequested] = useState(false);
+interface RequestAdminAccessButtonProps {
+  email: string;
+  adminRequested: boolean;
+}
+
+export function RequestAdminAccessButton({ email, adminRequested }: RequestAdminAccessButtonProps) {
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [requested, setRequested] = useState(adminRequested);
   const { toast } = useToast();
 
   const handleRequest = async () => {
-    setIsLoading(true);
+    setIsRequesting(true);
     try {
-      const res = await fetch("/api/auth/request-admin", {
+      const res = await fetch("/api/admin/request-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -20,7 +25,7 @@ export function RequestAdminAccessButton({ email }: { email: string }) {
       if (res.ok) {
         toast({
           title: "Request sent!",
-          description: "Your request for Lead Advocate access has been submitted. You are currently set as Intern until review.",
+          description: "Your request for Admin access has been submitted. Please wait for approval.",
         });
         setRequested(true);
       } else {
@@ -37,13 +42,21 @@ export function RequestAdminAccessButton({ email }: { email: string }) {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsRequesting(false);
     }
   };
 
   return (
-    <Button onClick={handleRequest} disabled={isLoading || requested} variant="secondary">
-      {requested ? "Request Sent" : isLoading ? "Requesting..." : "Request Lead Advocate Access"}
+    <Button 
+      onClick={handleRequest} 
+      disabled={isRequesting || requested} 
+      variant="secondary"
+    >
+      {isRequesting 
+        ? "Requesting..." 
+        : requested 
+          ? "Admin Request Sent" 
+          : "Request Admin Access"} 
     </Button>
   );
 }
