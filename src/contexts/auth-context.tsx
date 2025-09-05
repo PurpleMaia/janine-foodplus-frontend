@@ -2,12 +2,13 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@/lib/simple-auth';
+import { error } from 'console';
 
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (authString: string, password: string) => Promise<boolean>;
+  login: (authString: string, password: string) => Promise<{ success: boolean, error?: string }>;
   logout: () => Promise<void>;
   checkSession: () => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<boolean>;
@@ -37,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (authString: string, password: string): Promise<boolean> => {
+  const login = async (authString: string, password: string): Promise<{ success: boolean, error?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -50,15 +51,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
-        return true;
+        return {
+          success: true
+        };
       } else {
         const errorData = await response.json();
-        console.error('Login failed:', errorData.error);
-        return false;
+        return {
+          success: false,
+          error: errorData.error
+        };
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return false;
+      return {
+        success: false,
+        error: 'Login error'
+      };
     }
   };
 

@@ -23,9 +23,10 @@ export function LoginDialog() {
 
     try {
 
-      //calls login from suth context
-      const success = await login(authString, password);
-      if (success) {
+      //calls login from auth context
+      const result = await login(authString, password);
+
+      if (result && result.success) {
         //shows success message
         toast({
           title: 'Success!',
@@ -36,14 +37,21 @@ export function LoginDialog() {
         setIsOpen(false);
         setAuthString('');
         setPassword('');
-      } else {
-        //shows error message
+      } else if (result && result.error) {
+        //shows error message from context
         toast({
-          title: 'Login failed',
-          description: 'Please check your email and password.',
+          title: 'Login Failed',
+          description: result.error,
           variant: 'destructive',
         });
-      }
+      } else {
+        //generic error message
+        toast({
+          title: 'Login Failed',
+          description: 'An unknown error occurred.',
+          variant: 'destructive',
+        });        
+      } 
     } catch (error) {
       toast({
         title: 'Error',

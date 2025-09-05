@@ -77,43 +77,41 @@ export async function deleteSession(token: string): Promise<void> {
   await db.deleteFrom('sessions').where('session_token', '=', hashedToken).execute();
 }
 
-export async function authenticateUser(authString: string, password: string): Promise<User | null> {
-  try {
-    //1. Looks up user by email or username in user table
-    const userResult = await db
-      .selectFrom('user')
-      .selectAll()
-      .where(eb => eb.or([
-        eb('email', '=', authString),
-        eb('username', '=', authString)  // using email parameter as it could be either email or username
-      ]))
-      .executeTakeFirst();      
-    if (!userResult) {
-      return null;
-    }
-
-    //2. Finds auth_key for that user
-    const keyResult = await db
-      .selectFrom('auth_key')
-      .selectAll()
-      .where('user_id', '=', userResult.id)
-      .executeTakeFirst();
-
-    if (!keyResult) {
-      return null;
-    }
-
-    //3. Compares password using bycrypt (hashed)
-    if (!keyResult.hashed_password || !(await bcrypt.compare(password, keyResult.hashed_password))) {
-      return null;
-    }
-
-    return { id: userResult.id, email: userResult.email, role: userResult.role, username: userResult.username };  //Success
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return null;
+export async function authenticateUser(authString: string, password: string): Promise<User> {
+  //1. Looks up user by email or username in user table
+  const userResult = await db
+    .selectFrom('user')
+    .selectAll()
+    .where(eb => eb.or([
+      eb('email', '=', authString),
+      eb('username', '=', authString)  // using email parameter as it could be either email or username
+    ]))
+    .executeTakeFirst();      
+  if (!userResult) {
+    throw new Error('USER_NOT_FOUND');
+  } else if (userResult.account_status !== 'active') {
+    console.error('Account not active for user:', userResult.email);
+    throw new Error('ACCOUNT_INACTIVE');
   }
-}
+
+  //2. Finds auth_key for that user
+  const keyResult = await db
+    .selectFrom('auth_key')
+    .selectAll()
+    .where('user_id', '=', userResult.id)
+    .executeTakeFirst();
+
+  if (!keyResult) {
+    throw new Error('AUTH_KEY_NOT_FOUND');
+  }
+
+  //3. Compares password using bycrypt (hashed)
+  if (!keyResult.hashed_password || !(await bcrypt.compare(password, keyResult.hashed_password))) {
+    throw new Error('INVALID_CREDENTIALS');
+  }
+
+  return { id: userResult.id, email: userResult.email, role: userResult.role, username: userResult.username };  //Success
+} 
 
 export async function registerUser(username: string, email: string, password: string): Promise<User | null> {
   try {
