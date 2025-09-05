@@ -9,6 +9,7 @@ import { AuthHeader } from '@/components/auth/auth-header';
 import { useBills } from '@/contexts/bills-context';
 import { ProtectedAdminComponent, ProtectedComponent } from '@/components/auth/protected-component';
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
+import { useKanbanBoard } from '@/hooks/use-kanban-board';
 
 
 
@@ -19,8 +20,7 @@ import { AdminDashboard } from '@/components/admin/admin-dashboard';
 
 
 export default function Home() {
-  const [view, setView] = useState<'kanban' | 'spreadsheet' | ''>('kanban');
-  const [adminView, setAdminView] = useState<boolean>(false);
+  const { view, setView } = useKanbanBoard();
   // const initialBills = await getAllBills();
 
   return (
@@ -40,34 +40,28 @@ export default function Home() {
         <div className="flex items-center gap-2 p-4 border-b bg-background">
         <Button
           variant={view === 'kanban' ? 'default' : 'outline'}
-          onClick={() => {
-            setView('kanban')
-            setAdminView(false)
-          }}
+          onClick={() => setView('kanban')}
         >
           Kanban View
         </Button>
         <Button
           variant={view === 'spreadsheet' ? 'default' : 'outline'}
-          onClick={() => {
-            setView('spreadsheet')
-            setAdminView(false)
-          }}
+          onClick={() => setView('spreadsheet')}
         >
           Spreadsheet View
         </Button>
 
         <ProtectedAdminComponent>
           <Button
-            variant={adminView ? 'default' : 'outline'}
-            onClick={() => {setAdminView(!adminView); setView('')}}
+            variant={view === 'admin' ? 'default' : 'outline'}
+            onClick={() => setView('admin')}
           >
             Admin View
           </Button>
         </ProtectedAdminComponent>
         </div>
       <main className="flex-1 overflow-hidden">
-          { adminView ? (
+          { view === 'admin' ? (
             <ProtectedAdminComponent>
               <AdminDashboard />
             </ProtectedAdminComponent>

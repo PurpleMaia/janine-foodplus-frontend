@@ -31,7 +31,6 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     const [, setError] = useState<string | null>(null);
     const [loadingBills, setLoadingBills] = useState(false);   
     const { user } = useAuth();
-    const { data: allBills } = useAllBills();
 
     const acceptLLMChange = async(billId: string) => {
       const bill = bills.find(b => b.id === billId)
@@ -180,7 +179,9 @@ export function BillsProvider({ children }: { children : ReactNode }) {
                 return;   
               }
 
-              setBills(allBills || []);
+              const results = await getAllBills();
+
+              setBills(results);
               console.log('successful results set in context')
             } catch (err) {
               console.error("Error searching bills:", err);

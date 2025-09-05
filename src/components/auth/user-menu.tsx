@@ -5,16 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LogOut, User } from 'lucide-react';
+import { useKanbanBoard } from '@/hooks/use-kanban-board';
 
 export function UserMenu() {
   //gets user info and logout function from context 
   const { user, logout } = useAuth();
+  const { setView } = useKanbanBoard();
 
   //shows nothing if no user (safety check)
   if (!user) return null;
 
   //creates avatar with users first initial
   const handleLogout = async () => {
+    setView('kanban'); // Reset view to 'kanban' on logout
     await logout();
   };
 
