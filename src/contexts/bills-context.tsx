@@ -29,7 +29,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     const [tempBills, setTempBills] = useState<TempBill[]>([])
     const [, setError] = useState<string | null>(null);
     const [loadingBills, setLoadingBills] = useState(false);   
-    const { user } = useAuth();
+    const { user, loading: userLoading } = useAuth();
 
     const acceptLLMChange = async(billId: string) => {
       const bill = bills.find(b => b.id === billId)
@@ -167,33 +167,35 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     }
     
     useEffect(() => {
-        setLoadingBills(true)
-        setError(null);        
-        const handler = setTimeout(async () => {
-            try {
-              if (user) {                
-                const results = await getUserAdoptedBills(user.id);
-                setBills(results); 
-                console.log('User adopted bills set in context')
-                return;   
-              }
+      if (userLoading) return; // Wait until user loading is complete
+    
+      setLoadingBills(true)
+      setError(null);      
 
+      const handler = setTimeout(async () => {
+          try {
+            if (user) {                
+              const results = await getUserAdoptedBills(user.id);
+              setBills(results); 
+              console.log('User adopted bills set in context')
+              return;   
+            } else {
               const results = await getAllBills();
-
               setBills(results);
               console.log('successful results set in context')
-            } catch (err) {
-              console.error("Error searching bills:", err);
-              setError("Failed to search bills.");
-            } finally {
-              setLoadingBills(false);    
-                        
             }
-          });
-          
-          return () => {
-            clearTimeout(handler);
-          };
+          } catch (err) {
+            console.error("Error searching bills:", err);
+            setError("Failed to search bills.");
+          } finally {
+            setLoadingBills(false);    
+                      
+          }
+        });
+        
+        return () => {
+          clearTimeout(handler);
+        };
 
     }, [user])
 
