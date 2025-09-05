@@ -67,6 +67,7 @@ export interface StatusUpdates {
 }
 
 export interface User {
+  account_status: string;
   created_at: Generated<Timestamp | null>;
   email: string;
   id: Generated<string>;

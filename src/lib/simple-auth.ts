@@ -125,6 +125,7 @@ export async function registerUser(email: string, password: string): Promise<Use
       email, 
       created_at: new Date(),
       role: 'user',
+      account_status: 'pending',
       username: email.split('@')[0], // Simple username from email
       requested_admin: false
     }).returning('id').executeTakeFirst();
