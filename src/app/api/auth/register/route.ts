@@ -3,12 +3,12 @@ import { registerUser, createSession, setSessionCookie } from '@/lib/simple-auth
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
+    const { username, email, password } = await req.json();
+    if (!username || !email || !password) {
+      return NextResponse.json({ error: 'Username, email, and password are required.' }, { status: 400 });
     }
 
-    const user = await registerUser(email, password);
+    const user = await registerUser(username, email, password);
     if (!user) {
       return NextResponse.json({ error: 'User already exists or registration failed.' }, { status: 400 });
     }

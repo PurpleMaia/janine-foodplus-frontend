@@ -115,12 +115,15 @@ export async function authenticateUser(authString: string, password: string): Pr
   }
 }
 
-export async function registerUser(email: string, password: string): Promise<User | null> {
+export async function registerUser(username: string, email: string, password: string): Promise<User | null> {
   try {
     //1. Check if user already exists
     const existingUser = await db.selectFrom('user')
-      .selectAll()
-      .where('email', '=', email)
+      .selectAll()      
+      .where((eb) => eb.or([
+        eb('email', '=', email),
+        eb('username', '=', username)
+      ]))
       .executeTakeFirst();
 
     if (existingUser) {
@@ -133,7 +136,7 @@ export async function registerUser(email: string, password: string): Promise<Use
       created_at: new Date(),
       role: 'user',
       account_status: 'pending',
-      username: email.split('@')[0], // Simple username from email
+      username,
       requested_admin: false
     }).returning('id').executeTakeFirst();
 
@@ -147,7 +150,7 @@ export async function registerUser(email: string, password: string): Promise<Use
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.insertInto('auth_key').values({ user_id: userId, hashed_password: hashedPassword }).execute();
 
-    return { id: userId, email, role: 'user', username: email.split('@')[0] }; // Return the new user
+    return { id: userId, email, role: 'user', username }; // Return the new user
   } catch (error) {
     console.error('Registration error:', error);
     return null;

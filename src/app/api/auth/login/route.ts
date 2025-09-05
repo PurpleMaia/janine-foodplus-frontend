@@ -3,20 +3,20 @@ import { authenticateUser, createSession, setSessionCookie } from '@/lib/simple-
 
 export async function POST(request: NextRequest) {
   try {
-    //recieves post request with email/password
-    const { email, password } = await request.json();
+    //recieves post request with email/username and password
+    const { authString, password } = await request.json();
 
     //validates input
-    if (!email || !password) {
+    if (!authString || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Email/Username and password are required' },
         { status: 400 }
       );
     }
 
     // Authenticate user
     //Calls authenticateUser() from simple-auth.ts
-    const user = await authenticateUser(email, password);
+    const user = await authenticateUser(authString, password);
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },

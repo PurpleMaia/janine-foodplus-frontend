@@ -6,20 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { RequestAdminAccessButton } from "@/components/auth/request-admin-access";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const { toast } = useToast();
@@ -29,7 +21,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const success = await register(email, password);
+      const success = await register(email, username, password);
       if (success) {
         toast({
           title: "Registration successful!",
@@ -72,6 +64,19 @@ export default function RegisterPage() {
               required
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="register-username">Username</Label>
+            <Input
+              id="register-username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your username"
+              required
+            />
+          </div>
+              
           <div className="space-y-2">
             <Label htmlFor="register-password">Password</Label>
             <Input
@@ -82,23 +87,7 @@ export default function RegisterPage() {
               placeholder="Enter your password"
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="register-role">Role</Label>
-            <Select value={role} onValueChange={setRole} required>
-              <SelectTrigger id="register-role">
-                <SelectValue placeholder="Select your role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">Intern</SelectItem>
-                <SelectItem value="admin">Lead Advocate</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          { role === "admin" && email && (
-            <RequestAdminAccessButton email={email} />
-          )}
+          </div>          
           
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Registering..." : "Register"}
