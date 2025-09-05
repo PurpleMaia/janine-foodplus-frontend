@@ -207,6 +207,21 @@ export async function approveUser(userIDtoApprove: string): Promise<boolean> {
   }
 }
 
+export async function denyUser(userIDtoDeny: string): Promise<boolean> {
+  try {
+    const result = await db.updateTable('user')
+      .set({ account_status: 'denied' })
+      .where('id', '=', userIDtoDeny)
+      .where('account_status', '=', 'pending')
+      .executeTakeFirst();
+
+    return result.numUpdatedRows > 0;
+  } catch (error) {
+    console.error('Error denying user:', error);
+    return false;
+  }
+}
+
 // Cookie helpers
 //Gets session id from cookie
 export function getSessionCookie(request: NextRequest): string | null {

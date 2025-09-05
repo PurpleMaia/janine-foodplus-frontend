@@ -57,22 +57,55 @@ export function AdminDashboard() {
 
   // Handle approving user
   const handleApproveUser = async (userId: string) => {
+    console.log('Approving user with ID:', userId);
+    // try {
+    //   const response = await fetch('/api/admin/approve-user', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({ userIDtoApprove: userId }),
+    //   });
+
+    //   if (!response.ok) {
+    //     throw new Error('Failed to approve user');
+    //   }
+
+    //   toast({
+    //     title: 'Success',
+    //     description: 'User has been approved',
+    //   });
+
+    //   // Refresh the pending requests
+    //   fetchPendingRequests();
+    // } catch (error) {
+    //   toast({
+    //     title: 'Error',
+    //     description: 'Failed to approve user',
+    //     variant: 'destructive',
+    //   });
+    // }
+  };
+
+  // Handle denying user
+  const handleDenyUser = async (userId: string) => {
+    console.log('Denying user with ID:', userId);
     try {
-      const response = await fetch('/api/admin/approve-user', {
+      const response = await fetch('/api/admin/deny-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userIDtoApprove: userId }),
+        body: JSON.stringify({ userIDToDeny: userId }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to approve user');
+        throw new Error('Failed to deny user');
       }
 
       toast({
         title: 'Success',
-        description: 'User has been approved',
+        description: 'User has been denied an account',
       });
 
       // Refresh the pending requests
@@ -80,11 +113,11 @@ export function AdminDashboard() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to approve user',
+        description: 'Failed to deny user',
         variant: 'destructive',
       });
     }
-  };
+  }
 
   if (isLoading) {
     return (
@@ -133,7 +166,12 @@ export function AdminDashboard() {
                     >
                       Approve
                     </Button>
-                    <Button variant="outline">Deny</Button>
+                    <Button
+                      onClick={() => handleDenyUser(user.id)}
+                      variant="outline"
+                    >
+                      Deny
+                    </Button>
                   </div>
                 </div>
               </Card>
