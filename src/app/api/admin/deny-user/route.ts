@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
         console.log('Validated user from session token:', user);
 
         if (!user) {
-            return { error: 'Not authorized' };
+            return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
         } else if (user.role !== 'admin') {
-            return { error: 'Unauthorized: Admin Access only' };
+            return NextResponse.json({ error: 'Unauthorized: Admin Access only' }, { status: 403 });
         }
 
         console.log('Approving user with ID:', userIDToDeny);

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         if (!user) {
             return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 });
         } else if (user.role !== 'admin') {
-            return NextResponse.json({ success: false, error: 'Unauthorized: Admin Access only' }, { status: 402 });
+            return NextResponse.json({ success: false, error: 'Unauthorized: Admin Access only' }, { status: 403 });
         }
 
         const result = await getPendingRequests(user.id);

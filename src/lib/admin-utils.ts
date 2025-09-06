@@ -31,7 +31,7 @@ export async function getAdminUserData(request: NextRequest): Promise<User | { e
 }
 
 export async function getPendingRequests(userID: string): Promise<User[]> {
-    const pendingRequests = db.selectFrom('user')
+    const pendingRequests = await db.selectFrom('user')
       .selectAll()    
       .where('account_status', '=', 'pending')
       .where('id', '!=', userID) // Exclude current user (should never happen)

@@ -6,7 +6,7 @@ import { createHash } from 'crypto';
 export interface User {
   id: string;
   email: string;
-  role: string | 'admin' | 'user';
+  role: string;
   username: string;
 }
 
@@ -89,7 +89,7 @@ export async function authenticateUser(authString: string, password: string): Pr
     .executeTakeFirst();      
   if (!userResult) {
     throw new Error('USER_NOT_FOUND');
-  } else if (userResult.account_status !== 'active' && !userResult.requested_admin) {
+  } else if (userResult.account_status !== 'active' && userResult.requested_admin === false) { // only block fresh user accounts, users who requested admin can still login
     console.error('Account not active for user:', userResult.email);
     throw new Error('ACCOUNT_INACTIVE');
   } 

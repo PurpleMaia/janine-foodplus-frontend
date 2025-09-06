@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await checkAdminRequestStatus(email);
-    if (!result) {
+    if (result === null) {
         return NextResponse.json({ error: 'Failed to check admin request status.' }, { status: 500 });
     }
 
