@@ -15,10 +15,7 @@ export function UserMenu() {
   const { setView } = useKanbanBoard();
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [adminRequested, setAdminRequested] = useState<boolean>(false);
-
-  //shows nothing if no user (safety check)
-  if (!user) return null;
+  const [adminRequested, setAdminRequested] = useState<boolean>(false); 
 
   const handleAdminRequestChange = (requested: boolean) => {
     setAdminRequested(requested);
@@ -35,32 +32,46 @@ export function UserMenu() {
   };
 
   useEffect(() => { 
-    try {
-      setLoading(true);
+    let mounted = true;
 
-      const checkAdminStatus = async () => {
+    if (!user) {
+      // ensure consistent hook behavior across renders
+      if (mounted) {
+        setAdminRequested(false);
+        setLoading(false);
+      }
+      return;
+    }
+
+    const checkAdminStatus = async () => {
+      setLoading(true);
+      try {
         const res = await fetch('/api/admin/check-admin-request', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: user.email }),
         });
 
+        if (!mounted) return;
+
         if (res.ok) {
           const data = await res.json();
           setAdminRequested(data.adminRequested);
-
         } else {
           console.error('Failed to check admin request status');
-          return false;
         }
-      };
+      } catch (error) {
+        console.error('Error checking admin request status:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
 
-      checkAdminStatus()
-    } catch (error) {
-      console.error('Error checking admin request status:', error);      
-    } finally {
-      setLoading(false);
-    }
+    checkAdminStatus();
+
+    return () => {
+      mounted = false;
+    };
 
   }, [user]);
 
@@ -69,7 +80,7 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+            <AvatarFallback>{user ? getInitials(user.username) : ''}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
@@ -79,15 +90,15 @@ export function UserMenu() {
             <div>Loading...</div>
           ) : (
             <div className="flex flex-col space-y-2">
-              <p className="text-sm font-bold leading-none">{user.username}</p>
-              <p className="text-sm font-medium leading-none">{user.email}</p>
+              <p className="text-sm font-bold leading-none">{user ? user.username : ''}</p>
+              <p className="text-sm font-medium leading-none">{user ? user.email : ''}</p>
               <p className="text-xs leading-none text-muted-foreground">
-                {user.role === 'admin' ? 'Admin' : 'User'}
+                {user?.role === 'admin' ? 'Admin' : 'User'}
               </p>
 
-              { user.role !== 'admin' && (
-                <RequestAdminAccessButton 
-                email={user.email} 
+              { user?.role !== 'admin' && (
+                <RequestAdminAccessButton
+                email={user?.email ?? ''} 
                 adminRequested={adminRequested} 
                 setRequested={handleAdminRequestChange} 
                 />
