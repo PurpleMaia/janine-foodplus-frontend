@@ -13,5 +13,5 @@ export async function POST(request: NextRequest) {
 
     console.log(`Checked admin request status for email: ${email}, requested: ${result}`);
 
-    return NextResponse.json({ success: true, requested: result }, { status: 200 });
+    return NextResponse.json({ success: true, adminRequested: result }, { status: 200 });
 }

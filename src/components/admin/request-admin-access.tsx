@@ -6,12 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 
 interface RequestAdminAccessButtonProps {
   email: string;
-  adminRequested: boolean;
+  adminRequested: boolean; // callback to parent state
+  setRequested?: (requested: boolean) => void; // Optional callback to update parent state
 }
 
-export function RequestAdminAccessButton({ email, adminRequested }: RequestAdminAccessButtonProps) {
-  const [isRequesting, setIsRequesting] = useState(false);
-  const [requested, setRequested] = useState(adminRequested);
+export function RequestAdminAccessButton({ email, adminRequested, setRequested }: RequestAdminAccessButtonProps) {
+  const [isRequesting, setIsRequesting] = useState(false); 
   const { toast } = useToast();
 
   const handleRequest = async () => {
@@ -27,7 +27,7 @@ export function RequestAdminAccessButton({ email, adminRequested }: RequestAdmin
           title: "Request sent!",
           description: "Your request for Admin access has been submitted. Please wait for approval.",
         });
-        setRequested(true);
+        setRequested?.(true);
       } else {
         toast({
           title: "Request failed",
@@ -49,12 +49,12 @@ export function RequestAdminAccessButton({ email, adminRequested }: RequestAdmin
   return (
     <Button 
       onClick={handleRequest} 
-      disabled={isRequesting || requested} 
+      disabled={isRequesting || adminRequested} 
       variant="secondary"
     >
       {isRequesting 
         ? "Requesting..." 
-        : requested 
+        : adminRequested 
           ? "Admin Request Sent" 
           : "Request Admin Access"} 
     </Button>

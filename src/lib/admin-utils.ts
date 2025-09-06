@@ -84,7 +84,7 @@ export async function requestAdminAccess(email: string): Promise<boolean> {
   }
 }
 
-export async function checkAdminRequestStatus(email: string): Promise<boolean> {
+export async function checkAdminRequestStatus(email: string): Promise<boolean | null> {
   try {
     const user = await db.selectFrom('user')
       .select(['requested_admin'])
@@ -92,12 +92,12 @@ export async function checkAdminRequestStatus(email: string): Promise<boolean> {
       .executeTakeFirst();
 
     if (!user) {
-      return false; // User not found
+      return null; // User not found
     }
 
     return user.requested_admin;
   } catch (error) {
     console.error('Error checking admin request status:', error);
-    return false;
+    return null;
   }
 }

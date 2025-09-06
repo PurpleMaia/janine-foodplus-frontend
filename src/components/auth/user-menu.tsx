@@ -20,6 +20,10 @@ export function UserMenu() {
   //shows nothing if no user (safety check)
   if (!user) return null;
 
+  const handleAdminRequestChange = (requested: boolean) => {
+    setAdminRequested(requested);
+  }
+
   //creates avatar with users first initial
   const handleLogout = async () => {
     setView('kanban'); // Reset view to 'kanban' on logout
@@ -43,7 +47,7 @@ export function UserMenu() {
 
         if (res.ok) {
           const data = await res.json();
-          setAdminRequested(data.requested);
+          setAdminRequested(data.adminRequested);
 
         } else {
           console.error('Failed to check admin request status');
@@ -82,7 +86,11 @@ export function UserMenu() {
               </p>
 
               { user.role !== 'admin' && (
-                <RequestAdminAccessButton email={user.email} adminRequested={adminRequested} />
+                <RequestAdminAccessButton 
+                email={user.email} 
+                adminRequested={adminRequested} 
+                setRequested={handleAdminRequestChange} 
+                />
             )}
            </div>  
           )}
