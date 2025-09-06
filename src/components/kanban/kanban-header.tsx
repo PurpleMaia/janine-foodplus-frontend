@@ -3,7 +3,7 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { useKanbanBoard } from '@/hooks/use-kanban-board';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
 
 export function KanbanHeader() {
   const { setSearchQuery } = useKanbanBoard(); // Access context

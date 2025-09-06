@@ -7,15 +7,15 @@ export const QUERY_KEYS = {
   billDetails: 'billDetails',
 };
 
-export function useAllBills() {
-  return useQuery({
-    queryKey: [QUERY_KEYS.bills,],
-    queryFn: async () => {
-      const results = await getAllBills();
-      return results;
-    },
-  });
-}
+// export function useAllBills() {
+//   return useQuery({
+//     queryKey: [QUERY_KEYS.bills,],
+//     queryFn: async () => {
+//       const results = await getAllBills();
+//       return results;
+//     },
+//   });
+// }
 
 export function useAdoptedBills(userID: string) {
   return useQuery({

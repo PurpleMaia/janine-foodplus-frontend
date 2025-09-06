@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ user: null });
     }
 
-    return NextResponse.json({ user: { id: user.id, email: user.email } });
+    return NextResponse.json({ user: { id: user.id, email: user.email, role: user.role, username: user.username } });
   } catch (error) {
     console.error('Session check error:', error);
     return NextResponse.json({ user: null });

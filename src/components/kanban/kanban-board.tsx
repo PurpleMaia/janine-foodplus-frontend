@@ -8,7 +8,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { updateBillStatusServerAction, searchBills } from '@/services/legislation';
 import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
-import { useKanbanBoard } from '@/hooks/use-kanban-board';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useToast } from "@/hooks/use-toast"; // Import useToast
 import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dialog component
 import { Button } from '@/components/ui/button';

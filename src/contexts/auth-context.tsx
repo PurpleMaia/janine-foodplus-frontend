@@ -1,19 +1,17 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import type { User } from '@/lib/simple-auth';
+import { error } from 'console';
 
-interface User {
-  id: string;
-  email: string;
-}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (authString: string, password: string) => Promise<{ success: boolean, error?: string }>;
   logout: () => Promise<void>;
   checkSession: () => Promise<void>;
-  register: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, username: string, password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,28 +38,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (authString: string, password: string): Promise<{ success: boolean, error?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ authString, password }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
-        return true;
+        return {
+          success: true
+        };
       } else {
         const errorData = await response.json();
-        console.error('Login failed:', errorData.error);
-        return false;
+        return {
+          success: false,
+          error: errorData.error
+        };
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return false;
+      return {
+        success: false,
+        error: 'Login error'
+      };
     }
   };
 
@@ -74,19 +78,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string): Promise<boolean> => {
+  const register = async (email: string, username: string, password: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, username, password }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        console.log('Registration successful:', data);
+        // setUser(data.user);
         return true;
       } else {
         const errorData = await response.json();

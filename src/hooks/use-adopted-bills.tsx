@@ -9,34 +9,9 @@ import { useBills } from '@/contexts/bills-context';
 
 export function useAdoptedBills() {
   const { user } = useAuth();  
-  const { setBills, setLoadingBills: setLoading } = useBills(); // Set to the main bills context
+  const { setBills, setLoadingBills: setLoading, refreshBills } = useBills(); // Set to the main bills context
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const fetchAdoptedBills = useCallback(async () => {
-    if (!user) {
-      console.log('No user, setting bills to empty array');
-      setBills([]);
-      return;
-    }
-
-    console.log('fetchAdoptedBills called for user:', user.id);
-    console.log('User object:', user);
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const adoptedBills = await getUserAdoptedBills(user.id);
-      console.log('Fetched adopted bills:', adoptedBills.length, adoptedBills);
-      setBills(adoptedBills);
-
-    } catch (err) {
-      setError('Failed to fetch adopted bills');
-      console.error('Error fetching adopted bills:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
 
   const handleAdoptBill = useCallback(async (billUrl: string) => {
     if (!user) return false;
@@ -45,7 +20,7 @@ export function useAdoptedBills() {
       const success = await adoptBill(user.id, billUrl);
       if (success) {
         // Refresh the bills list after successful adoption
-        await fetchAdoptedBills();        
+        await refreshBills()      
         return true;
       }
       return false;
@@ -53,7 +28,7 @@ export function useAdoptedBills() {
       console.error('Error adopting bill:', err);
       return false;
     }
-  }, [user, fetchAdoptedBills]);
+  }, [user, refreshBills]);
 
   const handleUnadoptBill = useCallback(async (billId: string) => {
     if (!user) return false;
@@ -75,15 +50,9 @@ export function useAdoptedBills() {
     }
   }, [user]);
 
-  // Fetch bills when user changes
-  useEffect(() => {
-    fetchAdoptedBills();
-  }, [fetchAdoptedBills]);
-
   return {
     error,
     adoptBill: handleAdoptBill,
     unadoptBill: handleUnadoptBill,
-    refreshBills: fetchAdoptedBills,
   };
 }

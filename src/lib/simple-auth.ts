@@ -6,6 +6,8 @@ import { createHash } from 'crypto';
 export interface User {
   id: string;
   email: string;
+  role: string;
+  username: string;
 }
 
 export interface Session {
@@ -50,7 +52,7 @@ export async function validateSession(token: string): Promise<User | null> {
     // Query the database for the session and associated user
     const result = await db.selectFrom('sessions as s')
       .innerJoin('user as u', 's.user_id', 'u.id')
-      .select(['u.id', 'u.email'])
+      .select(['u.id', 'u.role', 'u.email', 'u.username'])
       .where('s.session_token', '=', hashedToken)
       .where('s.expires_at', '>', new Date())
       .executeTakeFirst();    
@@ -58,7 +60,9 @@ export async function validateSession(token: string): Promise<User | null> {
     if (result) {      
       return {
         id: result.id,
-        email: result.email
+        email: result.email,
+        role: result.role,
+        username: result.username
       };
     }
     return null;
@@ -73,47 +77,51 @@ export async function deleteSession(token: string): Promise<void> {
   await db.deleteFrom('sessions').where('session_token', '=', hashedToken).execute();
 }
 
-export async function authenticateUser(email: string, password: string): Promise<User | null> {
-  try {
-    //1. Looks up user by email in user table
-    const userResult = await db
-      .selectFrom('user')
-      .selectAll()
-      .where('email', '=', email)
-      .executeTakeFirst();      
-    if (!userResult) {
-      return null;
-    }
+export async function authenticateUser(authString: string, password: string): Promise<User> {
+  //1. Looks up user by email or username in user table
+  const userResult = await db
+    .selectFrom('user')
+    .selectAll()
+    .where(eb => eb.or([
+      eb('email', '=', authString),
+      eb('username', '=', authString)  // using email parameter as it could be either email or username
+    ]))
+    .executeTakeFirst();      
+  if (!userResult) {
+    throw new Error('USER_NOT_FOUND');
+  } else if (userResult.account_status !== 'active' && userResult.requested_admin === false) { // only block fresh user accounts, users who requested admin can still login
+    console.error('Account not active for user:', userResult.email);
+    throw new Error('ACCOUNT_INACTIVE');
+  } 
 
-    //2. Finds auth_key for that user
-    const keyResult = await db
-      .selectFrom('auth_key')
-      .selectAll()
-      .where('user_id', '=', userResult.id)
-      .executeTakeFirst();
+  //2. Finds auth_key for that user
+  const keyResult = await db
+    .selectFrom('auth_key')
+    .selectAll()
+    .where('user_id', '=', userResult.id)
+    .executeTakeFirst();
 
-    if (!keyResult) {
-      return null;
-    }
-
-    //3. Compares password using bycrypt (hashed)
-    if (!keyResult.hashed_password || !(await bcrypt.compare(password, keyResult.hashed_password))) {
-      return null;
-    }
-
-    return { id: userResult.id, email: userResult.email };  //Success
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return null;
+  if (!keyResult) {
+    throw new Error('AUTH_KEY_NOT_FOUND');
   }
-}
 
-export async function registerUser(email: string, password: string): Promise<User | null> {
+  //3. Compares password using bycrypt (hashed)
+  if (!keyResult.hashed_password || !(await bcrypt.compare(password, keyResult.hashed_password))) {
+    throw new Error('INVALID_CREDENTIALS');
+  }
+
+  return { id: userResult.id, email: userResult.email, role: userResult.role, username: userResult.username };  //Success
+} 
+
+export async function registerUser(email: string, username: string, password: string): Promise<User | null> {
   try {
     //1. Check if user already exists
     const existingUser = await db.selectFrom('user')
-      .selectAll()
-      .where('email', '=', email)
+      .selectAll()      
+      .where((eb) => eb.or([
+        eb('email', '=', email),
+        eb('username', '=', username)
+      ]))
       .executeTakeFirst();
 
     if (existingUser) {
@@ -122,10 +130,11 @@ export async function registerUser(email: string, password: string): Promise<Use
 
     //2. Create new user
     const userResult = await db.insertInto('user').values({
-      email, 
+      email: email, 
       created_at: new Date(),
       role: 'user',
-      username: email.split('@')[0], // Simple username from email
+      account_status: 'pending',
+      username: username,
       requested_admin: false
     }).returning('id').executeTakeFirst();
 
@@ -139,7 +148,7 @@ export async function registerUser(email: string, password: string): Promise<Use
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.insertInto('auth_key').values({ user_id: userId, hashed_password: hashedPassword }).execute();
 
-    return { id: userId, email }; // Return the new user
+    return { id: userId, email, role: 'user', username }; // Return the new user
   } catch (error) {
     console.error('Registration error:', error);
     return null;

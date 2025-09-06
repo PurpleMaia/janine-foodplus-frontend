@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 export function LoginDialog() {
-  const [email, setEmail] = useState('');
+  const [authString, setAuthString] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -23,9 +23,10 @@ export function LoginDialog() {
 
     try {
 
-      //calls login from suth context
-      const success = await login(email, password);
-      if (success) {
+      //calls login from auth context
+      const result = await login(authString, password);
+
+      if (result && result.success) {
         //shows success message
         toast({
           title: 'Success!',
@@ -34,16 +35,23 @@ export function LoginDialog() {
 
         //closes dialog and clears form
         setIsOpen(false);
-        setEmail('');
+        setAuthString('');
         setPassword('');
-      } else {
-        //shows error message
+      } else if (result && result.error) {
+        //shows error message from context
         toast({
-          title: 'Login failed',
-          description: 'Please check your email and password.',
+          title: 'Login Failed',
+          description: result.error,
           variant: 'destructive',
         });
-      }
+      } else {
+        //generic error message
+        toast({
+          title: 'Login Failed',
+          description: 'An unknown error occurred.',
+          variant: 'destructive',
+        });        
+      } 
     } catch (error) {
       toast({
         title: 'Error',
@@ -66,13 +74,13 @@ export function LoginDialog() {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="authString">Email/Username</Label>
             <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              id="authString"
+              type="text"
+              value={authString}
+              onChange={(e) => setAuthString(e.target.value)}
+              placeholder="Enter your email or username"
               required
             />
           </div>
