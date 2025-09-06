@@ -121,7 +121,7 @@ export function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 mx-auto p-6">
         {[...Array(3)].map((_, i) => (
           <Card key={i} className="p-4">
             <Skeleton className="h-4 w-3/4 mb-2" />
