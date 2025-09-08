@@ -18,14 +18,15 @@ export function useAdoptedBills() {
    * @param billUrl - The URL of the bill to adopt.
    * @returns A boolean indicating whether the adoption was successful.
    */
-  const handleAdoptBill = useCallback(async (billUrl: string) => {
+  const handleAdoptBill = async (billUrl: string) => {
     if (!user) return false;
-
+    console.log('Adopting bill with URL:', billUrl);
     try {
       const success = await adoptBill(user.id, billUrl);
       if (success) {
         // Refresh the bills list after successful adoption
-        await refreshBills()      
+        console.log('Bill adopted successfully, refreshing bills...');
+        await refreshBills();
         return true;
       }
       return false;
@@ -33,7 +34,7 @@ export function useAdoptedBills() {
       console.error('Error adopting bill:', err);
       return false;
     }
-  }, [user, refreshBills]);
+  }
 
   /**
    * Handles the unadoption of a bill by the current user. Calls unadoptBill service and updates the global bills state on success.

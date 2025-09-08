@@ -144,6 +144,7 @@ export function BillsProvider({ children }: { children : ReactNode }) {
     }
 
     const refreshBills = async() => {
+      console.log('Refreshing bills...')
       setLoadingBills(true)
       setError(null);        
       try {

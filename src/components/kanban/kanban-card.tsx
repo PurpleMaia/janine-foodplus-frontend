@@ -92,7 +92,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
             ref={ref}
             className={cn(
                 "rounded-md border bg-card text-card-foreground shadow-sm transition-all duration-200",
-                "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2", // Focus state
+                "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 w-full max-w-[300px]", // limit card width so it won't exceed board width
                 isDragging ? "opacity-80 shadow-xl rotate-3 scale-105 cursor-grabbing" : "hover:shadow-md cursor-grab",
                 bill.updates && bill.updates.length > 0 && "ring-1 ring-green-200/50", // Subtle glow for active bills
                  className
@@ -116,39 +116,30 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 aria-label={`View details for bill ${bill.id}: ${bill.bill_title}`}
             >
                 <CardHeader className="p-0 pb-1 space-y-0.5 w-1">
-                     <div className="items-start flex justify-between gap-2">
+                     <div className="items-center flex gap-[100px]">
                          <div className="flex items-center gap-2">
                              <CardTitle className="text-sm font-bold" title={bill.bill_title}>
                                 {bill.bill_number}
                              </CardTitle>
-                             {/* Recent activity indicator */}
-                             {bill.updates && bill.updates.length > 0 && (
-                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                             )}
-                         </div>
-                         {/* Status indicator and unadopt button */}
-                         <div className="flex items-center gap-1">
                              {getStatusIcon(bill.current_status)}
-                             {bill.updates && bill.updates.length > 0 && (
-                                 <Badge variant="outline" className="text-xs h-4 px-1.5 min-w-0">
-                                     {bill.updates.length}
-                                 </Badge>
-                             )}
-                             {showUnadoptButton && onUnadopt && (
-                                 <Button
-                                     size="sm"
-                                     variant="ghost"
-                                     onClick={(e) => {
-                                         e.stopPropagation();
-                                         onUnadopt(bill.id);
-                                     }}
-                                     className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                     title="Unadopt bill"
-                                 >
-                                     <X className="h-3 w-3" />
-                                 </Button>
-                             )}
-                         </div>                                              
+                         </div>
+                         {/* Unadopt button on the right */}
+                         <div className="flex items-center justify-end flex-1">
+                            {showUnadoptButton && onUnadopt && (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onUnadopt(bill.id);
+                                    }}
+                                    className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    title="Unadopt bill"
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            )}
+                         </div>                              
                      </div>
                 </CardHeader>
                 <CardContent className="p-0 mt-1 gap-2">
@@ -177,7 +168,6 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                        <p className="text-xs text-muted-foreground">Updated: {formattedDate}</p>
                     </div>
 
                     {/* Latest Status Update Preview */}

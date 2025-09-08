@@ -117,8 +117,8 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     const grouped: { [key in BillStatus]?: Bill[] } = {};
     KANBAN_COLUMNS.forEach(col => grouped[col.id as BillStatus] = []); // Initialize all columns
     const billsTobeGrouped = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
-    console.log('grouping', billsTobeGrouped)
-    console.log('filteredBills', filteredBills, 'searchQuery', searchQuery)
+    // console.log('grouping', billsTobeGrouped)
+    // console.log('filteredBills', filteredBills, 'searchQuery', searchQuery)
 
     billsTobeGrouped.forEach(bill => {
       // Ensure bill.current_status is a valid key
@@ -127,7 +127,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         grouped[statusKey]?.push(bill);
       } else {
         // Handle potentially invalid status (optional, depends on data integrity)
-        console.warn(`Bill ${bill.id} has invalid status: ${bill.current_status}`);
+        // console.warn(`Bill ${bill.id} has invalid status: ${bill.current_status}`);
         // Place it in a default column like 'introduced' or handle as needed
         grouped['unassigned']?.push(bill);
       }
@@ -293,7 +293,6 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             columnRefs.current[idx] = el
                           }} 
                         className="inline-block">
-                        <div className="min-w-[300px]">
                           <KanbanColumn
                             columnId={column.id as BillStatus}
                             title={column.title}
@@ -305,9 +304,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             showUnadoptButton={showUnadoptButton}
                             readOnly={true}
                           >
-                            <div />
                           </KanbanColumn>
-                        </div>
                       </div>                    
                     );
                   })}
