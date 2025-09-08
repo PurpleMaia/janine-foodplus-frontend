@@ -2,8 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@/lib/simple-auth';
-import { error } from 'console';
-
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +18,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Checks if there is an active user session by calling the session API. (Called on app load/mount)
+   * If a session exists, updates the user state with the session user data. Otherwise, sets user to null.
+   */
   const checkSession = async () => {
     try {
       const response = await fetch('/api/auth/session');
@@ -38,6 +40,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Logs in a user with the given credentials.
+   * @param authString - The email/username of the user.
+   * @param password - The password of the user.
+   * @returns An object containing the success status and an optional error message.
+   */
   const login = async (authString: string, password: string): Promise<{ success: boolean, error?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
@@ -69,6 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Logs out the current user by calling the logout API and clearing the user state.
+   */
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -78,6 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Registers a new user.
+   * @param email - The email of the user.
+   * @param username - The username of the user.
+   * @param password - The password of the user.
+   * @returns A boolean indicating whether the registration was successful.
+   */
   const register = async (email: string, username: string, password: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/auth/register', {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createSession, setSessionCookie } from '@/lib/simple-auth';
+import type { User } from '@/lib/simple-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,14 +18,14 @@ export async function POST(request: NextRequest) {
     // Authenticate user
     try {
       const user = await authenticateUser(authString, password);
-      // creates new session in database
+
+      // Create session token for successfully authenticated user
       const token = await createSession(user.id);
       console.log('Created session token:', token);
-  
-  
-      // Returns success with user info AND sets cookie
+    
+      // Set session token in cookie and return user information
       return NextResponse.json(
-        { success: true, user: { id: user.id, email: user.email, role: user.role, username: user.username } },
+        { success: true, user: user as User },
         {
           status: 200,
           headers: {
@@ -33,7 +34,8 @@ export async function POST(request: NextRequest) {
         }
       );
     } catch (error) {
-      throw error      
+      // Rethrow known authentication errors to be handled in the outer catch block
+      throw error;
     }
   } catch (error) {
     if (error instanceof Error) {

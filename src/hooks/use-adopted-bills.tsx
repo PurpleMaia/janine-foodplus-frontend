@@ -9,10 +9,15 @@ import { useBills } from '@/contexts/bills-context';
 
 export function useAdoptedBills() {
   const { user } = useAuth();  
-  const { setBills, setLoadingBills: setLoading, refreshBills } = useBills(); // Set to the main bills context
+  const { setBills, refreshBills } = useBills(); // Manipulates the global bills state
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  /**
+   * Handles the adoption of a bill by the current user. Calls adoptBill service and refreshes the bills list on success.
+   * @param billUrl - The URL of the bill to adopt.
+   * @returns A boolean indicating whether the adoption was successful.
+   */
   const handleAdoptBill = useCallback(async (billUrl: string) => {
     if (!user) return false;
 
@@ -30,6 +35,11 @@ export function useAdoptedBills() {
     }
   }, [user, refreshBills]);
 
+  /**
+   * Handles the unadoption of a bill by the current user. Calls unadoptBill service and updates the global bills state on success.
+   * @param billId - The ID of the bill to unadopt.
+   * @returns A boolean indicating whether the unadoption was successful.
+   */
   const handleUnadoptBill = useCallback(async (billId: string) => {
     if (!user) return false;
     try {

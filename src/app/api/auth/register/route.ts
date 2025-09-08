@@ -13,10 +13,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User already exists or registration failed.' }, { status: 400 });
     }
 
-    // Create session and set cookie
-    // const sessionId = await createSession(user.id);
+    // Just return user info without creating a session, 
+    // Need to have admin approve first, 
+    // Then go through login workflow
+
     const res = NextResponse.json({ user });
-    // res.headers.set('Set-Cookie', setSessionCookie(sessionId));
     return res;
   } catch (error) {
     return NextResponse.json({ error: 'Registration error.' }, { status: 500 });

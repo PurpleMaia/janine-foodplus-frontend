@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { useAdoptedBills } from '@/hooks/use-adopted-bills';
+import { adoptBill } from '@/services/legislation';
 
 export function AdoptBillDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,8 +15,8 @@ export function AdoptBillDialog() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { adoptBill } = useAdoptedBills();
 
+  // Calls the adoptBill service and provides feedback via toasts.
   const handleAdoptBill = async () => {
     if (!user) {
       toast({
@@ -38,7 +38,7 @@ export function AdoptBillDialog() {
 
     setIsLoading(true);
     try {
-      const success = await adoptBill(billUrl.trim());
+      const success = await adoptBill(user.id, billUrl.trim());
       
       if (success) {
         toast({

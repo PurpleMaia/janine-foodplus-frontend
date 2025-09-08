@@ -8,12 +8,10 @@ export async function POST(request: NextRequest) {
     
     //Delete session from database
     if (token) {
-      // Delete session from database
       await deleteSession(token);
     }
 
     // Clear session cookie
-    //Clears cookie in browser
     const clearCookie = clearSessionCookie();
 
     return NextResponse.json(
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
       {
         status: 200,
         headers: {
-          'Set-Cookie': clearCookie, //clears session cookie
+          'Set-Cookie': clearCookie, // set to the cleared session cookie
         },
       }
     );
