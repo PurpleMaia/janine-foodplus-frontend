@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # [Unreleased]
 
-## [1.1.4] - 2025-9-05
+## [1.3.0] - 2025-9-05
 ### Added (Tracker)
 - Admin View of accounts (Accept/Reject a user account creation request)
 
