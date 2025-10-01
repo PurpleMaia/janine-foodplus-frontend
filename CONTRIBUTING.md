@@ -21,14 +21,20 @@ Example: optimize/integrate-react-query
 We use GitHub to monitor version control and manage reviews. Every change should go through a Pull Request. Exceptions would be quick code changes to configure on deployment. 
 
 ### PR Workflow
-1. Create a branch off dev
-2. Push your changes.
+1. Create a branch (addressing task/issue with proper naming conventions) off of `dev` branch
+   - `git checkout dev`
+   - `git checkout -b <name of branch>`
+2. Push your changes to your branch.
+   - `git add .`
+   - `git commit -m "<commit message for iterative change>"`
+   - `git push`
 3. Wait for CI checks (lint, typecheck, build, tests) to pass.
+   - `npm run lint`
 4. Open a PR in GitHub.
 5. Fill out the PR template.
 6. Request review from a cluster/project lead
 7. Cluster lead will merge to main
-8. Update [CHANGELOG](CHANGELOG.md)
+8. Update [CHANGELOG](CHANGELOG.md) with your most recent push
 
 ### PR Template
 ```
@@ -42,11 +48,6 @@ We use GitHub to monitor version control and manage reviews. Every change should
 - If a bugfix/hotfix
 - Describe the bug in technical detail
 - Explain the code fix
-
-## Checklist
-[ ] CI checks pass
-[ ] Documentation updated
-[ ] Reviewer assigned
 ```
 
 ### Example PR
