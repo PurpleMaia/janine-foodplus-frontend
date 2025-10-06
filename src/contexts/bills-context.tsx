@@ -176,13 +176,16 @@ export function BillsProvider({ children }: { children : ReactNode }) {
       const handler = setTimeout(async () => {
           try {
             if (user) {                
+              //LOADING BILLS FOR LOGGED IN USER
               const results = await getUserAdoptedBills(user.id);
               setBills(results); 
               console.log('User adopted bills set in context')
               return;   
             } else {
+              // LOADING BILLS FOR PUBLIC VIEW
               const results = await getAllBills();
               setBills(results);
+              console.log("THere are ", results.length, " bills");
               console.log('successful results set in context')
             }
           } catch (err) {

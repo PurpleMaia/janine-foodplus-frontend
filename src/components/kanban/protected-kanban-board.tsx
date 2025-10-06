@@ -23,6 +23,7 @@ export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoard
 
   // If not authenticated, show read-only view of all bills
   if (!user) {
+    console.log('Rendering public view with', bills.length, 'bills');
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4 p-8">
         <div className="text-center space-y-2">
@@ -41,8 +42,11 @@ export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoard
     );
   }
 
+
   // Show adopted bills if user has any, otherwise show empty state with adopt button
   if (user && bills.length === 0 && !loadingBills) {
+    console.log('User has', bills.length, 'adopted bills, rendering empty state');
+    
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
         <div className="text-center space-y-4">

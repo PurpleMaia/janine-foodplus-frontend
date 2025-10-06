@@ -99,11 +99,11 @@ export function UserMenu() {
               { user?.role !== 'admin' && (
                 <RequestAdminAccessButton
                 email={user?.email ?? ''} 
-                adminRequested={adminRequested} 
-                setRequested={handleAdminRequestChange} 
+                adminRequested={adminRequested}
+                setRequested={handleAdminRequestChange}
                 />
             )}
-           </div>  
+           </div>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
