@@ -166,42 +166,44 @@ export function BillsProvider({ children }: { children : ReactNode }) {
         setLoadingBills(false);    
       }
     }
-    
+
     useEffect(() => {
-      if (userLoading) return; // Wait until user loading is complete
+      if (userLoading) return; // wait until auth resolves
     
-      setLoadingBills(true)
-      setError(null);      
-
-      const handler = setTimeout(async () => {
-          try {
-            if (user) {                
-              //LOADING BILLS FOR LOGGED IN USER
-              const results = await getUserAdoptedBills(user.id);
-              setBills(results); 
-              console.log('User adopted bills set in context')
-              return;   
-            } else {
-              // LOADING BILLS FOR PUBLIC VIEW
-              const results = await getAllBills();
+      let cancelled = false;
+    
+      (async () => {
+        setLoadingBills(true);
+        setError(null);
+        try {
+          if (user) {
+            // LOGGED-IN PATH
+            const results = await getUserAdoptedBills(user.id);
+            if (!cancelled) {
               setBills(results);
-              console.log("THere are ", results.length, " bills");
-              console.log('successful results set in context')
+              console.log('User adopted bills set in context', results.length);
             }
-          } catch (err) {
-            console.error("Error searching bills:", err);
-            setError("Failed to search bills.");
-          } finally {
-            setLoadingBills(false);    
-                      
+          } else {
+            // PUBLIC PATH
+            const results = await getAllBills();
+            if (!cancelled) {
+              setBills(results);
+              console.log('There are', results.length, 'bills');
+              console.log('successful results set in context');
+            }
           }
-        });
-        
-        return () => {
-          clearTimeout(handler);
-        };
-
-    }, [user])
+        } catch (err) {
+          if (!cancelled) {
+            console.error('Error searching bills:', err);
+            setError('Failed to search bills.');
+          }
+        } finally {
+          if (!cancelled) setLoadingBills(false);
+        }
+      })();
+    
+      return () => { cancelled = true; };
+    }, [user, userLoading]);
 
     const value = useMemo(() => ({
       loadingBills, setLoadingBills, bills, setBills, acceptLLMChange, rejectLLMChange, tempBills, setTempBills, rejectAllLLMChanges, acceptAllLLMChanges, resetBills, refreshBills
