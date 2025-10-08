@@ -102,13 +102,13 @@ export default function AIUpdateButton() {
           current_status: bill.current_status,          
           suggested_status: classification,
           target_idx: targetColumnIdx
-        };      
+        };
 
         if (abortSignal?.aborted) {
           throw new Error('Cancelled');
         }
 
-        // Set temp bill 
+        // Set temp bill
         setTempBills(prevBills => [
           ...prevBills.filter(tb => tb.id !== bill.id),
           tempBill
@@ -123,7 +123,7 @@ export default function AIUpdateButton() {
       setBills(prevBills => 
         prevBills.map(b => 
           b.id === bill.id 
-            ? { 
+            ? {
                 ...b, 
                 previous_status: b.current_status, // Store original status
                 current_status: classification,
@@ -140,7 +140,7 @@ export default function AIUpdateButton() {
         variant: 'default',
       });    
     }
-  }      
+  }
 
   // Handler to trigger LLM classification for all bills
   const handleAIUpdateAll = async () => { 

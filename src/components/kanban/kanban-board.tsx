@@ -14,6 +14,8 @@ import { BillDetailsDialog } from './bill-details-dialog'; // Import the new dia
 import { Button } from '@/components/ui/button';
 import { useBills } from '@/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
+import { useAuth } from '@/contexts/auth-context';
+
 
 
 

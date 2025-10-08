@@ -33,6 +33,7 @@ export interface NewsArticle {
   date: Date;
 }
 
+
 /**
  * Represents a bill in the legislative process.
  */
@@ -60,11 +61,19 @@ export interface Bill {
 }
 
 export interface TempBill {
-  id: string,  
-  current_status: string
-  suggested_status: string   
-  target_idx: number
-}
+  id: string;
+  current_status: BillStatus;
+  suggested_status: BillStatus;
+  target_idx: number;
+  source?: 'llm' | 'human';
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  proposed_by?: {
+    user_id: string;
+    role: 'intern' | 'supervisor' | 'admin';
+    at: string;      // ISO timestamp
+    note?: string;
+  };
+};
 
 export interface StatusUpdate {
   chamber: string;
