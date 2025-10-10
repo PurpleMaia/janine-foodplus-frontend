@@ -11,6 +11,7 @@ import { Providers } from '@/lib/providers';
 
 
 
+
 //Wraps entire app with authentication context 
 //Makes auth state avalible to all components
 

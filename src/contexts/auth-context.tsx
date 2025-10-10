@@ -3,6 +3,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@/lib/simple-auth';
 
+
+type Role = 'intern' | 'supervisor' | 'admin';
+type AppUser = User & { role?: Role };
+
+
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -140,3 +146,4 @@ export function useAuth() {
   }
   return context;
 }
+
