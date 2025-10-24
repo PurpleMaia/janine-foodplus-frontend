@@ -1,4 +1,5 @@
 const postgres = require('postgres');
+require('dotenv').config();
 
 // Database connection
 const sql = postgres(process.env.DATABASE_URL);

@@ -1,5 +1,6 @@
 const postgres = require('postgres');
 const crypto = require('crypto');
+require('dotenv').config();
 
 // Database connection
 const sql = postgres(process.env.DATABASE_URL);

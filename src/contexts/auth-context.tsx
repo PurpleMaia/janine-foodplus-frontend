@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import type { User } from '@/lib/simple-auth';
 
 
@@ -14,37 +15,34 @@ interface AuthContextType {
   loading: boolean;
   login: (authString: string, password: string) => Promise<{ success: boolean, error?: string }>;
   logout: () => Promise<void>;
-  checkSession: () => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /**
-   * Checks if there is an active user session by calling the session API. (Called on app load/mount)
-   * If a session exists, updates the user state with the session user data. Otherwise, sets user to null.
-   */
-  const checkSession = async () => {
-    try {
-      const response = await fetch('/api/auth/session');
-      const data = await response.json();
-      
-      if (data.user) {
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Session check failed:', error);
+  // Update user state when NextAuth session changes
+  useEffect(() => {
+    if (status === 'loading') {
+      setLoading(true);
+    } else if (session?.user) {
+      // Convert NextAuth session to our User type
+      setUser({
+        id: session.user.id,
+        email: session.user.email,
+        username: session.user.name || '',
+        role: session.user.role || 'user'
+      });
+      setLoading(false);
+    } else {
       setUser(null);
-    } finally {
       setLoading(false);
     }
-  };
+  }, [session, status]);
 
   /**
    * Logs in a user with the given credentials.
@@ -88,8 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      setUser(null);
+      await signOut({ callbackUrl: '/' });
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -128,12 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    checkSession();
-  }, []);
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkSession, register }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );

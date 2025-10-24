@@ -77,6 +77,30 @@ export async function deleteSession(token: string): Promise<void> {
   await db.deleteFrom('sessions').where('session_token', '=', hashedToken).execute();
 }
 
+export async function authenticateGoogleUser(googleId: string): Promise<User> {
+  // Look up user by Google ID
+  const userResult = await db
+    .selectFrom('user')
+    .selectAll()
+    .where('google_id', '=', googleId)
+    .executeTakeFirst();
+    
+  if (!userResult) {
+    throw new Error('USER_NOT_FOUND');
+  } else if (userResult.account_status !== 'active' && userResult.requested_admin === false) {
+    // Same admin approval logic as regular users
+    console.error('Account not active for Google user:', userResult.email);
+    throw new Error('ACCOUNT_INACTIVE');
+  }
+
+  return { 
+    id: userResult.id, 
+    email: userResult.email, 
+    role: userResult.role, 
+    username: userResult.username 
+  };
+}
+
 export async function authenticateUser(authString: string, password: string): Promise<User> {
   //1. Looks up user by email or username in user table
   const userResult = await db
@@ -117,7 +141,7 @@ export async function registerUser(email: string, username: string, password: st
   try {
     //1. Check if user already exists
     const existingUser = await db.selectFrom('user')
-      .selectAll()      
+      .selectAll()
       .where((eb) => eb.or([
         eb('email', '=', email),
         eb('username', '=', username)

@@ -15,7 +15,8 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface AuthKey {
   created_at: Generated<Timestamp | null>;
-  hashed_password: string;
+  google_refresh_token: string | null;
+  hashed_password: string | null;
   id: Generated<string>;
   user_id: string | null;
 }
@@ -68,9 +69,12 @@ export interface StatusUpdates {
 
 export interface User {
   account_status: string;
+  auth_provider: Generated<string>;
   created_at: Generated<Timestamp | null>;
   email: string;
+  google_id: string | null;
   id: Generated<string>;
+  profile_picture_url: string | null;
   requested_admin: Generated<boolean>;
   role: Generated<string>;
   username: string;
