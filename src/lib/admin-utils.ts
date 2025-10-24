@@ -80,7 +80,7 @@ export async function approveUser(userIDtoApprove: string): Promise<boolean> {
 export async function denyUser(userIDtoDeny: string): Promise<boolean> {
   try {
     const result = await db.updateTable('user')
-      .set({ account_status: 'active', requested_admin: false })
+      .set({ account_status: 'denied', requested_admin: false })
       .where('id', '=', userIDtoDeny)
       .where('account_status', '=', 'pending')
       .executeTakeFirst();
