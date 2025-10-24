@@ -22,13 +22,11 @@ export const authOptions: NextAuthOptions = {
             .executeTakeFirst();
 
           if (existingUser) {
-            console.log('Found existing Google user:', existingUser.email, 'Status:', existingUser.account_status);
             // Check if user is approved (same logic as regular auth)
             if (existingUser.account_status !== 'active' && existingUser.requested_admin === false) {
               console.error('Account not active for Google user:', existingUser.email);
               return false; // Block sign-in for unapproved users
             }
-            console.log('Google user approved, allowing sign-in');
             // User exists and is approved, allow sign in
             return true;
           }
@@ -59,12 +57,16 @@ export const authOptions: NextAuthOptions = {
           const userId = crypto.randomUUID();
           const authKeyId = crypto.randomUUID();
           
+          // Generate unique username to avoid conflicts
+          const baseUsername = user.name || user.email?.split('@')[0] || 'user';
+          const uniqueUsername = `${baseUsername}_${Date.now()}`;
+          
           const newUser = await db
             .insertInto('user')
             .values({
               id: userId,
               email: user.email || '',
-              username: user.name || user.email?.split('@')[0] || '',
+              username: uniqueUsername,
               google_id: profile?.sub || '',
               profile_picture_url: user.image || '',
               auth_provider: 'google',
@@ -101,7 +103,6 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async session({ session, token }) {
-      console.log('Session callback - token.sub:', token?.sub);
       if (token?.sub) {
         // Get user from database
         const user = await db
@@ -110,10 +111,9 @@ export const authOptions: NextAuthOptions = {
           .where('google_id', '=', token.sub)
           .executeTakeFirst();
 
-        console.log('Session callback - user found:', user?.email, 'Status:', user?.account_status);
         if (user) {
           // Extend the session with additional user data
-          const extendedSession = {
+          return {
             ...session,
             user: {
               ...session.user,
@@ -122,20 +122,14 @@ export const authOptions: NextAuthOptions = {
               account_status: user.account_status
             }
           };
-          console.log('Session callback - returning extended session:', extendedSession.user?.email);
-          return extendedSession;
         }
       }
-      console.log('Session callback - returning original session');
       return session;
     },
     async jwt({ token, user, account }) {
-      console.log('JWT callback - account:', account?.provider, 'user:', user?.email);
       if (account?.provider === 'google' && user) {
         token.sub = account.providerAccountId; // Google user ID
-        console.log('JWT callback - set token.sub to:', token.sub);
       }
-      console.log('JWT callback - returning token with sub:', token.sub);
       return token;
     }
   },

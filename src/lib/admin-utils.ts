@@ -41,8 +41,31 @@ export async function getPendingRequests(userID: string): Promise<User[]> {
 
 export async function approveUser(userIDtoApprove: string): Promise<boolean> {
   try {
+    // First, get the user to check if they requested admin access
+    const user = await db
+      .selectFrom('user')
+      .select(['id', 'requested_admin'])
+      .where('id', '=', userIDtoApprove)
+      .where('account_status', '=', 'pending')
+      .executeTakeFirst();
+
+    if (!user) {
+      return false; // User not found or not pending
+    }
+
+    // Update user based on whether they requested admin access
+    const updateData: any = {
+      account_status: 'active',
+      requested_admin: false // Reset the admin request flag
+    };
+
+    // If they requested admin access, grant admin role
+    if (user.requested_admin) {
+      updateData.role = 'admin';
+    }
+
     const result = await db.updateTable('user')
-      .set({ account_status: 'active' })
+      .set(updateData)
       .where('id', '=', userIDtoApprove)
       .where('account_status', '=', 'pending')
       .executeTakeFirst();
@@ -57,7 +80,7 @@ export async function approveUser(userIDtoApprove: string): Promise<boolean> {
 export async function denyUser(userIDtoDeny: string): Promise<boolean> {
   try {
     const result = await db.updateTable('user')
-      .set({ account_status: 'denied' })
+      .set({ account_status: 'denied', requested_admin: false })
       .where('id', '=', userIDtoDeny)
       .where('account_status', '=', 'pending')
       .executeTakeFirst();
