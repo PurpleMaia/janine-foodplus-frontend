@@ -22,8 +22,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const success = await register(email, username, password);
-      if (success) {
+      const result = await register(email, username, password);
+      if (result.success) {
         toast({
           title: "Registration successful!",
           description: "Please wait while we approve of your account.",
@@ -35,7 +35,7 @@ export default function RegisterPage() {
       } else {
         toast({
           title: "Registration failed",
-          description: "Please try again with a different email.",
+          description: result.error || "Please try again with a valid email.",
           variant: "destructive",
         });
       }
@@ -54,6 +54,9 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow">
         <h1 className="mb-6 text-2xl font-bold text-center">Register</h1>
+        <div className="mb-4 text-sm text-muted-foreground text-center">
+          Registration is restricted to @purplemaia.org email addresses.
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="register-email">Email</Label>
@@ -62,7 +65,7 @@ export default function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              placeholder="yourname@purplemaia.org"
               required
             />
           </div>

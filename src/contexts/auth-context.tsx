@@ -8,7 +8,7 @@ interface AuthContextType {
   loading: boolean;
   login: (authString: string, password: string) => Promise<{ success: boolean, error?: string }>;
   logout: () => Promise<void>;
-  register: (email: string, username: string, password: string) => Promise<boolean>;
+  register: (email: string, username: string, password: string) => Promise<{ success: boolean, error?: string }>;
   checkSession: () => Promise<void>;
 }
 
@@ -99,9 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * @param email - The email of the user.
    * @param username - The username of the user.
    * @param password - The password of the user.
-   * @returns A boolean indicating whether the registration was successful.
+   * @returns An object indicating whether the registration was successful and an optional error message.
    */
-  const register = async (email: string, username: string, password: string): Promise<boolean> => {
+  const register = async (email: string, username: string, password: string): Promise<{ success: boolean, error?: string }> => {
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -115,15 +115,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await response.json();
         console.log('Registration successful:', data);
         // setUser(data.user);
-        return true;
+        return { success: true };
       } else {
         const errorData = await response.json();
         console.error('Registration failed:', errorData.error);
-        return false;
+        return { success: false, error: errorData.error };
       }
     } catch (error) {
       console.error('Registration error:', error);
-      return false;
+      return { success: false, error: 'An unexpected error occurred' };
     }
   };
 
