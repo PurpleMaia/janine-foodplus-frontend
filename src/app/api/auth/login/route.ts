@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       // Create session token for successfully authenticated user
       const token = await createSession(user.id);
       console.log('Created session token:', token);
-    
+
       // Set session token in cookie and return user information
       return NextResponse.json(
         { success: true, user: user as User },

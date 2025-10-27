@@ -382,6 +382,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     suggested_status,
     meta
   ) => {
+    console.log('🟣 proposeStatusChange called:', bill.id, '→', suggested_status);
+    console.log('🟣 Current tempBills count:', tempBills.length);
+    
     const target_idx = 0; // optional: compute from KANBAN_COLUMNS if you want to scroll later
     const proposal: TempBill = {
       id: bill.id,
@@ -398,10 +401,14 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       },
     };
 
-    setTempBills((prev) => [
-      ...prev.filter((tb) => tb.id !== bill.id),
-      proposal,
-    ]);
+    console.log('🟣 Creating proposal:', proposal);
+
+    setTempBills((prev) => {
+      const filtered = prev.filter((tb) => tb.id !== bill.id);
+      const updated = [...filtered, proposal];
+      console.log('🟣 Updated tempBills count:', updated.length);
+      return updated;
+    });
 
     toast({
       title: 'Change Proposed',

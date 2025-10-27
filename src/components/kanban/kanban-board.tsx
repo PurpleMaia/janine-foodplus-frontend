@@ -18,9 +18,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { KanbanCard } from './kanban-card';
 
 
-// ------------------------------------------------------------
-// Inlined KanbanColumn (with enableDnd + pending proposal UI)
-// ------------------------------------------------------------
+// // ------------------------------------------------------------
+// // Inlined KanbanColumn (with enableDnd + pending proposal UI)
+// // ------------------------------------------------------------
 
 export interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
   columnId: BillStatus;
@@ -336,8 +336,11 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       const movedBill = bills.find((b) => b.id === draggableId);
       if (!movedBill) return;
 
-      // Interns propose (no direct commit)
-      if (user?.role === 'intern') {
+      // Interns (users with role 'user') propose (no direct commit)
+      console.log('🔍 User role check - user:', user?.email, 'role:', user?.role);
+      
+      if (user?.role === 'user') {
+        console.log('🔵 User proposing change:', movedBill.id, '→', destinationColumnId);
         proposeStatusChange(movedBill, destinationColumnId, {
           userId: user.id,
           role: 'intern',
@@ -456,7 +459,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                       showUnadoptButton={showUnadoptButton}
                       readOnly={true}
                       enableDnd={false}
-                      /* pending proposals */
+
                       pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                       canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
                       onApproveTemp={(billId) => acceptTempChange(billId)}
