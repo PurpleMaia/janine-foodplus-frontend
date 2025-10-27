@@ -17,9 +17,24 @@ interface PendingUser {
   account_status: string;
 }
 
+interface PendingProposal {
+  id: string;
+  bill_id: string;
+  bill_number?: string;
+  bill_title?: string;
+  proposed_status: string;
+  current_status: string;
+  proposed_at: string;
+  proposing_user_id: string;
+  proposing_username?: string;
+  proposalId: string;
+}
+
 export function AdminDashboard() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [pendingProposals, setPendingProposals] = useState<PendingProposal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProposals, setIsLoadingProposals] = useState(true);
   const { toast } = useToast();
 
   // Fetch pending requests
@@ -52,9 +67,88 @@ export function AdminDashboard() {
     }
   };
 
+  // Fetch pending bill proposals
+  const fetchPendingProposals = async () => {
+    try {
+      const response = await fetch('/api/proposals/load');
+      if (!response.ok) {
+        throw new Error('Failed to fetch pending proposals');
+      }
+      const data = await response.json();
+      if (data.success && data.proposals) {
+        setPendingProposals(data.proposals);
+      }
+    } catch (error) {
+      console.error('Error fetching pending proposals:', error);
+    } finally {
+      setIsLoadingProposals(false);
+    }
+  };
+
   useEffect(() => {
     fetchPendingRequests();
+    fetchPendingProposals();
   }, []);
+
+  // Handle approving proposal
+  const handleApproveProposal = async (proposalId: string, billId: string) => {
+    try {
+      const response = await fetch('/api/proposals/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ proposalId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve proposal');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Proposal approved',
+      });
+
+      fetchPendingProposals();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to approve proposal',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle rejecting proposal
+  const handleRejectProposal = async (proposalId: string) => {
+    try {
+      const response = await fetch('/api/proposals/reject', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ proposalId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject proposal');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Proposal rejected',
+      });
+
+      fetchPendingProposals();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reject proposal',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Handle approving user
   const handleApproveUser = async (userId: string) => {
@@ -134,52 +228,117 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Pending Account Requests</h1>
-      <ScrollArea className="h-[600px]">
-        <div className="space-y-4">
-          {pendingUsers.length === 0 ? (
-            <Card className="p-6">
-              <p className="text-center text-muted-foreground">
-                No pending account requests
-              </p>
-            </Card>
-          ) : (
-            pendingUsers.map((user) => (
-              <Card key={user.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <h3 className="font-semibold">{user.username}</h3>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <div className="flex gap-2">
-                      <Badge variant="outline">
-                        Joined: {new Date(user.created_at).toLocaleDateString()}
-                      </Badge>
-                      {user.requested_admin && (
-                        <Badge variant="secondary">Requested Admin Access</Badge>
-                      )}
+    <div className="container mx-auto p-6 space-y-8">
+      {/* Pending Account Requests */}
+      <div>
+        <h1 className="text-2xl font-bold mb-6">Pending Account Requests</h1>
+        <ScrollArea className="h-[400px]">
+          <div className="space-y-4">
+            {pendingUsers.length === 0 ? (
+              <Card className="p-6">
+                <p className="text-center text-muted-foreground">
+                  No pending account requests
+                </p>
+              </Card>
+            ) : (
+              pendingUsers.map((user) => (
+                <Card key={user.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <h3 className="font-semibold">{user.username}</h3>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">
+                          Joined: {new Date(user.created_at).toLocaleDateString()}
+                        </Badge>
+                        {user.requested_admin && (
+                          <Badge variant="secondary">Requested Admin Access</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-x-2">
+                      <Button
+                        onClick={() => handleApproveUser(user.id)}
+                        variant="default"
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        onClick={() => handleDenyUser(user.id)}
+                        variant="outline"
+                      >
+                        Deny
+                      </Button>
                     </div>
                   </div>
-                  <div className="space-x-2">
-                    <Button
-                      onClick={() => handleApproveUser(user.id)}
-                      variant="default"
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      onClick={() => handleDenyUser(user.id)}
-                      variant="outline"
-                    >
-                      Deny
-                    </Button>
-                  </div>
-                </div>
+                </Card>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Pending Bill Proposals */}
+      <div>
+        <h1 className="text-2xl font-bold mb-6">Pending Bill Proposals</h1>
+        {isLoadingProposals ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="p-4">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
               </Card>
-            ))
-          )}
-        </div>
-      </ScrollArea>
+            ))}
+          </div>
+        ) : (
+          <ScrollArea className="h-[400px]">
+            <div className="space-y-4">
+              {pendingProposals.length === 0 ? (
+                <Card className="p-6">
+                  <p className="text-center text-muted-foreground">
+                    No pending bill proposals
+                  </p>
+                </Card>
+              ) : (
+                pendingProposals.map((proposal) => (
+                  <Card key={proposal.proposalId} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <h3 className="font-semibold">{proposal.bill_number || proposal.bill_id}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {proposal.bill_title || `Bill ID: ${proposal.bill_id}`}
+                        </p>
+                        <div className="flex gap-2">
+                          <Badge variant="outline">
+                            {proposal.current_status} → {proposal.proposed_status}
+                          </Badge>
+                          <Badge variant="outline">
+                            Proposed: {new Date(proposal.proposed_at).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="space-x-2">
+                        <Button
+                          onClick={() => handleApproveProposal(proposal.proposalId, proposal.bill_id)}
+                          variant="default"
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          onClick={() => handleRejectProposal(proposal.proposalId)}
+                          variant="outline"
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
     </div>
   );
 }

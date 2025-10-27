@@ -37,6 +37,18 @@ export interface Bills {
   updated_at: Generated<Timestamp | null>;
 }
 
+export interface PendingProposals {
+  approval_status: Generated<string>;
+  bill_id: string;
+  current_status: string;
+  id: Generated<string>;
+  note: string | null;
+  proposed_at: Generated<Timestamp>;
+  proposed_by_user_id: string;
+  suggested_status: string;
+  user_id: string;
+}
+
 export interface SchemaMigrations {
   dirty: boolean;
   version: Int8;
@@ -69,7 +81,7 @@ export interface StatusUpdates {
 
 export interface User {
   account_status: string;
-  auth_provider: Generated<string>;
+  auth_provider: Generated<string | null>;
   created_at: Generated<Timestamp | null>;
   email: string;
   google_id: string | null;
@@ -90,6 +102,7 @@ export interface UserBills {
 export interface DB {
   auth_key: AuthKey;
   bills: Bills;
+  pending_proposals: PendingProposals;
   schema_migrations: SchemaMigrations;
   scraping_stats: ScrapingStats;
   sessions: Sessions;

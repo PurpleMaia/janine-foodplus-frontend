@@ -341,7 +341,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       
       if (user?.role === 'user') {
         console.log('🔵 User proposing change:', movedBill.id, '→', destinationColumnId);
-        proposeStatusChange(movedBill, destinationColumnId, {
+        await proposeStatusChange(movedBill, destinationColumnId, {
           userId: user.id,
           role: 'intern',
         });

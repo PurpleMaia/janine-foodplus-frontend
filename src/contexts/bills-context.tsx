@@ -264,7 +264,7 @@ interface BillsContextType {
     bill: Bill,
     suggested_status: BillStatus,
     meta: { userId: string; role: 'intern' | 'supervisor' | 'admin'; note?: string }
-  ) => void;
+  ) => Promise<void>;
   acceptTempChange: (billId: string) => Promise<void>;
   rejectTempChange: (billId: string) => Promise<void>;
   acceptAllTempChanges: () => Promise<void>;
@@ -377,13 +377,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   // ========= HUMAN PROPOSALS (new) =========
 
   // Create/replace a pending proposal (for interns or supervisors who want review)
-  const proposeStatusChange: BillsContextType['proposeStatusChange'] = (
+  const proposeStatusChange: BillsContextType['proposeStatusChange'] = async (
     bill,
     suggested_status,
     meta
   ) => {
     console.log('🟣 proposeStatusChange called:', bill.id, '→', suggested_status);
-    console.log('🟣 Current tempBills count:', tempBills.length);
     
     const target_idx = 0; // optional: compute from KANBAN_COLUMNS if you want to scroll later
     const proposal: TempBill = {
@@ -401,20 +400,44 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       },
     };
 
-    console.log('🟣 Creating proposal:', proposal);
+    try {
+      // Save to database
+      const response = await fetch('/api/proposals/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          billId: bill.id,
+          currentStatus: bill.current_status,
+          suggestedStatus: suggested_status,
+          note: meta.note,
+        }),
+      });
 
-    setTempBills((prev) => {
-      const filtered = prev.filter((tb) => tb.id !== bill.id);
-      const updated = [...filtered, proposal];
-      console.log('🟣 Updated tempBills count:', updated.length);
-      return updated;
-    });
+      if (!response.ok) {
+        throw new Error('Failed to save proposal');
+      }
 
-    toast({
-      title: 'Change Proposed',
-      description: `Pending: ${bill.bill_number} → ${suggested_status}`,
-      variant: 'default',
-    });
+      // Update local state
+      setTempBills((prev) => {
+        const filtered = prev.filter((tb) => tb.id !== bill.id);
+        return [...filtered, proposal];
+      });
+
+      toast({
+        title: 'Change Proposed',
+        description: `Pending: ${bill.bill_number} → ${suggested_status}`,
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error proposing change:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save proposal',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Supervisor/Admin approves a single proposal
@@ -434,7 +457,19 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await updateBillStatusServerAction(billId, tb.suggested_status as BillStatus);
+      // Call API to approve proposal (which updates bill status and marks proposal as approved)
+      const proposalId = (tb as any).proposalId; // Get the actual proposal ID
+      const response = await fetch('/api/proposals/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ proposalId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve proposal');
+      }
 
       // Update bills list to reflect the new status
       setBills((prev) =>
@@ -451,7 +486,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         )
       );
 
-      // Remove proposal
+      // Remove proposal from local state
       setTempBills((prev) => prev.filter((t) => t.id !== billId));
 
       toast({
@@ -475,14 +510,45 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     const tb = tempBills.find((t) => t.id === billId);
     if (!tb) return;
 
-    // Just remove; nothing to revert since we never committed
-    setTempBills((prev) => prev.filter((t) => t.id !== billId));
+    if (!canCommitStatus(user?.role)) {
+      toast({
+        title: 'Forbidden',
+        description: 'You do not have permission to reject changes.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    toast({
-      title: 'Proposal Rejected',
-      description: `Pending change discarded.`,
-      variant: 'default',
-    });
+    try {
+      // Call API to reject proposal
+      const proposalId = (tb as any).proposalId;
+      const response = await fetch('/api/proposals/reject', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ proposalId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject proposal');
+      }
+
+      // Remove from local state
+      setTempBills((prev) => prev.filter((t) => t.id !== billId));
+
+      toast({
+        title: 'Proposal Rejected',
+        description: `Pending change discarded.`,
+        variant: 'default',
+      });
+    } catch (e) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reject proposal.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const acceptAllTempChanges: BillsContextType['acceptAllTempChanges'] =
@@ -571,6 +637,16 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           if (!cancelled) {
             setBills(results);
             console.log('User adopted bills set in context', results.length);
+
+            // Load pending proposals for bills owned by the user
+            const proposalsResponse = await fetch('/api/proposals/load');
+            if (proposalsResponse.ok) {
+              const data = await proposalsResponse.json();
+              if (data.success && data.proposals) {
+                setTempBills(data.proposals);
+                console.log('Loaded', data.proposals.length, 'pending proposals');
+              }
+            }
           }
         } else {
           // PUBLIC PATH
