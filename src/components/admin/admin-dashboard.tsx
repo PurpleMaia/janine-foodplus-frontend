@@ -41,6 +41,7 @@ export function AdminDashboard() {
         setPendingUsers(data.pendingAccountRequests);
       }
     } catch (error) {
+      console.error('Error fetching pending requests:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch pending requests',
