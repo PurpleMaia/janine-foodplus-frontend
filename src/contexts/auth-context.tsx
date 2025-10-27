@@ -1,14 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useSession, signOut } from 'next-auth/react';
 import type { User } from '@/lib/simple-auth';
-
-
-type Role = 'intern' | 'supervisor' | 'admin';
-type AppUser = User & { role?: Role };
-
-
 
 interface AuthContextType {
   user: User | null;
@@ -16,33 +9,40 @@ interface AuthContextType {
   login: (authString: string, password: string) => Promise<{ success: boolean, error?: string }>;
   logout: () => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<boolean>;
+  checkSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Update user state when NextAuth session changes
+  // Check session on mount
   useEffect(() => {
-    if (status === 'loading') {
-      setLoading(true);
-    } else if (session?.user) {
-      // Convert NextAuth session to our User type
-      setUser({
-        id: session.user.id,
-        email: session.user.email,
-        username: session.user.name || '',
-        role: session.user.role || 'user'
-      });
-      setLoading(false);
-    } else {
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      const response = await fetch('/api/auth/session');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Session check error:', error);
       setUser(null);
+    } finally {
       setLoading(false);
     }
-  }, [session, status]);
+  };
 
   /**
    * Logs in a user with the given credentials.
@@ -86,7 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const logout = async () => {
     try {
-      await signOut({ callbackUrl: '/' });
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setUser(null);
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -126,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register, checkSession }}>
       {children}
     </AuthContext.Provider>
   );
