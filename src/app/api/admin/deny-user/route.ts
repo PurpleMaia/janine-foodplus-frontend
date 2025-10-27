@@ -1,8 +1,6 @@
 import { denyUser } from "@/lib/admin-utils";
 import { getSessionCookie, validateSession } from "@/lib/simple-auth";
 import { NextResponse, NextRequest } from "next/server";
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,31 +10,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'User ID to deny is required' }, { status: 400 });            
         }
 
-        // Try NextAuth session first (for Google users)
-        const nextAuthSession = await getServerSession(authOptions);
-        
-        let user = null;
-        
-        if (nextAuthSession?.user) {
-            // User is authenticated via NextAuth
-            user = {
-                id: nextAuthSession.user.id,
-                email: nextAuthSession.user.email,
-                role: nextAuthSession.user.role,
-                username: nextAuthSession.user.name || ''
-            };
-        } else {
-            // Try custom session validation (for local users)
-            const session_token = getSessionCookie(request);
-            console.log('Checking session token from cookie:', session_token);
-        
-            if (!session_token) {
-                return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-            }
-        
-            user = await validateSession(session_token);
-            console.log('Validated user from session token:', user);
+        // Validate custom session
+        const session_token = getSessionCookie(request);
+        console.log('Checking session token from cookie:', session_token);
+    
+        if (!session_token) {
+            return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
         }
+    
+        const user = await validateSession(session_token);
+        console.log('Validated user from session token:', user);
 
         if (!user) {
             return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 });
