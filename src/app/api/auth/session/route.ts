@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
     const user = await validateSession(session_token);
     if (user) {
+      console.log('🔍 [DEBUG] Session API - Returning user:', { email: user.email, role: user.role, id: user.id });
       return NextResponse.json({ user }, { status: 200 });
     } else {
       return NextResponse.json({ user: null }, { status: 200 });

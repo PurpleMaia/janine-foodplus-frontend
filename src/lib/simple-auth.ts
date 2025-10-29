@@ -63,11 +63,14 @@ export async function validateSession(token: string): Promise<User | null> {
       .where('s.expires_at', '>', new Date())
       .executeTakeFirst();    
     
-    if (result) {      
+    if (result) {
+      // Debug log to see what role is being returned
+      console.log('🔍 [DEBUG] Session validation - User role from DB:', result.role, 'User email:', result.email);
+      
       return {
         id: result.id,
         email: result.email,
-        role: result.role,
+        role: result.role || result.role, // Ensure role is returned as-is from DB
         username: result.username
       };
     }
@@ -162,13 +165,13 @@ export async function registerUser(email: string, username: string, password: st
     }
 
     //2. Create new user
-    const userResult = await db.insertInto('user').values({
+    const userResult = await (db as any).insertInto('user').values({
       email: email, 
-      createdAt: new Date(),
+      created_at: new Date(),
       role: 'user',
-      accountStatus: 'pending',
+      account_status: 'pending',
       username: username,
-      requestedAdmin: false
+      requested_admin: false
     }).returning('id').executeTakeFirst();
 
     if (!userResult || !userResult.id) {
