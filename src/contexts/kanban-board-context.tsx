@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useState, ReactNode, Dispatch, SetStateAction } from 'react';
 
 interface KanbanBoardContextType {
-  view: 'kanban' | 'spreadsheet' | 'admin' | 'approvals';
-  setView: Dispatch<SetStateAction<'kanban' | 'spreadsheet' | 'admin' | 'approvals'>>;
+  view: 'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor';
+  setView: Dispatch<SetStateAction<'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor'>>;
   searchQuery: string;
   setSearchQuery: Dispatch<SetStateAction<string>>;
 }
@@ -13,7 +13,7 @@ const KanbanBoardContext = createContext<KanbanBoardContextType | undefined>(und
 
 export function KanbanBoardProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [view, setView] = useState<'kanban' | 'spreadsheet' | 'admin' | 'approvals'>('kanban');
+  const [view, setView] = useState<'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor'>('kanban');
 
   return (
     <KanbanBoardContext.Provider value={{ searchQuery, setSearchQuery, view, setView }}>

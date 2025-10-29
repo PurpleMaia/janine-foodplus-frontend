@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { LogOut, User } from 'lucide-react';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { RequestAdminAccessButton } from '../admin/request-admin-access';
+import { RequestSupervisorAccessButton } from '../admin/request-supervisor-access';
 import { useEffect, useState } from 'react';
 
 export function UserMenu() {
@@ -15,7 +16,8 @@ export function UserMenu() {
   const { setView } = useKanbanBoard();
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [adminRequested, setAdminRequested] = useState<boolean>(false); 
+  const [adminRequested, setAdminRequested] = useState<boolean>(false);
+  const [supervisorRequested, setSupervisorRequested] = useState<boolean>(false); 
 
   const handleAdminRequestChange = (requested: boolean) => {
     setAdminRequested(requested);
@@ -102,7 +104,14 @@ export function UserMenu() {
                 adminRequested={adminRequested}
                 setRequested={handleAdminRequestChange}
                 />
-            )}
+              )}
+              { user?.role !== 'admin' && user?.role !== 'supervisor' && (
+                <RequestSupervisorAccessButton
+                  userId={user?.id ?? ''}
+                  supervisorRequested={supervisorRequested}
+                  setRequested={setSupervisorRequested}
+                />
+              )}
            </div>
           )}
         </DropdownMenuLabel>

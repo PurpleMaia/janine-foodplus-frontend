@@ -14,7 +14,15 @@ interface PendingUser {
   username: string;
   created_at: string;
   requested_admin: boolean;
+  requested_supervisor: boolean;
   account_status: string;
+}
+
+interface SupervisorRequest {
+  id: string;
+  email: string;
+  username: string;
+  created_at: string;
 }
 
 interface PendingProposal {
@@ -33,8 +41,10 @@ interface PendingProposal {
 export function AdminDashboard() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [pendingProposals, setPendingProposals] = useState<PendingProposal[]>([]);
+  const [supervisorRequests, setSupervisorRequests] = useState<SupervisorRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingProposals, setIsLoadingProposals] = useState(true);
+  const [isLoadingSupervisor, setIsLoadingSupervisor] = useState(true);
   const { toast } = useToast();
 
   // Fetch pending requests
@@ -85,9 +95,28 @@ export function AdminDashboard() {
     }
   };
 
+  // Fetch pending supervisor requests
+  const fetchSupervisorRequests = async () => {
+    try {
+      const response = await fetch('/api/supervisor/pending-requests');
+      if (!response.ok) {
+        throw new Error('Failed to fetch supervisor requests');
+      }
+      const data = await response.json();
+      if (data.success && data.requests) {
+        setSupervisorRequests(data.requests);
+      }
+    } catch (error) {
+      console.error('Error fetching supervisor requests:', error);
+    } finally {
+      setIsLoadingSupervisor(false);
+    }
+  };
+
   useEffect(() => {
     fetchPendingRequests();
     fetchPendingProposals();
+    fetchSupervisorRequests();
   }, []);
 
   // Handle approving proposal
@@ -212,7 +241,67 @@ export function AdminDashboard() {
         variant: 'destructive',
       });
     }
-  }
+  };
+
+  // Handle approving supervisor request
+  const handleApproveSupervisor = async (userId: string) => {
+    try {
+      const response = await fetch('/api/supervisor/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve supervisor request');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Supervisor access granted',
+      });
+
+      fetchSupervisorRequests();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to approve supervisor request',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle rejecting supervisor request
+  const handleRejectSupervisor = async (userId: string) => {
+    try {
+      const response = await fetch('/api/supervisor/reject', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject supervisor request');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Supervisor request rejected',
+      });
+
+      fetchSupervisorRequests();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reject supervisor request',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -276,6 +365,61 @@ export function AdminDashboard() {
             )}
           </div>
         </ScrollArea>
+      </div>
+
+      {/* Pending Supervisor Requests */}
+      <div>
+        <h1 className="text-2xl font-bold mb-6">Pending Supervisor Requests</h1>
+        {isLoadingSupervisor ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="p-4">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <ScrollArea className="h-[400px]">
+            <div className="space-y-4">
+              {supervisorRequests.length === 0 ? (
+                <Card className="p-6">
+                  <p className="text-center text-muted-foreground">
+                    No pending supervisor requests
+                  </p>
+                </Card>
+              ) : (
+                supervisorRequests.map((request) => (
+                  <Card key={request.id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <h3 className="font-semibold">{request.username}</h3>
+                        <p className="text-sm text-muted-foreground">{request.email}</p>
+                        <Badge variant="outline">
+                          Joined: {new Date(request.created_at).toLocaleDateString()}
+                        </Badge>
+                      </div>
+                      <div className="space-x-2">
+                        <Button
+                          onClick={() => handleApproveSupervisor(request.id)}
+                          variant="default"
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          onClick={() => handleRejectSupervisor(request.id)}
+                          variant="outline"
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        )}
       </div>
 
       {/* Pending Bill Proposals */}

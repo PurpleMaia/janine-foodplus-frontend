@@ -11,6 +11,8 @@ import { ProtectedAdminComponent, ProtectedComponent } from '@/components/auth/p
 import { ProtectedApprovalsComponent } from '@/components/auth/protected-approvals-component';
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
 import { ApprovalsDashboard } from '@/components/approvals/approvals-dashboard';
+import { SupervisorDashboard } from '@/components/supervisor/supervisor-dashboard';
+import { useAuth } from '@/contexts/auth-context';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 
 
@@ -23,9 +25,10 @@ import { useKanbanBoard } from '@/contexts/kanban-board-context';
 
 export default function Home() {
   const { view, setView } = useKanbanBoard();
+  const { user } = useAuth();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex min-h-screen flex-col">
         <div className='flex justify-between items-center px-4 border-b py-3 shadow-sm'>
           <div className='w-full'>
             <KanbanHeader />
@@ -69,12 +72,23 @@ export default function Home() {
             Approvals
           </Button>
         </ProtectedApprovalsComponent>
+        
+        {user?.role === 'supervisor' && (
+          <Button
+            variant={view === 'supervisor' ? 'default' : 'outline'}
+            onClick={() => setView('supervisor')}
+          >
+            Supervisor
+          </Button>
+        )}
         </div>
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-auto">
           { view === 'admin' ? (
             <ProtectedAdminComponent>
               <AdminDashboard />
             </ProtectedAdminComponent>
+          ) : view === 'supervisor' ? (
+            <SupervisorDashboard />
           ) : view === 'approvals' ? (
             <ApprovalsDashboard />
           ) : (

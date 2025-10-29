@@ -16,25 +16,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
     }
 
-    // Get pending proposals for bills owned by the user (supervisor/admin)
-    // Cast bill_id to UUID to match user_bills.bill_id type
-    const proposals = await db
-      .selectFrom('pending_proposals as pp')
-      .innerJoin('user_bills as ub', (join) =>
-        join.on(sql`CAST(pp.bill_id AS UUID)`, '=', sql`ub.bill_id`)
-      )
-      .select([
-        'pp.id',
-        'pp.bill_id',
-        'pp.suggested_status',
-        'pp.current_status',
-        'pp.proposed_at',
-        'pp.note',
-        'pp.proposed_by_user_id',
-      ])
-      .where('ub.user_id', '=', user.id) // Bills owned by the current user
-      .where('pp.approval_status', '=', 'pending')
-      .execute();
+    let proposals;
+
+    if (user.role === 'supervisor') {
+      // For supervisors: get proposals from adopted interns
+      proposals = await (db as any)
+        .selectFrom('pending_proposals')
+        .innerJoin('supervisor_users', 'pending_proposals.user_id', 'supervisor_users.user_id')
+        .selectAll('pending_proposals')
+        .where('supervisor_users.supervisor_id', '=', user.id)
+        .where('pending_proposals.approval_status', '=', 'pending')
+        .execute();
+    } else {
+      // For admins: get proposals for bills they own (existing behavior)
+      proposals = await (db as any)
+        .selectFrom('pending_proposals')
+        .innerJoin('user_bills', 'pending_proposals.bill_id', sql`user_bills.bill_id`)
+        .selectAll('pending_proposals')
+        .where('user_bills.user_id', '=', user.id)
+        .where('pending_proposals.approval_status', '=', 'pending')
+        .execute();
+    }
 
     // Format proposals to match TempBill interface
     const formatted = proposals.map((p: any) => ({

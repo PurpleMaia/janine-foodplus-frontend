@@ -14,39 +14,39 @@ export type Int8 = ColumnType<string, bigint | number | string, bigint | number 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface AuthKey {
-  created_at: Generated<Timestamp | null>;
-  google_refresh_token: string | null;
-  hashed_password: string | null;
+  createdAt: Generated<Timestamp | null>;
+  googleRefreshToken: string | null;
+  hashedPassword: string | null;
   id: Generated<string>;
-  user_id: string | null;
+  userId: string | null;
 }
 
 export interface Bills {
-  bill_number: string | null;
-  bill_title: string | null;
-  bill_url: string;
-  committee_assignment: string | null;
-  created_at: Generated<Timestamp | null>;
-  current_status: Generated<string | null>;
-  current_status_string: string;
+  billNumber: string | null;
+  billTitle: string | null;
+  billUrl: string;
+  committeeAssignment: string | null;
+  createdAt: Generated<Timestamp | null>;
+  currentStatus: Generated<string | null>;
+  currentStatusString: string;
   description: string;
-  food_related: Generated<boolean | null>;
+  foodRelated: Generated<boolean | null>;
   id: Generated<string>;
   introducer: string | null;
   nickname: string | null;
-  updated_at: Generated<Timestamp | null>;
+  updatedAt: Generated<Timestamp | null>;
 }
 
 export interface PendingProposals {
-  approval_status: Generated<string>;
-  bill_id: string;
-  current_status: string;
+  approvalStatus: Generated<string>;
+  billId: string;
+  currentStatus: string;
   id: Generated<string>;
   note: string | null;
-  proposed_at: Generated<Timestamp>;
-  proposed_by_user_id: string;
-  suggested_status: string;
-  user_id: string;
+  proposedAt: Generated<Timestamp>;
+  proposedByUserId: string;
+  suggestedStatus: string;
+  userId: string;
 }
 
 export interface SchemaMigrations {
@@ -55,58 +55,67 @@ export interface SchemaMigrations {
 }
 
 export interface ScrapingStats {
-  bills_scraped: Generated<number | null>;
-  created_at: Generated<Timestamp | null>;
-  error_message: string | null;
+  billsScraped: Generated<number | null>;
+  createdAt: Generated<Timestamp | null>;
+  errorMessage: string | null;
   id: Generated<string>;
-  last_scrape_time: Timestamp;
+  lastScrapeTime: Timestamp;
   success: Generated<boolean | null>;
 }
 
 export interface Sessions {
-  created_at: Generated<Timestamp | null>;
-  expires_at: Timestamp;
+  createdAt: Generated<Timestamp | null>;
+  expiresAt: Timestamp;
   id: Generated<string>;
-  session_token: string;
-  user_id: string | null;
+  sessionToken: string;
+  userId: string | null;
 }
 
 export interface StatusUpdates {
-  bill_id: string;
+  billId: string;
   chamber: string;
   date: string;
   id: Generated<string>;
   statustext: string;
 }
 
-export interface User {
-  account_status: string;
-  auth_provider: Generated<string | null>;
-  created_at: Generated<Timestamp | null>;
-  email: string;
-  google_id: string | null;
+export interface SupervisorUsers {
+  createdAt: Generated<Timestamp>;
   id: Generated<string>;
-  profile_picture_url: string | null;
-  requested_admin: Generated<boolean>;
+  supervisorId: string;
+  userId: string;
+}
+
+export interface User {
+  accountStatus: string;
+  authProvider: Generated<string | null>;
+  createdAt: Generated<Timestamp | null>;
+  email: string;
+  googleId: string | null;
+  id: Generated<string>;
+  profilePictureUrl: string | null;
+  requestedAdmin: Generated<boolean>;
+  requestedSupervisor: Generated<boolean | null>;
   role: Generated<string>;
   username: string;
 }
 
 export interface UserBills {
-  adopted_at: Generated<Timestamp | null>;
-  bill_id: string | null;
+  adoptedAt: Generated<Timestamp | null>;
+  billId: string | null;
   id: Generated<string>;
-  user_id: string | null;
+  userId: string | null;
 }
 
 export interface DB {
-  auth_key: AuthKey;
+  authKey: AuthKey;
   bills: Bills;
-  pending_proposals: PendingProposals;
-  schema_migrations: SchemaMigrations;
-  scraping_stats: ScrapingStats;
+  pendingProposals: PendingProposals;
+  schemaMigrations: SchemaMigrations;
+  scrapingStats: ScrapingStats;
   sessions: Sessions;
-  status_updates: StatusUpdates;
+  statusUpdates: StatusUpdates;
+  supervisorUsers: SupervisorUsers;
   user: User;
-  user_bills: UserBills;
+  userBills: UserBills;
 }
