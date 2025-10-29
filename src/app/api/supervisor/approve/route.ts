@@ -26,10 +26,10 @@ export async function POST(request: NextRequest) {
       .updateTable('user')
       .set({ 
         role: 'supervisor',
-        requestedSupervisor: false 
+        requested_supervisor: false 
       })
       .where('id', '=', userId)
-      .where('requestedSupervisor', '=', true)
+      .where('requested_supervisor', '=', true)
       .executeTakeFirst();
 
     if (result.numUpdatedRows === 0) {

@@ -16,10 +16,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all users who requested supervisor access
-    const pendingRequests = await db
+    const pendingRequests = await (db as any)
       .selectFrom('user')
       .selectAll()
-      .where('requestedSupervisor', '=', true)
+      .where('requested_supervisor', '=', true)
       .where('role', '!=', 'supervisor') // Exclude users already promoted
       .execute();
 

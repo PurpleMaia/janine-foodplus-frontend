@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { db } from '../../db/kysely/client';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 
 export interface User {
   id: string;
@@ -28,12 +28,17 @@ export async function createSession(userId: string): Promise<string> {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   // inserts session into database
-  const result = await db.insertInto('sessions').values({        
-    created_at: new Date(),
-    expires_at: expiresAt,
-    session_token: hashed_token,
-    user_id: userId
-  }).returning('session_token').executeTakeFirst();  
+  const result = await (db as any)
+    .insertInto('sessions')
+    .values({
+      id: randomUUID(),
+      created_at: new Date(),
+      expires_at: expiresAt,
+      session_token: hashed_token,
+      user_id: userId
+    })
+    .returning('session_token')
+    .executeTakeFirst();  
 
   if (!result || !result.session_token) {
     throw new Error('Failed to create session');
@@ -50,7 +55,8 @@ export async function validateSession(token: string): Promise<User | null> {
     const hashedToken = createHash('sha256').update(token).digest('hex');
 
     // Query the database for the session and associated user
-    const result = await db.selectFrom('sessions as s')
+    const result = await (db as any)
+      .selectFrom('sessions as s')
       .innerJoin('user as u', 's.user_id', 'u.id')
       .select(['u.id', 'u.role', 'u.email', 'u.username'])
       .where('s.session_token', '=', hashedToken)
@@ -74,7 +80,10 @@ export async function validateSession(token: string): Promise<User | null> {
 
 export async function deleteSession(token: string): Promise<void> {
   const hashedToken = createHash('sha256').update(token).digest('hex');
-  await db.deleteFrom('sessions').where('session_token', '=', hashedToken).execute();
+  await (db as any)
+    .deleteFrom('sessions')
+    .where('session_token', '=', hashedToken)
+    .execute();
 }
 
 export async function authenticateGoogleUser(googleId: string): Promise<User> {
@@ -82,12 +91,12 @@ export async function authenticateGoogleUser(googleId: string): Promise<User> {
   const userResult = await db
     .selectFrom('user')
     .selectAll()
-    .where('google_id', '=', googleId)
+    .where('googleId', '=', googleId)
     .executeTakeFirst();
     
   if (!userResult) {
     throw new Error('USER_NOT_FOUND');
-  } else if (userResult.account_status !== 'active' && userResult.requested_admin === false) {
+  } else if (userResult.accountStatus !== 'active' && userResult.requestedAdmin === false) {
     // Same admin approval logic as regular users
     console.error('Account not active for Google user:', userResult.email);
     throw new Error('ACCOUNT_INACTIVE');
@@ -113,15 +122,15 @@ export async function authenticateUser(authString: string, password: string): Pr
     .executeTakeFirst();      
   if (!userResult) {
     throw new Error('USER_NOT_FOUND');
-  } else if (userResult.account_status !== 'active' && userResult.requested_admin === false) { // only block fresh user accounts, users who requested admin can still login
+  } else if (userResult.accountStatus !== 'active' && userResult.requestedAdmin === false) { // only block fresh user accounts, users who requested admin can still login
     console.error('Account not active for user:', userResult.email);
     throw new Error('ACCOUNT_INACTIVE');
   } 
 
   //2. Finds auth_key for that user
-  const keyResult = await db
+  const keyResult = await (db as any)
     .selectFrom('auth_key')
-    .selectAll()
+    .select(['id', 'user_id', 'hashed_password'])
     .where('user_id', '=', userResult.id)
     .executeTakeFirst();
 
@@ -155,11 +164,11 @@ export async function registerUser(email: string, username: string, password: st
     //2. Create new user
     const userResult = await db.insertInto('user').values({
       email: email, 
-      created_at: new Date(),
+      createdAt: new Date(),
       role: 'user',
-      account_status: 'pending',
+      accountStatus: 'pending',
       username: username,
-      requested_admin: false
+      requestedAdmin: false
     }).returning('id').executeTakeFirst();
 
     if (!userResult || !userResult.id) {
@@ -170,7 +179,10 @@ export async function registerUser(email: string, username: string, password: st
 
     //3. Hash password and store in auth_key table
     const hashedPassword = await bcrypt.hash(password, 10);
-    await db.insertInto('auth_key').values({ user_id: userId, hashed_password: hashedPassword }).execute();
+    await (db as any)
+      .insertInto('auth_key')
+      .values({ id: randomUUID(), user_id: userId, hashed_password: hashedPassword })
+      .execute();
 
     return { id: userId, email, role: 'user', username }; // Return the new user
   } catch (error) {

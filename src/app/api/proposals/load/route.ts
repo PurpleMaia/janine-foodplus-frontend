@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       // For admins: get proposals for bills they own (existing behavior)
       proposals = await (db as any)
         .selectFrom('pending_proposals')
-        .innerJoin('user_bills', 'pending_proposals.bill_id', sql`user_bills.bill_id`)
+        .innerJoin('user_bills', sql`CAST(pending_proposals.bill_id AS UUID)`, sql`user_bills.bill_id`)
         .selectAll('pending_proposals')
         .where('user_bills.user_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')

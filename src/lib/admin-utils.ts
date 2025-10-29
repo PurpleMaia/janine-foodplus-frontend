@@ -31,7 +31,7 @@ export async function getAdminUserData(request: NextRequest): Promise<User | { e
 }
 
 export async function getPendingRequests(userID: string): Promise<User[]> {
-    const pendingRequests = await db.selectFrom('user')
+    const pendingRequests = await (db as any).selectFrom('user')
       .selectAll()    
       .where('account_status', '=', 'pending')
       .where('id', '!=', userID) // Exclude current user (should never happen)
@@ -42,7 +42,7 @@ export async function getPendingRequests(userID: string): Promise<User[]> {
 export async function approveUser(userIDtoApprove: string): Promise<boolean> {
   try {
     // First, get the user to check if they requested admin access
-    const user = await db
+    const user = await (db as any)
       .selectFrom('user')
       .select(['id', 'requested_admin'])
       .where('id', '=', userIDtoApprove)
@@ -64,7 +64,7 @@ export async function approveUser(userIDtoApprove: string): Promise<boolean> {
       updateData.role = 'admin';
     }
 
-    const result = await db.updateTable('user')
+    const result = await (db as any).updateTable('user')
       .set(updateData)
       .where('id', '=', userIDtoApprove)
       .where('account_status', '=', 'pending')
@@ -79,7 +79,7 @@ export async function approveUser(userIDtoApprove: string): Promise<boolean> {
 
 export async function denyUser(userIDtoDeny: string): Promise<boolean> {
   try {
-    const result = await db.updateTable('user')
+    const result = await (db as any).updateTable('user')
       .set({ account_status: 'denied', requested_admin: false })
       .where('id', '=', userIDtoDeny)
       .where('account_status', '=', 'pending')
@@ -94,7 +94,7 @@ export async function denyUser(userIDtoDeny: string): Promise<boolean> {
 
 export async function requestAdminAccess(email: string): Promise<boolean> {
   try {
-    const result = await db.updateTable('user')
+    const result = await (db as any).updateTable('user')
       .set({ requested_admin: true, account_status: 'pending' })
       .where('email', '=', email)
       .where('role', '!=', 'admin') // Prevent already admins from requesting
@@ -109,7 +109,7 @@ export async function requestAdminAccess(email: string): Promise<boolean> {
 
 export async function checkAdminRequestStatus(email: string): Promise<boolean | null> {
   try {
-    const user = await db.selectFrom('user')
+    const user = await (db as any).selectFrom('user')
       .select(['requested_admin'])
       .where('email', '=', email)
       .executeTakeFirst();

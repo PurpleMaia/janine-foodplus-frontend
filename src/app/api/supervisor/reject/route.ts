@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
     // Reject the supervisor request by clearing the flag
     const result = await (db as any)
       .updateTable('user')
-      .set({ requestedSupervisor: false })
+      .set({ requested_supervisor: false })
       .where('id', '=', userId)
-      .where('requestedSupervisor', '=', true)
+      .where('requested_supervisor', '=', true)
       .executeTakeFirst();
 
     if (result.numUpdatedRows === 0) {

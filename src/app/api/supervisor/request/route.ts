@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Update user to request supervisor access
     const result = await (db as any)
       .updateTable('user')
-      .set({ requestedSupervisor: true })
+      .set({ requested_supervisor: true })
       .where('id', '=', user.id)
       .where('role', '!=', 'supervisor') // Prevent already supervisors from requesting
       .executeTakeFirst();
