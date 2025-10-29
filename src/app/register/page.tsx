@@ -26,12 +26,12 @@ export default function RegisterPage() {
       if (result.success) {
         toast({
           title: "Registration successful!",
-          description: "Please wait while we approve of your account.",
+          description: "Please check your email to verify your account before logging in.",
         });
         setEmail("");
         setUsername("");
         setPassword("");
-        router.push("/");
+        // Don't redirect - let user know to check email
       } else {
         toast({
           title: "Registration failed",

@@ -44,6 +44,11 @@ export async function POST(request: NextRequest) {
             { error: 'Invalid email/username or password' },
             { status: 401 }
           );
+        } else if (error.message === 'EMAIL_NOT_VERIFIED') {
+          return NextResponse.json(
+            { error: 'Please verify your email address before logging in. Check your inbox for the verification email.' },
+            { status: 403 }
+          );
         } else if (error.message === 'ACCOUNT_INACTIVE') {
           return NextResponse.json(
             { error: 'Account is inactive. Please contact support.' },
