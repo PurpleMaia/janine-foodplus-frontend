@@ -20,9 +20,15 @@ export async function sendVerificationEmail(email: string, username: string, ver
   // Always log the verification URL for debugging (especially in dev)
   console.log('📧 Verification URL (always logged):', verificationUrl);
   
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+  console.log('📧 Attempting to send email:');
+  console.log('   From:', fromEmail);
+  console.log('   To:', email);
+  console.log('   Subject: Verify your email address');
+
   try {
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+      from: fromEmail,
       to: email,
       subject: 'Verify your email address',
       html: `
@@ -45,15 +51,38 @@ export async function sendVerificationEmail(email: string, username: string, ver
 
     if (error) {
       console.error('❌ Resend API error:', JSON.stringify(error, null, 2));
+      console.error('❌ Error details:', error);
+      if (error.message) {
+        console.error('❌ Error message:', error.message);
+      }
+      if (error.name) {
+        console.error('❌ Error name:', error.name);
+      }
       console.log('📧 Verification URL (use this to verify manually):', verificationUrl);
+      
+      // Check common error reasons
+      if (error.message?.includes('domain') || error.message?.includes('not verified')) {
+        console.error('⚠️  Common issue: The "from" email domain is not verified in Resend.');
+        console.error('   Solution: Verify your domain in Resend dashboard or use onboarding@resend.dev for testing');
+      }
+      if (error.message?.includes('invalid') || error.message?.includes('Invalid')) {
+        console.error('⚠️  Common issue: Invalid email address or API key.');
+      }
+      
       return { success: false, error };
     }
 
-    console.log('✅ Verification email sent successfully to:', email);
+    console.log('✅ Verification email sent successfully!');
+    console.log('   Email ID:', data?.id);
+    console.log('   Sent to:', email);
     console.log('📧 Verification URL (if email not received, use this):', verificationUrl);
     return { success: true, data };
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Exception sending verification email:', error);
+    console.error('❌ Exception details:', JSON.stringify(error, null, 2));
+    if (error?.message) {
+      console.error('❌ Exception message:', error.message);
+    }
     console.log('📧 Verification URL (use this to verify manually):', verificationUrl);
     return { success: false, error };
   }

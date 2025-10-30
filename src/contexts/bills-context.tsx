@@ -194,14 +194,30 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save proposal');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.details || errorData.error || 'Failed to save proposal';
+        console.error('❌ Save proposal error:', errorMsg, errorData);
+        throw new Error(errorMsg);
       }
 
-      // Update local state
-      setTempBills((prev) => {
-        const filtered = prev.filter((tb) => tb.id !== bill.id);
-        return [...filtered, proposal];
-      });
+      // Reload all proposals from database to ensure consistency
+      try {
+        const proposalsResponse = await fetch('/api/proposals/load');
+        if (proposalsResponse.ok) {
+          const data = await proposalsResponse.json();
+          if (data.success && data.proposals) {
+            setTempBills(data.proposals);
+            console.log('🔄 Reloaded', data.proposals.length, 'pending proposals after save');
+          }
+        }
+      } catch (reloadError) {
+        console.error('Error reloading proposals, using local update:', reloadError);
+        // Fallback to local state update if reload fails
+        setTempBills((prev) => {
+          const filtered = prev.filter((tb) => tb.id !== bill.id);
+          return [...filtered, proposal];
+        });
+      }
 
       toast({
         title: 'Change Proposed',

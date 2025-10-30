@@ -27,15 +27,18 @@ export async function GET(request: NextRequest) {
         .where('supervisor_users.supervisor_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
-    } else {
-      // For admins: get proposals for bills they own (existing behavior)
+    } else if (user.role === 'admin') {
+      // For admins: get ALL pending proposals (they can approve/reject any proposal)
+      console.log('📋 Admin loading all pending proposals...');
       proposals = await (db as any)
         .selectFrom('pending_proposals')
-        .innerJoin('user_bills', sql`CAST(pending_proposals.bill_id AS UUID)`, sql`user_bills.bill_id`)
         .selectAll('pending_proposals')
-        .where('user_bills.user_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
+      console.log(`✅ Admin found ${proposals.length} pending proposals`);
+    } else {
+      // For regular users: no proposals (they submit proposals, don't review them)
+      proposals = [];
     }
 
     // Format proposals to match TempBill interface

@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if proposal already exists (by user_id and bill_id, regardless of approval status)
-    const existing = await db
+    // Use (db as any) to bypass Kysely type checking for snake_case columns
+    const existing = await (db as any)
       .selectFrom('pending_proposals')
       .selectAll()
       .where('bill_id', '=', billId)
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       // Update existing proposal (reuse the same proposal for this user/bill combo)
-      await db
+      await (db as any)
         .updateTable('pending_proposals')
         .set({
           suggested_status: suggestedStatus,
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Create new proposal
     const proposalId = crypto.randomUUID();
-    await db
+    await (db as any)
       .insertInto('pending_proposals')
       .values({
         id: proposalId,
@@ -67,6 +68,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, proposalId });
   } catch (error) {
     console.error('Error saving proposal:', error);
-    return NextResponse.json({ success: false, error: 'Failed to save proposal' }, { status: 500 });
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Failed to save proposal',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }

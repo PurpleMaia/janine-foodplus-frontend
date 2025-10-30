@@ -80,16 +80,21 @@ export function AdminDashboard() {
   // Fetch pending bill proposals
   const fetchPendingProposals = async () => {
     try {
+      console.log('📡 Fetching pending proposals for admin...');
       const response = await fetch('/api/proposals/load');
       if (!response.ok) {
         throw new Error('Failed to fetch pending proposals');
       }
       const data = await response.json();
+      console.log('📥 Received proposals data:', data);
       if (data.success && data.proposals) {
+        console.log(`✅ Setting ${data.proposals.length} pending proposals`);
         setPendingProposals(data.proposals);
+      } else {
+        console.warn('⚠️  No proposals in response:', data);
       }
     } catch (error) {
-      console.error('Error fetching pending proposals:', error);
+      console.error('❌ Error fetching pending proposals:', error);
     } finally {
       setIsLoadingProposals(false);
     }
