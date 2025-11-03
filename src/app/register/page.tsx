@@ -55,7 +55,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow">
         <h1 className="mb-6 text-2xl font-bold text-center">Register</h1>
         <div className="mb-4 text-sm text-muted-foreground text-center">
-          Registration is restricted to @purplemaia.org email addresses.
+          {/* Registration is restricted to @purplemaia.org email addresses. */}
+          Registration is restricted ..... (subject to change)
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -65,7 +66,7 @@ export default function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="yourname@purplemaia.org"
+              placeholder="yourname@gmail.com"
               required
             />
           </div>

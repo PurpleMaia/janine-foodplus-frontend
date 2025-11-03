@@ -3,15 +3,15 @@ import { registerUser } from '@/lib/simple-auth';
 import { sendVerificationEmail } from '@/services/email';
 
 // Allowed email domains
-const ALLOWED_EMAIL_DOMAINS = [
-  '@purplemaia.org',
-  // Add more domains here as needed
-];
+// const ALLOWED_EMAIL_DOMAINS = [
+//   '@purplemaia.org',
+//   // Add more domains here as needed
+// ];
 
-function isValidEmailDomain(email: string): boolean {
-  const emailDomain = email.substring(email.lastIndexOf('@'));
-  return ALLOWED_EMAIL_DOMAINS.includes(emailDomain);
-}
+// function isValidEmailDomain(email: string): boolean {
+//   const emailDomain = email.substring(email.lastIndexOf('@'));
+//   return ALLOWED_EMAIL_DOMAINS.includes(emailDomain);
+// }
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,11 +21,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate email domain
-    if (!isValidEmailDomain(email)) {
-      return NextResponse.json({ 
-        error: `Registration is only allowed for email addresses ending in: ${ALLOWED_EMAIL_DOMAINS.join(', ')}` 
-      }, { status: 403 });
-    }
+    // if (!isValidEmailDomain(email)) {
+    //   return NextResponse.json({ 
+    //     error: `Registration is only allowed for email addresses ending in: ${ALLOWED_EMAIL_DOMAINS.join(', ')}` 
+    //   }, { status: 403 });
+    // }
 
     const { user, verificationToken } = await registerUser(email, username, password);
     if (!user || !verificationToken) {

@@ -18,6 +18,10 @@ export async function POST(request: NextRequest) {
 
     const { billId, currentStatus, suggestedStatus, note } = await request.json();
 
+    console.log('💾 [SAVE PROPOSAL] User:', user.email, 'Role:', user.role);
+    console.log('💾 [SAVE PROPOSAL] Bill ID:', billId);
+    console.log('💾 [SAVE PROPOSAL] Status change:', currentStatus, '→', suggestedStatus);
+
     if (!billId || !currentStatus || !suggestedStatus) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
@@ -32,6 +36,7 @@ export async function POST(request: NextRequest) {
       .executeTakeFirst();
 
     if (existing) {
+      console.log('💾 [SAVE PROPOSAL] Updating existing proposal:', existing.id);
       // Update existing proposal (reuse the same proposal for this user/bill combo)
       await (db as any)
         .updateTable('pending_proposals')
@@ -50,6 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Create new proposal
     const proposalId = crypto.randomUUID();
+    console.log('💾 [SAVE PROPOSAL] Creating new proposal:', proposalId);
     await (db as any)
       .insertInto('pending_proposals')
       .values({
@@ -65,6 +71,7 @@ export async function POST(request: NextRequest) {
       })
       .execute();
 
+    console.log('✅ [SAVE PROPOSAL] Successfully saved proposal:', proposalId);
     return NextResponse.json({ success: true, proposalId });
   } catch (error) {
     console.error('Error saving proposal:', error);

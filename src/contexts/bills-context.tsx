@@ -202,16 +202,25 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
       // Reload all proposals from database to ensure consistency
       try {
+        console.log('🔄 [RELOAD] Fetching proposals from API...');
         const proposalsResponse = await fetch('/api/proposals/load');
         if (proposalsResponse.ok) {
           const data = await proposalsResponse.json();
           if (data.success && data.proposals) {
+            console.log('🔄 [RELOAD] Received', data.proposals.length, 'proposals from API');
+            data.proposals.forEach((p: any, idx: number) => {
+              console.log(`  [${idx + 1}] Bill ID: ${p.id}, Status: ${p.current_status} → ${p.suggested_status}`);
+            });
             setTempBills(data.proposals);
-            console.log('🔄 Reloaded', data.proposals.length, 'pending proposals after save');
+            console.log('✅ [RELOAD] Updated tempBills state with', data.proposals.length, 'proposals');
+          } else {
+            console.warn('⚠️ [RELOAD] API returned success but no proposals:', data);
           }
+        } else {
+          console.error('❌ [RELOAD] API response not OK:', proposalsResponse.status);
         }
       } catch (reloadError) {
-        console.error('Error reloading proposals, using local update:', reloadError);
+        console.error('❌ [RELOAD] Error reloading proposals, using local update:', reloadError);
         // Fallback to local state update if reload fails
         setTempBills((prev) => {
           const filtered = prev.filter((tb) => tb.id !== bill.id);
@@ -433,13 +442,22 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             console.log('User adopted bills set in context', results.length);
 
             // Load pending proposals for bills owned by the user
+            console.log('🔄 [INITIAL LOAD] Fetching proposals from API...');
             const proposalsResponse = await fetch('/api/proposals/load');
             if (proposalsResponse.ok) {
               const data = await proposalsResponse.json();
               if (data.success && data.proposals) {
+                console.log('🔄 [INITIAL LOAD] Received', data.proposals.length, 'proposals from API');
+                data.proposals.forEach((p: any, idx: number) => {
+                  console.log(`  [${idx + 1}] Bill ID: ${p.id}, Status: ${p.current_status} → ${p.suggested_status}`);
+                });
                 setTempBills(data.proposals);
-                console.log('Loaded', data.proposals.length, 'pending proposals');
+                console.log('✅ [INITIAL LOAD] Updated tempBills state with', data.proposals.length, 'proposals');
+              } else {
+                console.warn('⚠️ [INITIAL LOAD] API returned success but no proposals:', data);
               }
+            } else {
+              console.error('❌ [INITIAL LOAD] API response not OK:', proposalsResponse.status);
             }
           }
         } else {

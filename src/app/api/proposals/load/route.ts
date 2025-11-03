@@ -39,12 +39,17 @@ export async function GET(request: NextRequest) {
       console.log(`✅ Admin found ${proposals.length} pending proposals`);
     } else {
       // For regular users: get their own pending proposals (so they can see the skeleton/temporary bill)
+      console.log('📋 [LOAD PROPOSALS] Loading proposals for user:', user.email, 'Role:', user.role);
       proposals = await (db as any)
         .selectFrom('pending_proposals')
         .selectAll('pending_proposals')
         .where('pending_proposals.user_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
+      console.log(`📋 [LOAD PROPOSALS] Found ${proposals.length} pending proposals from database`);
+      proposals.forEach((p: any, idx: number) => {
+        console.log(`  [${idx + 1}] Bill ID: ${p.bill_id}, Status: ${p.current_status} → ${p.suggested_status}, Proposal ID: ${p.id}`);
+      });
     }
 
     // Format proposals to match TempBill interface
@@ -64,6 +69,7 @@ export async function GET(request: NextRequest) {
       proposalId: p.id, // Store actual proposal ID for approve/reject
     }));
 
+    console.log(`✅ [LOAD PROPOSALS] Returning ${formatted.length} formatted proposals`);
     return NextResponse.json({ success: true, proposals: formatted });
   } catch (error) {
     console.error('Error loading proposals:', error);

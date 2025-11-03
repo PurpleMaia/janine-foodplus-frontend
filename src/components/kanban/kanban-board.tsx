@@ -309,10 +309,27 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     const grouped: { [key in BillStatus]?: TempBill[] } = {};
     KANBAN_COLUMNS.forEach((c) => (grouped[c.id as BillStatus] = []));
 
-    tempBills.forEach((tb) => {
-      if (searchQuery.trim() && !visibleBillIds.has(tb.id)) return;
+    console.log('📊 [TEMP BILLS BY COLUMN] Processing', tempBills.length, 'temp bills');
+    console.log('📊 [TEMP BILLS BY COLUMN] Visible bill IDs:', Array.from(visibleBillIds));
+    console.log('📊 [TEMP BILLS BY COLUMN] Search query:', searchQuery);
+
+    tempBills.forEach((tb, idx) => {
+      console.log(`  [${idx + 1}] Bill ID: ${tb.id}, Status: ${tb.current_status} → ${tb.suggested_status}`);
+      if (searchQuery.trim() && !visibleBillIds.has(tb.id)) {
+        console.log(`    ⚠️ Filtered out (not in visible bills or search)`);
+        return;
+      }
       const key = tb.suggested_status as BillStatus;
       grouped[key]?.push(tb);
+      console.log(`    ✅ Added to column: ${key}`);
+    });
+
+    // Log final grouped counts
+    Object.keys(grouped).forEach((col) => {
+      const count = grouped[col as BillStatus]?.length || 0;
+      if (count > 0) {
+        console.log(`📊 [TEMP BILLS BY COLUMN] Column "${col}": ${count} proposals`);
+      }
     });
 
     return grouped;
