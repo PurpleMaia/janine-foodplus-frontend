@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
 interface PendingUser {
@@ -38,13 +39,69 @@ interface PendingProposal {
   proposalId: string;
 }
 
+interface InternWithBills {
+  id: string;
+  email: string;
+  username: string;
+  created_at: string;
+  account_status: string;
+  supervisor_id: string | null;
+  supervisor_email: string | null;
+  supervisor_username: string | null;
+  adopted_bills: Array<{
+    bill_id: string;
+    bill_number: string;
+    bill_title: string;
+    current_status: string;
+  }>;
+}
+
+interface SupervisorRelationship {
+  supervisor_id: string;
+  supervisor_email: string;
+  supervisor_username: string;
+  interns: Array<{
+    id: string;
+    email: string;
+    username: string;
+    adopted_at: string;
+  }>;
+}
+
+interface InternBill {
+  bill: any;
+  adopted_by: Array<{
+    intern_id: string;
+    intern_email: string;
+    intern_username: string;
+    supervisor_id: string | null;
+    supervisor_email: string | null;
+    supervisor_username: string | null;
+    adopted_at: string;
+  }>;
+  pending_proposals: Array<{
+    proposal_id: string;
+    intern_id: string;
+    intern_email: string;
+    current_status: string;
+    suggested_status: string;
+    proposed_at: string;
+  }>;
+}
+
 export function AdminDashboard() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [pendingProposals, setPendingProposals] = useState<PendingProposal[]>([]);
   const [supervisorRequests, setSupervisorRequests] = useState<SupervisorRequest[]>([]);
+  const [allInterns, setAllInterns] = useState<InternWithBills[]>([]);
+  const [supervisorRelationships, setSupervisorRelationships] = useState<SupervisorRelationship[]>([]);
+  const [allInternBills, setAllInternBills] = useState<InternBill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingProposals, setIsLoadingProposals] = useState(true);
   const [isLoadingSupervisor, setIsLoadingSupervisor] = useState(true);
+  const [isLoadingInterns, setIsLoadingInterns] = useState(false);
+  const [isLoadingRelationships, setIsLoadingRelationships] = useState(false);
+  const [isLoadingBills, setIsLoadingBills] = useState(false);
   const { toast } = useToast();
 
   // Fetch pending requests
@@ -118,10 +175,96 @@ export function AdminDashboard() {
     }
   };
 
+  // Fetch all interns with bills
+  const fetchAllInterns = async () => {
+    setIsLoadingInterns(true);
+    try {
+      console.log('📡 [ADMIN] Fetching all interns...');
+      const response = await fetch('/api/admin/all-interns');
+      console.log('📥 [ADMIN] Response status:', response.status);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ [ADMIN] Failed to fetch all interns:', errorData);
+        throw new Error(errorData.error || 'Failed to fetch all interns');
+      }
+      const data = await response.json();
+      console.log('📥 [ADMIN] Received data:', data);
+      if (data.success && data.interns) {
+        console.log(`✅ [ADMIN] Setting ${data.interns.length} interns`);
+        setAllInterns(data.interns);
+      } else {
+        console.warn('⚠️ [ADMIN] No interns in response:', data);
+        setAllInterns([]);
+      }
+    } catch (error) {
+      console.error('❌ [ADMIN] Error fetching all interns:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to fetch all interns',
+        variant: 'destructive',
+      });
+      setAllInterns([]);
+    } finally {
+      setIsLoadingInterns(false);
+    }
+  };
+
+  // Fetch supervisor relationships
+  const fetchSupervisorRelationships = async () => {
+    setIsLoadingRelationships(true);
+    try {
+      const response = await fetch('/api/admin/supervisor-relationships');
+      if (!response.ok) {
+        throw new Error('Failed to fetch supervisor relationships');
+      }
+      const data = await response.json();
+      if (data.success && data.relationships) {
+        setSupervisorRelationships(data.relationships);
+      }
+    } catch (error) {
+      console.error('Error fetching supervisor relationships:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch supervisor relationships',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingRelationships(false);
+    }
+  };
+
+  // Fetch all intern bills
+  const fetchAllInternBills = async () => {
+    setIsLoadingBills(true);
+    try {
+      const response = await fetch('/api/admin/all-intern-bills');
+      if (!response.ok) {
+        throw new Error('Failed to fetch all intern bills');
+      }
+      const data = await response.json();
+      if (data.success && data.bills) {
+        setAllInternBills(data.bills);
+      }
+    } catch (error) {
+      console.error('Error fetching all intern bills:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch all intern bills',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingBills(false);
+    }
+  };
+
   useEffect(() => {
     fetchPendingRequests();
     fetchPendingProposals();
     fetchSupervisorRequests();
+    // Also fetch the new tab data on initial load
+    fetchAllInterns();
+    fetchSupervisorRelationships();
+    fetchAllInternBills();
   }, []);
 
   // Handle approving proposal
@@ -322,9 +465,19 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
-      {/* Pending Account Requests */}
-      <div>
+    <div className="container mx-auto p-6">
+      <Tabs defaultValue="pending-requests" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="pending-requests">Pending Requests</TabsTrigger>
+          <TabsTrigger value="all-interns">All Interns</TabsTrigger>
+          <TabsTrigger value="supervisor-relationships">Supervisor Relationships</TabsTrigger>
+          <TabsTrigger value="all-bills">All Bills</TabsTrigger>
+        </TabsList>
+
+        {/* Pending Requests Tab */}
+        <TabsContent value="pending-requests" className="space-y-8 mt-6">
+          {/* Pending Account Requests */}
+          <div>
         <h1 className="text-2xl font-bold mb-6">Pending Account Requests</h1>
         <ScrollArea className="h-[400px]">
           <div className="space-y-4">
@@ -488,6 +641,239 @@ export function AdminDashboard() {
           </ScrollArea>
         )}
       </div>
+        </TabsContent>
+
+        {/* All Interns Tab */}
+        <TabsContent value="all-interns" className="mt-6">
+          <div>
+            <h1 className="text-2xl font-bold mb-6">All Interns</h1>
+            <Button onClick={fetchAllInterns} variant="outline" className="mb-4">
+              Refresh
+            </Button>
+            {isLoadingInterns ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="p-4">
+                    <Skeleton className="h-4 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <ScrollArea className="h-[600px]">
+                <div className="space-y-4">
+                  {allInterns.length === 0 ? (
+                    <Card className="p-6">
+                      <p className="text-center text-muted-foreground">
+                        No interns found
+                      </p>
+                    </Card>
+                  ) : (
+                    allInterns.map((intern) => (
+                      <Card key={intern.id} className="p-6">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <h3 className="font-semibold">{intern.username}</h3>
+                              <p className="text-sm text-muted-foreground">{intern.email}</p>
+                              <div className="flex gap-2">
+                                <Badge variant="outline">
+                                  Joined: {new Date(intern.created_at).toLocaleDateString()}
+                                </Badge>
+                                {intern.supervisor_email ? (
+                                  <Badge variant="secondary">
+                                    Supervisor: {intern.supervisor_username || intern.supervisor_email}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline">No Supervisor</Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <p className="text-sm font-medium mb-2">
+                              Adopted Bills ({intern.adopted_bills.length}):
+                            </p>
+                            {intern.adopted_bills.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">No bills adopted</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {intern.adopted_bills.map((bill, index) => (
+                                  <div key={`${intern.id}-${bill.bill_id}-${index}`} className="flex items-center gap-2 text-sm">
+                                    <Badge variant="outline">{bill.bill_number}</Badge>
+                                    <span className="text-muted-foreground">{bill.bill_title}</span>
+                                    <Badge variant="secondary">{bill.current_status}</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Supervisor Relationships Tab */}
+        <TabsContent value="supervisor-relationships" className="mt-6">
+          <div>
+            <h1 className="text-2xl font-bold mb-6">Supervisor-Intern Relationships</h1>
+            <Button onClick={fetchSupervisorRelationships} variant="outline" className="mb-4">
+              Refresh
+            </Button>
+            {isLoadingRelationships ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="p-4">
+                    <Skeleton className="h-4 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <ScrollArea className="h-[600px]">
+                <div className="space-y-4">
+                  {supervisorRelationships.length === 0 ? (
+                    <Card className="p-6">
+                      <p className="text-center text-muted-foreground">
+                        No supervisor relationships found
+                      </p>
+                    </Card>
+                  ) : (
+                    supervisorRelationships.map((relationship) => (
+                      <Card key={relationship.supervisor_id} className="p-6">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <h3 className="font-semibold">{relationship.supervisor_username}</h3>
+                              <p className="text-sm text-muted-foreground">{relationship.supervisor_email}</p>
+                              <Badge variant="secondary">
+                                {relationship.interns.length} intern{relationship.interns.length !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <p className="text-sm font-medium mb-2">Adopted Interns:</p>
+                            {relationship.interns.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">No interns adopted</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {relationship.interns.map((intern, index) => (
+                                  <div key={`${relationship.supervisor_id}-${intern.id}-${index}`} className="flex items-center gap-2 text-sm">
+                                    <Badge variant="outline">{intern.username}</Badge>
+                                    <span className="text-muted-foreground">{intern.email}</span>
+                                    <Badge variant="secondary">
+                                      Adopted: {new Date(intern.adopted_at).toLocaleDateString()}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* All Bills Tab */}
+        <TabsContent value="all-bills" className="mt-6">
+          <div>
+            <h1 className="text-2xl font-bold mb-6">All Bills Adopted by Interns</h1>
+            <Button onClick={fetchAllInternBills} variant="outline" className="mb-4">
+              Refresh
+            </Button>
+            {isLoadingBills ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="p-4">
+                    <Skeleton className="h-4 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <ScrollArea className="h-[600px]">
+                <div className="space-y-4">
+                  {allInternBills.length === 0 ? (
+                    <Card className="p-6">
+                      <p className="text-center text-muted-foreground">
+                        No bills adopted by interns
+                      </p>
+                    </Card>
+                  ) : (
+                    allInternBills.map((item) => (
+                      <Card key={item.bill.id} className="p-6">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <h3 className="font-semibold">{item.bill.bill_number}</h3>
+                              <p className="text-sm text-muted-foreground">{item.bill.bill_title}</p>
+                              <div className="flex gap-2">
+                                <Badge variant="outline">Status: {item.bill.current_status}</Badge>
+                                {item.pending_proposals.length > 0 && (
+                                  <Badge variant="destructive">
+                                    {item.pending_proposals.length} Pending Proposal{item.pending_proposals.length !== 1 ? 's' : ''}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <p className="text-sm font-medium mb-2">
+                              Adopted by ({item.adopted_by.length} intern{item.adopted_by.length !== 1 ? 's' : ''}):
+                            </p>
+                            <div className="space-y-2">
+                              {item.adopted_by.map((adopter, index) => (
+                                <div key={`${adopter.intern_id}-${item.bill.id}-${index}`} className="flex items-center gap-2 text-sm">
+                                  <Badge variant="outline">{adopter.intern_username}</Badge>
+                                  <span className="text-muted-foreground">{adopter.intern_email}</span>
+                                  {adopter.supervisor_email && (
+                                    <Badge variant="secondary">Supervisor: {adopter.supervisor_username || adopter.supervisor_email}</Badge>
+                                  )}
+                                  <Badge variant="outline">
+                                    Adopted: {new Date(adopter.adopted_at).toLocaleDateString()}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {item.pending_proposals.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-sm font-medium mb-2">Pending Proposals:</p>
+                              <div className="space-y-2">
+                                {item.pending_proposals.map((proposal, index) => (
+                                  <div key={`${proposal.proposal_id}-${item.bill.id}-${index}`} className="flex items-center gap-2 text-sm">
+                                    <Badge variant="outline">{proposal.intern_email}</Badge>
+                                    <span className="text-muted-foreground">
+                                      {proposal.current_status} → {proposal.suggested_status}
+                                    </span>
+                                    <Badge variant="secondary">
+                                      {new Date(proposal.proposed_at).toLocaleDateString()}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -44,7 +44,8 @@ export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoard
 
 
   // Show adopted bills if user has any, otherwise show empty state with adopt button
-  if (user && bills.length === 0 && !loadingBills) {
+  // BUT: Supervisors and admins should always see the kanban board (they might have bills from interns/adoptees)
+  if (user && bills.length === 0 && !loadingBills && user.role !== 'supervisor' && user.role !== 'admin') {
     console.log('User has', bills.length, 'adopted bills, rendering empty state');
     
     return (
