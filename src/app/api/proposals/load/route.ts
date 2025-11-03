@@ -20,9 +20,10 @@ export async function GET(request: NextRequest) {
 
     if (user.role === 'supervisor') {
       // For supervisors: get proposals from adopted interns
+      // Join on proposed_by_user_id (the intern who made the proposal)
       proposals = await (db as any)
         .selectFrom('pending_proposals')
-        .innerJoin('supervisor_users', 'pending_proposals.user_id', 'supervisor_users.user_id')
+        .innerJoin('supervisor_users', 'pending_proposals.proposed_by_user_id', 'supervisor_users.user_id')
         .selectAll('pending_proposals')
         .where('supervisor_users.supervisor_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')

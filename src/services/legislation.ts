@@ -68,7 +68,7 @@ import { mapBillsToBill } from '@/lib/utils';
 
 export async function getAllBills(): Promise<Bill[]> {
     try {
-        const rawData = await db
+        const rawData = await (db as any)
           .selectFrom('bills as b')
           .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
           .select([
@@ -98,7 +98,7 @@ export async function getAllBills(): Promise<Bill[]> {
         // Map rawData to Bill objects
         const billObject = new Map<string, Bill>();
 
-        rawData.forEach(row => {
+        rawData.forEach((row: any) => {
 
           // If bill not already added to client-side bill object, map to client container
           if (!billObject.has(row.id)) {
@@ -187,7 +187,7 @@ export async function updateBillStatusServerAction(billId: string, newStatus: Bi
     }
 
     try {
-        const updatedBill = await db.updateTable('bills')
+        const updatedBill = await (db as any).updateTable('bills')
         .set({
             current_status: newStatus,
             updated_at: new Date()
@@ -212,7 +212,7 @@ export async function updateBillStatusServerAction(billId: string, newStatus: Bi
 
 export async function findExistingBillByURL(billURl: string): Promise<Bill | null> {
   try {
-    const result = await db.selectFrom('bills')
+    const result = await (db as any).selectFrom('bills')
       .selectAll()
       .where('bill_url', 'like', `${billURl}%`)      
       .executeTakeFirst();
@@ -232,14 +232,14 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
 
 export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean | null) {
   try {
-    const result = await db.updateTable('bills')
+    const result = await (db as any).updateTable('bills')
       .set({ food_related: state })
       .where('bill_url', '=', billURL)
       .returningAll()
       .executeTakeFirst();
 
     if (result) {
-      console.log(`Successfully updated bill ${result.bill_number} to food_related ${state} in database`)
+      console.log(`Successfully updated bill ${result.billNumber || result.bill_number} to food_related ${state} in database`)
       return mapBillsToBill(result as unknown as Bills)
     } else {
       console.log('Could not find bill in database based on: ', billURL)
@@ -253,7 +253,23 @@ export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean
 
 export async function insertNewBill(bill: Bill): Promise<Bill | null> {
   try {
-    const result = await db.insertInto('bills').values(bill).returningAll().executeTakeFirst();
+    // Convert Bill to database format (snake_case)
+    const dbBill = {
+      id: bill.id,
+      bill_number: bill.bill_number,
+      bill_title: bill.bill_title,
+      bill_url: bill.bill_url,
+      committee_assignment: bill.committee_assignment,
+      created_at: bill.created_at,
+      current_status: bill.current_status,
+      current_status_string: bill.current_status_string,
+      description: bill.description,
+      food_related: bill.food_related,
+      introducer: bill.introducer,
+      nickname: bill.nickname,
+      updated_at: bill.updated_at,
+    };
+    const result = await (db as any).insertInto('bills').values(dbBill).returningAll().executeTakeFirst();
 
     console.log(`Successfully inserted new bill ${bill.bill_number} into database`)
     return mapBillsToBill(result as unknown as Bills);
@@ -277,7 +293,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
     const billId = billResult.id;
 
     // Check if already adopted
-    const alreadyAdopted = await db.selectFrom('user_bills').selectAll()
+    const alreadyAdopted = await (db as any).selectFrom('user_bills').selectAll()
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
       .execute();
@@ -288,7 +304,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
     }
 
     // Add the adoption record
-    await db.insertInto('user_bills').values({
+    await (db as any).insertInto('user_bills').values({
       user_id: userId,
       bill_id: billId,
       adopted_at: new Date()
@@ -305,7 +321,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
 export async function unadoptBill(userId: string, billId: string): Promise<boolean> {
   try {
     console.log('unadoptBill called with:', { userId, billId });
-    const result = await db.deleteFrom('user_bills')
+    const result = await (db as any).deleteFrom('user_bills')
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
       .executeTakeFirstOrThrow();
@@ -320,7 +336,19 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
 
 export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
   try {
-    const rawData = await db
+    // First, check if the user is a supervisor
+    const user = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', '=', userId)
+      .executeTakeFirst();
+
+    if (!user) {
+      return [];
+    }
+
+    // Get bills directly adopted by the user
+    let rawData = await (db as any)
       .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
       .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
@@ -348,10 +376,45 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
       .orderBy('su.date', 'desc')
       .execute();
 
+    // If user is a supervisor, also get bills from their adopted interns
+    if (user.role === 'supervisor') {
+      const internBills = await (db as any)
+        .selectFrom('bills as b')
+        .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
+        .innerJoin('supervisor_users as su', 'ub.user_id', 'su.user_id')
+        .leftJoin('status_updates as status_up', 'b.id', 'status_up.bill_id')
+        .where('su.supervisor_id', '=', userId)
+        .select([
+          'b.bill_number',
+          'b.bill_title',
+          'b.bill_url',
+          'b.committee_assignment',
+          'b.created_at',
+          'b.current_status',
+          'b.current_status_string',
+          'b.description',
+          'b.food_related',
+          'b.id',
+          'b.introducer',
+          'b.nickname',
+          'b.updated_at',
+          'status_up.id as status_update_id',
+          'status_up.statustext',
+          'status_up.date',
+          'status_up.chamber'
+        ])
+        .orderBy('b.updated_at', 'desc')
+        .orderBy('status_up.date', 'desc')
+        .execute();
+
+      // Combine both sets of bills
+      rawData = [...rawData, ...internBills];
+    }
+
     // Map rawData to Bill objects using Map to handle duplicates
     const billObject = new Map<string, Bill>();
 
-    rawData.forEach(row => {
+    rawData.forEach((row: any) => {
       // If bill not already added to client-side bill object, map to client container
       if (!billObject.has(row.id)) {
         billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
