@@ -37,8 +37,13 @@ export async function GET(request: NextRequest) {
         .execute();
       console.log(`✅ Admin found ${proposals.length} pending proposals`);
     } else {
-      // For regular users: no proposals (they submit proposals, don't review them)
-      proposals = [];
+      // For regular users: get their own pending proposals (so they can see the skeleton/temporary bill)
+      proposals = await (db as any)
+        .selectFrom('pending_proposals')
+        .selectAll('pending_proposals')
+        .where('pending_proposals.user_id', '=', user.id)
+        .where('pending_proposals.approval_status', '=', 'pending')
+        .execute();
     }
 
     // Format proposals to match TempBill interface
