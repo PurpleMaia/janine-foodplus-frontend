@@ -89,30 +89,6 @@ export async function deleteSession(token: string): Promise<void> {
     .execute();
 }
 
-export async function authenticateGoogleUser(googleId: string): Promise<User> {
-  // Look up user by Google ID
-  const userResult = await db
-    .selectFrom('user')
-    .selectAll()
-    .where('googleId', '=', googleId)
-    .executeTakeFirst();
-    
-  if (!userResult) {
-    throw new Error('USER_NOT_FOUND');
-  } else if (userResult.accountStatus !== 'active' && userResult.requestedAdmin === false) {
-    // Same admin approval logic as regular users
-    console.error('Account not active for Google user:', userResult.email);
-    throw new Error('ACCOUNT_INACTIVE');
-  }
-
-  return { 
-    id: userResult.id, 
-    email: userResult.email, 
-    role: userResult.role, 
-    username: userResult.username 
-  };
-}
-
 export async function authenticateUser(authString: string, password: string): Promise<User> {
   //1. Looks up user by email or username in user table
   const userResult = await (db as any)
