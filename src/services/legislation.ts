@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../db/kysely/client';
 import { Bills } from '../../db/types';
 import { mapBillsToBill } from '@/lib/utils';
+import { sql } from 'kysely';
 
 // Helper function to create placeholder introducers
 // const createIntroducers = (names: string[]): Introducer[] =>
@@ -375,40 +376,64 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
       .orderBy('b.updated_at', 'desc')
       .orderBy('su.date', 'desc')
       .execute();
+    
+    console.log(`📋 [USER BILLS] Found ${rawData.length} bills directly adopted by user ${userId} (role: ${user.role})`);
 
     // If user is a supervisor, also get bills from their adopted interns
     if (user.role === 'supervisor') {
-      const internBills = await (db as any)
-        .selectFrom('bills as b')
-        .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
-        .innerJoin('supervisor_users as su', 'ub.user_id', 'su.user_id')
-        .leftJoin('status_updates as status_up', 'b.id', 'status_up.bill_id')
-        .where('su.supervisor_id', '=', userId)
-        .select([
-          'b.bill_number',
-          'b.bill_title',
-          'b.bill_url',
-          'b.committee_assignment',
-          'b.created_at',
-          'b.current_status',
-          'b.current_status_string',
-          'b.description',
-          'b.food_related',
-          'b.id',
-          'b.introducer',
-          'b.nickname',
-          'b.updated_at',
-          'status_up.id as status_update_id',
-          'status_up.statustext',
-          'status_up.date',
-          'status_up.chamber'
-        ])
-        .orderBy('b.updated_at', 'desc')
-        .orderBy('status_up.date', 'desc')
+      console.log(`🔍 [SUPERVISOR BILLS] Loading bills for supervisor: ${userId}`);
+      
+      // First, get all adopted intern IDs for this supervisor
+      const supervisorRelations = await (db as any)
+        .selectFrom('supervisor_users')
+        .select(['user_id'])
+        .where('supervisor_id', '=', userId)
         .execute();
 
-      // Combine both sets of bills
-      rawData = [...rawData, ...internBills];
+      const internIds = supervisorRelations.map((rel: any) => rel.user_id);
+      console.log(`👥 [SUPERVISOR BILLS] Found ${internIds.length} adopted interns:`, internIds);
+
+      if (internIds.length > 0) {
+        // Now get all bills adopted by these interns (using same query structure as main query)
+        const internBills = await (db as any)
+          .selectFrom('bills as b')
+          .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
+          .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
+          .where('ub.user_id', 'in', internIds)
+          .select([
+            'b.bill_number',
+            'b.bill_title',
+            'b.bill_url',
+            'b.committee_assignment',
+            'b.created_at',
+            'b.current_status',
+            'b.current_status_string',
+            'b.description',
+            'b.food_related',
+            'b.id',
+            'b.introducer',
+            'b.nickname',
+            'b.updated_at',
+            'su.id as status_update_id',
+            'su.statustext',
+            'su.date',
+            'su.chamber'
+          ])
+          .orderBy('b.updated_at', 'desc')
+          .orderBy('su.date', 'desc')
+          .execute();
+
+        console.log(`✅ [SUPERVISOR BILLS] Found ${internBills.length} bills from adopted interns`);
+        internBills.forEach((bill: any, idx: number) => {
+          console.log(`  [${idx + 1}] ${bill.bill_number}: ${bill.bill_title} (ID: ${bill.id})`);
+        });
+
+        // Combine both sets of bills
+        rawData = [...rawData, ...internBills];
+        console.log(`📊 [SUPERVISOR BILLS] Total bills (direct + intern): ${rawData.length}`);
+      } else {
+        console.log(`ℹ️ [SUPERVISOR BILLS] No adopted interns, skipping intern bills query`);
+      }
     }
 
     // Map rawData to Bill objects using Map to handle duplicates
@@ -437,7 +462,14 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
       }
     });
 
-    return Array.from(billObject.values());
+    const finalBills = Array.from(billObject.values());
+    console.log(`✅ [USER BILLS] Returning ${finalBills.length} unique bills for user ${userId} (role: ${user.role})`);
+    if (user.role === 'supervisor') {
+      finalBills.forEach((bill, idx) => {
+        console.log(`  [${idx + 1}] ${bill.bill_number}: ${bill.bill_title}`);
+      });
+    }
+    return finalBills;
   } catch (error) {
     console.error('Failed to get user adopted bills:', error);
     return [];
