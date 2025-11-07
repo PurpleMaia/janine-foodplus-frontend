@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerUser } from '@/lib/simple-auth';
-import { sendVerificationEmail } from '@/services/email';
+// import { sendVerificationEmail } from '@/services/email';
 
 // Allowed email domains
 // const ALLOWED_EMAIL_DOMAINS = [
@@ -27,38 +27,39 @@ export async function POST(req: NextRequest) {
     //   }, { status: 403 });
     // }
 
-    const { user, verificationToken } = await registerUser(email, username, password);
-    if (!user || !verificationToken) {
+    // const { user, verificationToken } = await registerUser(email, username, password);
+    const { user } = await registerUser(email, username, password);
+    if (!user) {
       return NextResponse.json({ error: 'User already exists or registration failed.' }, { status: 400 });
     }
 
     // Send verification email
-    const emailResult = await sendVerificationEmail(email, username, verificationToken);
-    if (!emailResult.success) {
-      console.error('❌ Failed to send verification email:', emailResult.error);
-      console.log('📧 Verification URL for manual testing:', `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/verify-email?token=${verificationToken}`);
+    // const emailResult = await sendVerificationEmail(email, username, verificationToken);
+    // if (!emailResult.success) {
+    //   console.error('❌ Failed to send verification email:', emailResult.error);
+    //   console.log('📧 Verification URL for manual testing:', `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/verify-email?token=${verificationToken}`);
       
-      // In development mode, allow registration even if email fails
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️  Allowing registration without email verification in development mode');
-        return NextResponse.json({ 
-          success: true,
-          message: 'Registration successful! Email verification failed, but registration is allowed in development mode. Check server logs for verification URL.',
-          user,
-          verificationUrl: `/verify-email?token=${verificationToken}` 
-        });
-      }
+    //   // In development mode, allow registration even if email fails
+    //   if (process.env.NODE_ENV === 'development') {
+    //     console.warn('⚠️  Allowing registration without email verification in development mode');
+    //     return NextResponse.json({ 
+    //       success: true,
+    //       message: 'Registration successful! Email verification failed, but registration is allowed in development mode. Check server logs for verification URL.',
+    //       user,
+    //       verificationUrl: `/verify-email?token=${verificationToken}` 
+    //     });
+    //   }
       
-      // In production, return error but don't fail completely
-      const errorMsg = emailResult.error && typeof emailResult.error === 'object' && 'message' in emailResult.error 
-        ? String(emailResult.error.message) 
-        : String(emailResult.error || 'Unknown error');
-      return NextResponse.json({ 
-        error: `Account created but verification email failed to send: ${errorMsg}. Please contact support or check server logs for verification URL.`, 
-        user,
-        verificationUrl: `/verify-email?token=${verificationToken}`
-      }, { status: 500 });
-    }
+    //   // In production, return error but don't fail completely
+    //   const errorMsg = emailResult.error && typeof emailResult.error === 'object' && 'message' in emailResult.error 
+    //     ? String(emailResult.error.message) 
+    //     : String(emailResult.error || 'Unknown error');
+    //   return NextResponse.json({ 
+    //     error: `Account created but verification email failed to send: ${errorMsg}. Please contact support or check server logs for verification URL.`, 
+    //     user,
+    //     verificationUrl: `/verify-email?token=${verificationToken}`
+    //   }, { status: 500 });
+    // }
 
     return NextResponse.json({ 
       success: true,
