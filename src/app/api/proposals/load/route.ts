@@ -21,30 +21,69 @@ export async function GET(request: NextRequest) {
     if (user.role === 'supervisor') {
       // For supervisors: get proposals from adopted interns
       // Join on proposed_by_user_id (the intern who made the proposal)
-      proposals = await (db as any)
-        .selectFrom('pending_proposals')
-        .innerJoin('supervisor_users', 'pending_proposals.proposed_by_user_id', 'supervisor_users.user_id')
-        .selectAll('pending_proposals')
-        .where('supervisor_users.supervisor_id', '=', user.id)
-        .where('pending_proposals.approval_status', '=', 'pending')
+      proposals = await db
+        .selectFrom('pendingProposals')
+        .innerJoin('supervisorUsers', 'pendingProposals.proposedByUserId', 'supervisorUsers.userId')
+        .leftJoin('user as proposer', (join: any) =>
+          join.on(sql`pendingProposals.proposedByUserId::uuid = proposer.id`)
+        )
+        .leftJoin('bills', (join: any) =>
+          join.on(sql`pending_proposals.bill_id::uuid = bills.id`)
+        )
+        .selectAll('pendingProposals')
+        .select([
+          'proposer.username as proposerUsername',
+          'proposer.email as proposerEmail',
+          'proposer.role as proposerRole',
+          'bills.billNumber',
+          'bills.billTitle',
+        ])
+        .where('supervisorUsers.supervisorId', '=', user.id)
+        .where('pendingProposals.approvalStatus', '=', 'pending')
         .execute();
     } else if (user.role === 'admin') {
       // For admins: get ALL pending proposals (they can approve/reject any proposal)
       console.log('📋 Admin loading all pending proposals...');
-      proposals = await (db as any)
-        .selectFrom('pending_proposals')
-        .selectAll('pending_proposals')
-        .where('pending_proposals.approval_status', '=', 'pending')
+      proposals = await db
+        .selectFrom('pendingProposals')
+        .leftJoin('user as proposer', (join: any) =>
+          join.on(sql`pendingProposals.proposedByUserId::uuid = proposer.id`)
+        )
+        .leftJoin('bills', (join: any) =>
+          join.on(sql`pendingProposals.billId::uuid = bills.id`)
+        )
+        .selectAll('pendingProposals')
+        .select([
+          'proposer.username as proposerUsername',
+          'proposer.email as proposerEmail',
+          'proposer.role as proposerRole',
+          'bills.billNumber',
+          'bills.billTitle',
+        ])
+        .where('pendingProposals.approvalStatus', '=', 'pending')
         .execute();
       console.log(`✅ Admin found ${proposals.length} pending proposals`);
     } else {
       // For regular users: get their own pending proposals (so they can see the skeleton/temporary bill)
       console.log('📋 [LOAD PROPOSALS] Loading proposals for user:', user.email, 'Role:', user.role);
-      proposals = await (db as any)
-        .selectFrom('pending_proposals')
-        .selectAll('pending_proposals')
-        .where('pending_proposals.user_id', '=', user.id)
-        .where('pending_proposals.approval_status', '=', 'pending')
+      proposals = await db
+        .selectFrom('pendingProposals')
+        .leftJoin('user as proposer', (join: any) =>
+          join.on(sql`pendingProposals.proposedByUserId::uuid = proposer.id`)
+        )
+        .leftJoin('bills', (join: any) =>
+          join.on(sql`pendingProposals.billId::uuid = bills.id`)
+        )
+        .selectAll('pendingProposals')
+        .select([
+          'proposer.username as proposerUsername',
+          'proposer.email as proposerEmail',
+          'proposer.role as proposerRole',
+          'bills.billNumber',
+          'bills.billTitle',
+        ])
+        .where('pendingProposals.userId', '=', user.id)
+        .where('pendingProposals.approvalStatus', '=', 'pending')
         .execute();
       console.log(`📋 [LOAD PROPOSALS] Found ${proposals.length} pending proposals from database`);
       proposals.forEach((p: any, idx: number) => {
@@ -55,16 +94,25 @@ export async function GET(request: NextRequest) {
     // Format proposals to match TempBill interface
     const formatted = proposals.map((p: any) => ({
       id: p.bill_id,
+      bill_id: p.bill_id,
+      bill_number: p.bill_number ?? undefined,
+      bill_title: p.bill_title ?? undefined,
       current_status: p.current_status,
       suggested_status: p.suggested_status,
+      proposed_status: p.suggested_status,
       target_idx: 0, // Not needed for display
       source: 'human' as const,
       approval_status: 'pending' as const,
+      proposing_user_id: p.proposed_by_user_id,
+      proposing_username: p.proposer_username || undefined,
+      proposing_email: p.proposer_email || undefined,
       proposed_by: {
         user_id: p.proposed_by_user_id,
-        role: 'intern',
+        role: p.proposer_role ?? 'intern',
         at: new Date(p.proposed_at).toISOString(),
         note: p.note || undefined,
+        username: p.proposer_username || undefined,
+        email: p.proposer_email || undefined,
       },
       proposalId: p.id, // Store actual proposal ID for approve/reject
     }));

@@ -191,6 +191,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     const target_idx = 0; // optional: compute from KANBAN_COLUMNS if you want to scroll later
     const proposal: TempBill = {
       id: bill.id,
+      bill_id: bill.id,
+      bill_number: bill.bill_number,
+      bill_title: bill.bill_title,
       current_status: bill.current_status,
       suggested_status,
       target_idx,
@@ -201,6 +204,8 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         role: meta.role,
         at: new Date().toISOString(),
         note: meta.note,
+        username: (user?.username as string | undefined) ?? undefined,
+        email: (user?.email as string | undefined) ?? undefined,
       },
     };
 
