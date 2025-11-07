@@ -22,68 +22,68 @@ export async function GET(request: NextRequest) {
       // For supervisors: get proposals from adopted interns
       // Join on proposed_by_user_id (the intern who made the proposal)
       proposals = await db
-        .selectFrom('pendingProposals')
-        .innerJoin('supervisorUsers', 'pendingProposals.proposedByUserId', 'supervisorUsers.userId')
+        .selectFrom('pending_proposals')
+        .innerJoin('supervisor_users', 'pending_proposals.proposed_by_user_id', 'supervisor_users.user_id')
         .leftJoin('user as proposer', (join: any) =>
-          join.on(sql`pendingProposals.proposedByUserId::uuid = proposer.id`)
+          join.on(sql`pending_proposals.proposed_by_user_id::uuid = proposer.id`)
         )
         .leftJoin('bills', (join: any) =>
           join.on(sql`pending_proposals.bill_id::uuid = bills.id`)
         )
-        .selectAll('pendingProposals')
+        .selectAll('pending_proposals')
         .select([
-          'proposer.username as proposerUsername',
-          'proposer.email as proposerEmail',
-          'proposer.role as proposerRole',
-          'bills.billNumber',
-          'bills.billTitle',
+          'proposer.username as proposer_username',
+          'proposer.email as proposer_email',
+          'proposer.role as proposer_role',
+          'bills.bill_number',
+          'bills.bill_title',
         ])
-        .where('supervisorUsers.supervisorId', '=', user.id)
-        .where('pendingProposals.approvalStatus', '=', 'pending')
+        .where('supervisor_users.supervisor_id', '=', user.id)
+        .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
     } else if (user.role === 'admin') {
       // For admins: get ALL pending proposals (they can approve/reject any proposal)
       console.log('📋 Admin loading all pending proposals...');
       proposals = await db
-        .selectFrom('pendingProposals')
+        .selectFrom('pending_proposals')
         .leftJoin('user as proposer', (join: any) =>
-          join.on(sql`pendingProposals.proposedByUserId::uuid = proposer.id`)
+          join.on(sql`pending_proposals.proposed_by_user_id::uuid = proposer.id`)
         )
         .leftJoin('bills', (join: any) =>
-          join.on(sql`pendingProposals.billId::uuid = bills.id`)
+          join.on(sql`pending_proposals.bill_id::uuid = bills.id`)
         )
-        .selectAll('pendingProposals')
+        .selectAll('pending_proposals')
         .select([
-          'proposer.username as proposerUsername',
-          'proposer.email as proposerEmail',
-          'proposer.role as proposerRole',
-          'bills.billNumber',
-          'bills.billTitle',
+          'proposer.username as proposer_username',
+          'proposer.email as proposer_email',
+          'proposer.role as proposer_role',
+          'bills.bill_number',
+          'bills.bill_title',
         ])
-        .where('pendingProposals.approvalStatus', '=', 'pending')
+        .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
       console.log(`✅ Admin found ${proposals.length} pending proposals`);
     } else {
       // For regular users: get their own pending proposals (so they can see the skeleton/temporary bill)
       console.log('📋 [LOAD PROPOSALS] Loading proposals for user:', user.email, 'Role:', user.role);
       proposals = await db
-        .selectFrom('pendingProposals')
+        .selectFrom('pending_proposals')
         .leftJoin('user as proposer', (join: any) =>
-          join.on(sql`pendingProposals.proposedByUserId::uuid = proposer.id`)
+          join.on(sql`pending_proposals.proposed_by_user_id::uuid = proposer.id`)
         )
         .leftJoin('bills', (join: any) =>
-          join.on(sql`pendingProposals.billId::uuid = bills.id`)
+          join.on(sql`pending_proposals.bill_id::uuid = bills.id`)
         )
-        .selectAll('pendingProposals')
+        .selectAll('pending_proposals')
         .select([
-          'proposer.username as proposerUsername',
-          'proposer.email as proposerEmail',
-          'proposer.role as proposerRole',
-          'bills.billNumber',
-          'bills.billTitle',
+          'proposer.username as proposer_username',
+          'proposer.email as proposer_email',
+          'proposer.role as proposer_role',
+          'bills.bill_number',
+          'bills.bill_title',
         ])
-        .where('pendingProposals.userId', '=', user.id)
-        .where('pendingProposals.approvalStatus', '=', 'pending')
+        .where('pending_proposals.user_id', '=', user.id)
+        .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
       console.log(`📋 [LOAD PROPOSALS] Found ${proposals.length} pending proposals from database`);
       proposals.forEach((p: any, idx: number) => {
