@@ -26,7 +26,7 @@ export default function RegisterPage() {
       if (result.success) {
         toast({
           title: "Registration successful!",
-          description: "Please check your email to verify your account before logging in.",
+          description: "Please wait for approval.",
         });
         setEmail("");
         setUsername("");
