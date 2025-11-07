@@ -69,7 +69,7 @@ import { sql } from 'kysely';
 
 export async function getAllBills(): Promise<Bill[]> {
     try {
-        const rawData = await (db as any)
+        const rawData = await db
           .selectFrom('bills as b')
           .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
           .select([
@@ -188,7 +188,7 @@ export async function updateBillStatusServerAction(billId: string, newStatus: Bi
     }
 
     try {
-        const updatedBill = await (db as any).updateTable('bills')
+        const updatedBill = await db.updateTable('bills')
         .set({
             current_status: newStatus,
             updated_at: new Date()
@@ -213,7 +213,7 @@ export async function updateBillStatusServerAction(billId: string, newStatus: Bi
 
 export async function findExistingBillByURL(billURl: string): Promise<Bill | null> {
   try {
-    const result = await (db as any).selectFrom('bills')
+    const result = await db.selectFrom('bills')
       .selectAll()
       .where('bill_url', 'like', `${billURl}%`)      
       .executeTakeFirst();
@@ -233,14 +233,14 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
 
 export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean | null) {
   try {
-    const result = await (db as any).updateTable('bills')
+    const result = await db.updateTable('bills')
       .set({ food_related: state })
       .where('bill_url', '=', billURL)
       .returningAll()
       .executeTakeFirst();
 
     if (result) {
-      console.log(`Successfully updated bill ${result.billNumber || result.bill_number} to food_related ${state} in database`)
+      console.log(`Successfully updated bill ${result.bill_number || result.bill_number} to food_related ${state} in database`)
       return mapBillsToBill(result as unknown as Bills)
     } else {
       console.log('Could not find bill in database based on: ', billURL)
@@ -270,7 +270,7 @@ export async function insertNewBill(bill: Bill): Promise<Bill | null> {
       nickname: bill.nickname,
       updated_at: bill.updated_at,
     };
-    const result = await (db as any).insertInto('bills').values(dbBill).returningAll().executeTakeFirst();
+    const result = await db.insertInto('bills').values(dbBill).returningAll().executeTakeFirst();
 
     console.log(`Successfully inserted new bill ${bill.bill_number} into database`)
     return mapBillsToBill(result as unknown as Bills);
@@ -294,7 +294,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
     const billId = billResult.id;
 
     // Check if already adopted
-    const alreadyAdopted = await (db as any).selectFrom('user_bills').selectAll()
+    const alreadyAdopted = await db.selectFrom('user_bills').selectAll()
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
       .execute();
@@ -305,7 +305,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
     }
 
     // Add the adoption record
-    await (db as any).insertInto('user_bills').values({
+    await db.insertInto('user_bills').values({
       user_id: userId,
       bill_id: billId,
       adopted_at: new Date()
@@ -322,7 +322,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
 export async function unadoptBill(userId: string, billId: string): Promise<boolean> {
   try {
     console.log('unadoptBill called with:', { userId, billId });
-    const result = await (db as any).deleteFrom('user_bills')
+    const result = await db.deleteFrom('user_bills')
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
       .executeTakeFirstOrThrow();
@@ -349,7 +349,7 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
     }
 
     // Get bills directly adopted by the user
-    let rawData = await (db as any)
+    let rawData = await db
       .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
       .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
@@ -384,7 +384,7 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
       console.log(`🔍 [SUPERVISOR BILLS] Loading bills for supervisor: ${userId}`);
       
       // First, get all adopted intern IDs for this supervisor
-      const supervisorRelations = await (db as any)
+      const supervisorRelations = await db
         .selectFrom('supervisor_users')
         .select(['user_id'])
         .where('supervisor_id', '=', userId)
@@ -395,7 +395,7 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
 
       if (internIds.length > 0) {
         // Now get all bills adopted by these interns (using same query structure as main query)
-        const internBills = await (db as any)
+        const internBills = await db
           .selectFrom('bills as b')
           .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
           .leftJoin('status_updates as su', 'b.id', 'su.bill_id')

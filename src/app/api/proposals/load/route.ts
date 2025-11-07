@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     if (user.role === 'supervisor') {
       // For supervisors: get proposals from adopted interns
       // Join on proposed_by_user_id (the intern who made the proposal)
-      proposals = await (db as any)
+      proposals = await db
         .selectFrom('pending_proposals')
         .innerJoin('supervisor_users', 'pending_proposals.proposed_by_user_id', 'supervisor_users.user_id')
         .selectAll('pending_proposals')
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     } else if (user.role === 'admin') {
       // For admins: get ALL pending proposals (they can approve/reject any proposal)
       console.log('📋 Admin loading all pending proposals...');
-      proposals = await (db as any)
+      proposals = await db
         .selectFrom('pending_proposals')
         .selectAll('pending_proposals')
         .where('pending_proposals.approval_status', '=', 'pending')
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     } else {
       // For regular users: get their own pending proposals (so they can see the skeleton/temporary bill)
       console.log('📋 [LOAD PROPOSALS] Loading proposals for user:', user.email, 'Role:', user.role);
-      proposals = await (db as any)
+      proposals = await db
         .selectFrom('pending_proposals')
         .selectAll('pending_proposals')
         .where('pending_proposals.user_id', '=', user.id)

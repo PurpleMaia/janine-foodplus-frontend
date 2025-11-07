@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // Get all interns (users with role 'user')
     // Note: Fetching all users with role 'user' regardless of account_status for admin view
-    const interns = await (db as any)
+    const interns = await db
       .selectFrom('user')
       .select(['id', 'email', 'username', 'created_at', 'account_status'])
       .where('role', '=', 'user')
@@ -49,9 +49,14 @@ export async function GET(request: NextRequest) {
 
     // Get supervisor relationships
     console.log('📋 [ADMIN] Fetching supervisor relationships...');
-    let supervisorRelations = [];
+    let supervisorRelations: Array<{
+      user_id: string;
+      supervisor_id: string;
+      supervisor_email: string;
+      supervisor_username: string;
+    }> = [];
     try {
-      supervisorRelations = await (db as any)
+      supervisorRelations = await db
         .selectFrom('supervisor_users')
         .innerJoin('user as supervisor', 'supervisor_users.supervisor_id', 'supervisor.id')
         .select([
@@ -79,9 +84,15 @@ export async function GET(request: NextRequest) {
 
     // Get all bills adopted by interns
     console.log('📋 [ADMIN] Fetching bills adopted by interns...');
-    let internBills = [];
+    let internBills: Array<{
+      user_id: string | null;
+      bill_id: string;
+      bill_number: string | null;
+      bill_title: string | null;
+      current_status: string | null;
+    }> = [];
     try {
-      internBills = await (db as any)
+      internBills = await db
         .selectFrom('user_bills')
         .innerJoin('bills', 'user_bills.bill_id', 'bills.id')
         .select([
