@@ -285,39 +285,51 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             {/* PENDING PROPOSALS (dashed ghost cards) */}
             {pendingCount > 0 && (
               <div className="mt-2 space-y-2">
-                {pendingTempBills.map((tb) => (
-                  <div
-                    key={`pending-${tb.id}`}
-                    className="rounded-lg border-2 border-dashed p-2 opacity-80 bg-background"
-                    title={
-                      tb.proposed_by
-                        ? `Proposed by ${tb.proposed_by.role} at ${new Date(tb.proposed_by.at).toLocaleString()}`
-                        : 'Pending change'
-                    }
-                  >
-                    <div className="text-xs font-medium">
-                      🕒 Pending: {tb.current_status} → {tb.suggested_status}
-                      {tb.source ? ` • ${tb.source.toUpperCase()}` : null}
-                    </div>
+                {pendingTempBills.map((tb) => {
+                  const proposerName =
+                    tb.proposed_by?.username ??
+                    tb.proposed_by?.email ??
+                    tb.proposed_by?.user_id ??
+                    'Unknown user';
+                  const tooltip = tb.proposed_by
+                    ? `Proposed by ${proposerName} (${tb.proposed_by.role}) at ${new Date(
+                        tb.proposed_by.at
+                      ).toLocaleString()}`
+                    : 'Pending change';
 
-                    {canModerate && (
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground"
-                          onClick={() => onApproveTemp?.(tb.id)}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          className="px-2 py-1 text-xs rounded bg-destructive text-destructive-foreground"
-                          onClick={() => onRejectTemp?.(tb.id)}
-                        >
-                          Reject
-                        </button>
+                  return (
+                    <div
+                      key={`pending-${tb.id}`}
+                      className="rounded-lg border-2 border-dashed p-2 opacity-80 bg-background"
+                      title={tooltip}
+                    >
+                      <div className="text-xs font-medium">
+                        🕒 Pending: {tb.current_status} → {tb.suggested_status}
+                        {tb.source ? ` • ${tb.source.toUpperCase()}` : null}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div className="text-[11px] text-muted-foreground">
+                        Requested by {proposerName}
+                      </div>
+
+                      {canModerate && (
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground"
+                            onClick={() => onApproveTemp?.(tb.id)}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="px-2 py-1 text-xs rounded bg-destructive text-destructive-foreground"
+                            onClick={() => onRejectTemp?.(tb.id)}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
