@@ -288,6 +288,7 @@ export function AdminDashboard() {
       });
 
       fetchPendingProposals();
+      fetchAllInternBills();
     } catch (error) {
       toast({
         title: 'Error',
@@ -318,6 +319,7 @@ export function AdminDashboard() {
       });
 
       fetchPendingProposals();
+      fetchAllInternBills();
     } catch (error) {
       toast({
         title: 'Error',
