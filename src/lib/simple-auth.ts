@@ -28,7 +28,7 @@ export async function createSession(userId: string): Promise<string> {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   // inserts session into database
-  const result = await (db as any)
+  const result = await db
     .insertInto('sessions')
     .values({
       id: randomUUID(),
@@ -55,7 +55,7 @@ export async function validateSession(token: string): Promise<User | null> {
     const hashedToken = createHash('sha256').update(token).digest('hex');
 
     // Query the database for the session and associated user
-    const result = await (db as any)
+    const result = await db
       .selectFrom('sessions as s')
       .innerJoin('user as u', 's.user_id', 'u.id')
       .select(['u.id', 'u.role', 'u.email', 'u.username', 'u.email_verified'])
@@ -83,7 +83,7 @@ export async function validateSession(token: string): Promise<User | null> {
 
 export async function deleteSession(token: string): Promise<void> {
   const hashedToken = createHash('sha256').update(token).digest('hex');
-  await (db as any)
+  await db
     .deleteFrom('sessions')
     .where('session_token', '=', hashedToken)
     .execute();
@@ -91,7 +91,7 @@ export async function deleteSession(token: string): Promise<void> {
 
 export async function authenticateUser(authString: string, password: string): Promise<User> {
   //1. Looks up user by email or username in user table
-  const userResult = await (db as any)
+  const userResult = await db
     .selectFrom('user')
     .select(['id', 'email', 'username', 'role', 'account_status', 'requested_admin', 'email_verified'])
     .where((eb: any) => eb.or([
@@ -126,7 +126,7 @@ export async function authenticateUser(authString: string, password: string): Pr
   // But all accounts (old and new) MUST have account_status = 'active' to log in 
 
   //2. Finds auth_key for that user
-  const keyResult = await (db as any)
+  const keyResult = await db
     .selectFrom('auth_key')
     .select(['id', 'user_id', 'hashed_password'])
     .where('user_id', '=', userResult.id)
@@ -165,7 +165,7 @@ export async function registerUser(email: string, username: string, password: st
     const verificationToken = Buffer.from(verificationTokenBytes).toString('hex');
 
     //3. Create new user (status: 'unverified' - waiting for email verification)
-    const userResult = await (db as any).insertInto('user').values({
+    const userResult = await db.insertInto('user').values({
       email: email, 
       created_at: new Date(),
       role: 'user',
@@ -184,7 +184,7 @@ export async function registerUser(email: string, username: string, password: st
 
     //4. Hash password and store in auth_key table
     const hashedPassword = await bcrypt.hash(password, 10);
-    await (db as any)
+    await db
       .insertInto('auth_key')
       .values({ id: randomUUID(), user_id: userId, hashed_password: hashedPassword })
       .execute();

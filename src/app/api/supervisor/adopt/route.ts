@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if already adopted
-    const existing = await (db as any)
+    const existing = await db
       .selectFrom('supervisor_users')
       .selectAll()
       .where('supervisor_id', '=', user.id)
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Create adoption relationship
     const adoptionId = crypto.randomUUID();
-    await (db as any)
+    await db
       .insertInto('supervisor_users')
       .values({
         id: adoptionId,

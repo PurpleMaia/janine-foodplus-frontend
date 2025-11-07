@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Get all users for supervisors to choose from
     if (user.role === 'supervisor') {
-      const users = await (db as any)
+      const users = await db
         .selectFrom('user')
         .select(['id', 'email', 'username', 'role'])
         .where('role', '=', 'user') // Only regular users can be adopted
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         .execute();
 
       // Get already adopted users by this supervisor
-      const adopted = await (db as any)
+      const adopted = await db
         .selectFrom('supervisor_users')
         .select(['user_id'])
         .where('supervisor_id', '=', user.id)
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     }
 
     // For regular users/admins, just return all users
-    const users = await (db as any)
+    const users = await db
       .selectFrom('user')
       .select(['id', 'email', 'username', 'role'])
       .where('role', '=', 'user')
