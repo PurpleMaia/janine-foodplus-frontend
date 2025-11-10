@@ -51,6 +51,7 @@ export interface Bill {
   id: string;  
   introducer: string;
   nickname: string;
+  user_nickname?: string | null;
   updated_at: Date | null;
 
   // client side attributes
