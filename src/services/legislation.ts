@@ -8,6 +8,36 @@ import { Bills } from '../../db/types';
 import { mapBillsToBill } from '@/lib/utils';
 import { sql } from 'kysely';
 
+let userBillPreferencesInitialized = false;
+
+export async function ensureUserBillPreferencesTable() {
+  if (userBillPreferencesInitialized) {
+    return;
+  }
+
+  try {
+    await db.schema
+      .createTable('user_bill_preferences')
+      .ifNotExists()
+      .addColumn('id', 'uuid', (col) => col.primaryKey())
+      .addColumn('user_id', 'uuid', (col) => col.notNull())
+      .addColumn('bill_id', 'uuid', (col) => col.notNull())
+      .addColumn('nickname', 'text', (col) => col.notNull())
+      .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+      .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+      .addUniqueConstraint('user_bill_preferences_user_bill_unique', ['user_id', 'bill_id'])
+      .execute();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('already exists')) {
+      console.error('Failed to ensure user_bill_preferences table:', error);
+      throw error;
+    }
+  } finally {
+    userBillPreferencesInitialized = true;
+  }
+}
+
 // Helper function to create placeholder introducers
 // const createIntroducers = (names: string[]): Introducer[] =>
 //     names.map((name, index) => ({
@@ -337,6 +367,7 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
 
 export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
   try {
+    await ensureUserBillPreferencesTable();
     // First, check if the user is a supervisor
     const user = await db
       .selectFrom('user')
@@ -353,6 +384,11 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
       .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
       .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
+      .leftJoin('user_bill_preferences as ubp', (join: any) =>
+        join
+          .onRef('ubp.bill_id', '=', 'ub.bill_id')
+          .onRef('ubp.user_id', '=', 'ub.user_id')
+      )
       .where('ub.user_id', '=', userId)
       .select([
         'b.bill_number',
@@ -371,7 +407,8 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
         'su.id as status_update_id',
         'su.statustext',
         'su.date',
-        'su.chamber'
+        'su.chamber',
+        'ubp.nickname as user_nickname'
       ])
       .orderBy('b.updated_at', 'desc')
       .orderBy('su.date', 'desc')
@@ -458,6 +495,13 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
             date: row.date || '',
             chamber: row.chamber || ''
           });
+        }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(row, 'user_nickname')) {
+        const bill = billObject.get(row.id);
+        if (bill) {
+          bill.user_nickname = row.user_nickname ?? null;
         }
       }
     });

@@ -143,6 +143,11 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                      </div>
                 </CardHeader>
                 <CardContent className="p-0 mt-1 gap-2">
+                    {bill.user_nickname && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Nickname: {bill.user_nickname}
+                      </p>
+                    )}
                     <p className='text-sm text-foreground text-wrap mb-3 line-clamp-2'>{bill.description}</p>
 
                     {/* Status Information */}

@@ -45,6 +45,7 @@ interface BillsContextType {
   rejectTempChange: (billId: string) => Promise<void>;
   acceptAllTempChanges: () => Promise<void>;
   rejectAllTempChanges: () => Promise<void>;
+  updateBillNickname: (billId: string, nickname: string) => Promise<void>;
 
   resetBills: () => Promise<void>;
   refreshBills: () => Promise<void>;
@@ -376,6 +377,51 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateBillNickname: BillsContextType['updateBillNickname'] = async (
+    billId,
+    nickname
+  ) => {
+    const trimmed = nickname.trim();
+    const previous =
+      bills.find((b) => b.id === billId)?.user_nickname ?? null;
+
+    setBills((prev) =>
+      prev.map((b) =>
+        b.id === billId ? { ...b, user_nickname: trimmed || null } : b
+      )
+    );
+
+    try {
+      const response = await fetch('/api/bills/nickname', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ billId, nickname: trimmed }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save nickname');
+      }
+
+      const savedNickname = data.nickname ?? (trimmed || null);
+      setBills((prev) =>
+        prev.map((b) =>
+          b.id === billId ? { ...b, user_nickname: savedNickname } : b
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update bill nickname:', error);
+      setBills((prev) =>
+        prev.map((b) =>
+          b.id === billId ? { ...b, user_nickname: previous } : b
+        )
+      );
+      throw error instanceof Error ? error : new Error('Failed to save nickname');
+    }
+  };
+
   const acceptAllTempChanges: BillsContextType['acceptAllTempChanges'] =
     async () => {
       if (!canCommitStatus(user?.role)) {
@@ -528,6 +574,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectTempChange,
       acceptAllTempChanges,
       rejectAllTempChanges,
+      updateBillNickname,
 
       resetBills,
       refreshBills,
@@ -545,6 +592,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectTempChange,
       acceptAllTempChanges,
       rejectAllTempChanges,
+      updateBillNickname,
       resetBills,
       refreshBills,
     ]
