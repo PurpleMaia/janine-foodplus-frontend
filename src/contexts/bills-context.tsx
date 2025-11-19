@@ -3,6 +3,7 @@
 
 import {
   getAllBills,
+  getAllFoodRelatedBills,
   getUserAdoptedBills,
   updateBillStatusServerAction,
 } from '@/services/legislation';
@@ -47,6 +48,11 @@ interface BillsContextType {
   rejectAllTempChanges: () => Promise<void>;
   updateBillNickname: (billId: string, nickname: string) => Promise<void>;
 
+  // View mode toggle
+  viewMode: 'my-bills' | 'all-bills';
+  setViewMode: (mode: 'my-bills' | 'all-bills') => void;
+  toggleViewMode: () => void;
+
   resetBills: () => Promise<void>;
   refreshBills: () => Promise<void>;
 }
@@ -61,6 +67,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   const [tempBills, setTempBills] = useState<TempBill[]>([]);
   const [, setError] = useState<string | null>(null);
   const [loadingBills, setLoadingBills] = useState(false);
+  const [viewMode, setViewMode] = useState<'my-bills' | 'all-bills'>('my-bills');
   const { user, loading: userLoading } = useAuth();
 
   const reloadProposalsFromServer = useCallback(async () => {
@@ -475,12 +482,22 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       if (user) {
-        const results = await getUserAdoptedBills(user.id);
-        setBills(results);
-        console.log('User adopted bills set in context');
-        console.log(results);
+        // Logged-in user: respect view mode
+        if (viewMode === 'my-bills') {
+          const results = await getUserAdoptedBills(user.id);
+          setBills(results);
+          console.log('User adopted bills set in context');
+          console.log(results);
+        } else {
+          // All bills view
+          const results = await getAllFoodRelatedBills();
+          setBills(results);
+          console.log('All food-related bills set in context');
+          console.log(results);
+        }
         return;
       }
+      // Public view: only adopted bills
       const results = await getAllBills();
       setBills(results);
       console.log('successful results set in context');
@@ -493,6 +510,32 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const toggleViewMode = useCallback(() => {
+    if (!user) return;
+    
+    const newMode = viewMode === 'my-bills' ? 'all-bills' : 'my-bills';
+    setViewMode(newMode);
+    
+    // Refresh bills when toggling (moved outside state setter to avoid render issues)
+    (async () => {
+      setLoadingBills(true);
+      try {
+        if (newMode === 'my-bills') {
+          const results = await getUserAdoptedBills(user.id);
+          setBills(results);
+        } else {
+          const results = await getAllFoodRelatedBills();
+          setBills(results);
+        }
+      } catch (err) {
+        console.error('Error refreshing bills on toggle:', err);
+        setError('Failed to refresh bills.');
+      } finally {
+        setLoadingBills(false);
+      }
+    })();
+  }, [user, viewMode]);
+
   // initial load
   useEffect(() => {
     if (userLoading) return; // wait until auth resolves
@@ -504,11 +547,17 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       setError(null);
       try {
         if (user) {
-          // LOGGED-IN PATH
-          const results = await getUserAdoptedBills(user.id);
+          // LOGGED-IN PATH: respect view mode
+          let results;
+          if (viewMode === 'my-bills') {
+            results = await getUserAdoptedBills(user.id);
+            console.log('User adopted bills set in context', results.length);
+          } else {
+            results = await getAllFoodRelatedBills();
+            console.log('All food-related bills set in context', results.length);
+          }
           if (!cancelled) {
             setBills(results);
-            console.log('User adopted bills set in context', results.length);
 
             // Load pending proposals for bills owned by the user
             console.log('🔄 [INITIAL LOAD] Fetching proposals from API...');
@@ -551,7 +600,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user, userLoading]);
+  }, [user, userLoading, viewMode]);
 
   const value = useMemo(
     () => ({
@@ -576,6 +625,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectAllTempChanges,
       updateBillNickname,
 
+      // View mode
+      viewMode,
+      setViewMode,
+      toggleViewMode,
+
       resetBills,
       refreshBills,
     }),
@@ -593,6 +647,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       acceptAllTempChanges,
       rejectAllTempChanges,
       updateBillNickname,
+      viewMode,
+      setViewMode,
+      toggleViewMode,
       resetBills,
       refreshBills,
     ]

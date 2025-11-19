@@ -2,11 +2,16 @@
 
 import React from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useBills } from '@/contexts/bills-context';
+import { useAuth } from '@/contexts/auth-context';
 
 export function KanbanHeader() {
   const { setSearchQuery } = useKanbanBoard(); // Access context
+  const { viewMode, toggleViewMode } = useBills();
+  const { user } = useAuth();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.target.value
@@ -21,7 +26,17 @@ export function KanbanHeader() {
         <h2 className="text-sm font-light">Track and manage bills effectively</h2>
       </div>
       
-      <div className='flex gap-2'>        
+      <div className='flex gap-2 items-center'>        
+        {user && (
+          <Button
+            variant={viewMode === 'my-bills' ? 'default' : 'outline'}
+            size="sm"
+            onClick={toggleViewMode}
+            className="whitespace-nowrap"
+          >
+            {viewMode === 'my-bills' ? 'My Bills' : 'All Bills'}
+          </Button>
+        )}
         <div className="relative ml-auto w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
