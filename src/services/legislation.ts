@@ -101,6 +101,7 @@ export async function getAllBills(): Promise<Bill[]> {
     try {
         const rawData = await (db as any)
           .selectFrom('bills as b')
+          .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted
           .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
           .select([
             'b.bill_number',
@@ -120,7 +121,7 @@ export async function getAllBills(): Promise<Bill[]> {
             'su.statustext',
             'su.date',
             'su.chamber'
-          ])            
+          ])
           .where('food_related', '=', true) // Only food-related bills
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .orderBy('su.date', 'desc')       // Then most recently created
@@ -382,7 +383,7 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
     // Get bills directly adopted by the user
     let rawData = await (db as any)
       .selectFrom('bills as b')
-      .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
+      .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted (bills that have a bill id in the user_bills table)
       .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
       .leftJoin('user_bill_preferences as ubp', (join: any) =>
         join
