@@ -74,7 +74,7 @@ const getCurrentStageName = (status: BillStatus): string => {
 // --- Component ---
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills, setBills, setTempBills, updateBillNickname } = useBills()
+  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange } = useBills()
   const { user } = useAuth() // Add this line to get authentication state
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
@@ -121,6 +121,22 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     try {
         setSaving(true);
 
+        // Interns (users with role 'user') propose changes instead of directly updating
+        if (user?.role === 'user') {
+          console.log('🔵 [DIALOG] User proposing change:', bill.id, '→', selectedStatus);
+          await proposeStatusChange(bill, selectedStatus as BillStatus, {
+            userId: user.id,
+            role: 'intern',
+          });
+          toast({
+            title: "Change Proposed",
+            description: `Awaiting supervisor approval.`,
+          });
+          onClose();
+          return;
+        }
+
+        // Admins and supervisors can directly update
         const updatedBillFromServer = await updateBillStatusServerAction(bill.id, selectedStatus);
         if (!updatedBillFromServer) {
             throw new Error('Failed to update bill status on server.');
@@ -153,7 +169,12 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
         
         onClose()
     } catch (error) {
-        console.error("Failed to update bill status:", error);   
+        console.error("Failed to update bill status:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update bill status. Please try again.",
+          variant: "destructive",
+        });
     } finally {
         setSaving(false)
     }         
