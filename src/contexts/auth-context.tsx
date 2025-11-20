@@ -6,10 +6,12 @@ import type { User } from '@/lib/simple-auth';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isAdopted: boolean | null; // null = not checked yet, true/false = checked
   login: (authString: string, password: string) => Promise<{ success: boolean, error?: string }>;
   logout: () => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<{ success: boolean, error?: string }>;
   checkSession: () => Promise<void>;
+  checkAdoptionStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,11 +19,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdopted, setIsAdopted] = useState<boolean | null>(null);
 
   // Check session on mount
   useEffect(() => {
     checkSession();
   }, []);
+
+  // Check adoption status when user changes
+  useEffect(() => {
+    if (user) {
+      checkAdoptionStatus();
+    } else {
+      setIsAdopted(null);
+    }
+  }, [user]);
 
   const checkSession = async () => {
     try {
@@ -32,15 +44,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user);
         } else {
           setUser(null);
+          setIsAdopted(null);
         }
       } else {
         setUser(null);
+        setIsAdopted(null);
       }
     } catch (error) {
       console.error('Session check error:', error);
       setUser(null);
+      setIsAdopted(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkAdoptionStatus = async () => {
+    try {
+      // Only check for interns (role === 'user')
+      if (!user || user.role !== 'user') {
+        setIsAdopted(true); // Supervisors/admins have full permissions
+        return;
+      }
+
+      const response = await fetch('/api/user/adoption-status');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setIsAdopted(data.isAdopted);
+        } else {
+          setIsAdopted(false);
+        }
+      } else {
+        setIsAdopted(false);
+      }
+    } catch (error) {
+      console.error('Adoption status check error:', error);
+      setIsAdopted(false);
     }
   };
 
@@ -63,6 +103,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
+        // Check adoption status after login
+        if (data.user) {
+          await checkAdoptionStatus();
+        }
         return {
           success: true
         };
@@ -128,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register, checkSession }}>
+    <AuthContext.Provider value={{ user, loading, isAdopted, login, logout, register, checkSession, checkAdoptionStatus }}>
       {children}
     </AuthContext.Provider>
   );

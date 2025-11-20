@@ -144,7 +144,7 @@ export async function authenticateUser(authString: string, password: string): Pr
   return { id: userResult.id, email: userResult.email, role: userResult.role, username: userResult.username };  //Success
 } 
 
-export async function registerUser(email: string, username: string, password: string): Promise<{ user: User | null; verificationToken: string | null }> {
+export async function registerUser(email: string, username: string, password: string): Promise<{ user: User | null }> {
   try {
     //1. Check if user already exists
     const existingUser = await db.selectFrom('user')
@@ -156,24 +156,18 @@ export async function registerUser(email: string, username: string, password: st
       .executeTakeFirst();
 
     if (existingUser) {
-      return { user: null, verificationToken: null }; // User already exists
+      return { user: null }; // User already exists
     }
 
-    //2. Generate verification token
-    const verificationTokenBytes = new Uint8Array(32);
-    crypto.getRandomValues(verificationTokenBytes);
-    const verificationToken = Buffer.from(verificationTokenBytes).toString('hex');
-
-    //3. Create new user (status: 'unverified' - waiting for email verification)
+    //2. Create new user (status: 'pending' - waiting for admin approval)
     const userResult = await (db as any).insertInto('user').values({
       email: email, 
       created_at: new Date(),
       role: 'user',
-      account_status: 'unverified', // Will be set to 'pending' after email verification
+      account_status: 'pending', // NOTE: use 'unverified' when implementing email verification
       username: username,
       requested_admin: false,
-      email_verified: false,
-      verification_token: verificationToken
+      // verification_token: verificationToken (NOTE: not storing verification token for now)
     }).returning('id').executeTakeFirst();
 
     if (!userResult || !userResult.id) {
@@ -182,7 +176,7 @@ export async function registerUser(email: string, username: string, password: st
 
     const userId = userResult.id;
 
-    //4. Hash password and store in auth_key table
+    //3. Hash password and store in auth_key table
     const hashedPassword = await bcrypt.hash(password, 10);
     await (db as any)
       .insertInto('auth_key')
@@ -190,12 +184,11 @@ export async function registerUser(email: string, username: string, password: st
       .execute();
 
     return { 
-      user: { id: userId, email, role: 'user', username }, 
-      verificationToken 
+      user: { id: userId, email, role: 'user', username }
     };
   } catch (error) {
     console.error('Registration error:', error);
-    return { user: null, verificationToken: null };
+    return { user: null };
   }
 }
 

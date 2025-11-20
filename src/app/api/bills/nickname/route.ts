@@ -1,0 +1,113 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { db } from '../../../../../db/kysely/client';
+import { isUserAdopted } from '@/services/users';
+import crypto from 'crypto';
+
+export async function POST(request: NextRequest) {
+  try {
+    const sessionToken = getSessionCookie(request);
+    if (!sessionToken) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    const user = await validateSession(sessionToken);
+    if (!user || user.role !== 'user') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    // Check if user is adopted
+    const adopted = await isUserAdopted(user.id);
+    if (!adopted) {
+      return NextResponse.json(
+        { success: false, error: 'You must be adopted by a supervisor to make changes' },
+        { status: 403 }
+      );
+    }
+
+    const { billId, nickname } = await request.json();
+    if (!billId || typeof billId !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Bill ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const trimmedNickname =
+      typeof nickname === 'string' ? nickname.trim().slice(0, 80) : '';
+
+    // Ensure the user actually adopted this bill
+    const adoption = await (db as any)
+      .selectFrom('user_bills')
+      .select('id')
+      .where('user_id', '=', user.id)
+      .where('bill_id', '=', billId)
+      .executeTakeFirst();
+
+    if (!adoption) {
+      return NextResponse.json(
+        { success: false, error: 'You have not adopted this bill' },
+        { status: 403 }
+      );
+    }
+
+    if (!trimmedNickname) {
+      // Clear nickname
+      await (db as any)
+        .deleteFrom('user_bill_preferences')
+        .where('user_id', '=', user.id)
+        .where('bill_id', '=', billId)
+        .execute();
+
+      return NextResponse.json({ success: true, nickname: null });
+    }
+
+    const existing = await (db as any)
+      .selectFrom('user_bill_preferences')
+      .select(['id'])
+      .where('user_id', '=', user.id)
+      .where('bill_id', '=', billId)
+      .executeTakeFirst();
+
+    if (existing) {
+      await (db as any)
+        .updateTable('user_bill_preferences')
+        .set({
+          nickname: trimmedNickname,
+          updated_at: new Date(),
+        })
+        .where('id', '=', existing.id)
+        .execute();
+    } else {
+      await (db as any)
+        .insertInto('user_bill_preferences')
+        .values({
+          id: crypto.randomUUID(),
+          user_id: user.id,
+          bill_id: billId,
+          nickname: trimmedNickname,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .execute();
+    }
+
+    return NextResponse.json({
+      success: true,
+      nickname: trimmedNickname,
+    });
+  } catch (error) {
+    console.error('Failed to save nickname:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to save nickname' },
+      { status: 500 }
+    );
+  }
+}
+
