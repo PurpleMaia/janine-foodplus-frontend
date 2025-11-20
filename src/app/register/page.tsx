@@ -26,7 +26,7 @@ export default function RegisterPage() {
       if (result.success) {
         toast({
           title: "Registration successful!",
-          description: "Please wait for approval.",
+          description: "Your account is pending admin approval. You will be notified when your account is activated.",
         });
         setEmail("");
         setUsername("");

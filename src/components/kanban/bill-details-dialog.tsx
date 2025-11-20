@@ -74,8 +74,8 @@ const getCurrentStageName = (status: BillStatus): string => {
 // --- Component ---
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange } = useBills()
-  const { user } = useAuth() // Add this line to get authentication state
+  const { bills, setBills, setTempBills } = useBills()
+  const { user, isAdopted } = useAuth() // Add this line to get authentication state
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
   const [nickname, setNickname] = useState<string>('');
@@ -121,22 +121,17 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     try {
         setSaving(true);
 
-        // Interns (users with role 'user') propose changes instead of directly updating
-        if (user?.role === 'user') {
-          console.log('🔵 [DIALOG] User proposing change:', bill.id, '→', selectedStatus);
-          await proposeStatusChange(bill, selectedStatus as BillStatus, {
-            userId: user.id,
-            role: 'intern',
-          });
+        // Check if user is an unadopted intern
+        if (user?.role === 'user' && isAdopted === false) {
           toast({
-            title: "Change Proposed",
-            description: `Awaiting supervisor approval.`,
+            title: 'Action not allowed',
+            description: 'You must be adopted by a supervisor to make changes.',
+            variant: 'destructive',
           });
-          onClose();
+          setSaving(false);
           return;
         }
 
-        // Admins and supervisors can directly update
         const updatedBillFromServer = await updateBillStatusServerAction(bill.id, selectedStatus);
         if (!updatedBillFromServer) {
             throw new Error('Failed to update bill status on server.');
@@ -392,16 +387,28 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 <span>Login required to edit</span>
               </div>
             )}
+            {user?.role === 'user' && isAdopted === false && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" />
+                <span>You must be adopted by a supervisor to make changes</span>
+              </div>
+            )}
           </div>
 
           <div className='flex gap-4'>
             <Select 
               value={selectedStatus} 
               onValueChange={handleOnValueChange}
-              disabled={!user} // Disable when not authenticated
+              disabled={!user || (user?.role === 'user' && isAdopted === false)} // Disable when not authenticated or unadopted intern
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={user ? "Select a new status" : "Login to edit status"} />
+                <SelectValue placeholder={
+                  !user 
+                    ? "Login to edit status" 
+                    : user.role === 'user' && isAdopted === false
+                    ? "Must be adopted to edit"
+                    : "Select a new status"
+                } />
               </SelectTrigger>
               <SelectContent>
                 {KANBAN_COLUMNS.map((column) => (
@@ -414,7 +421,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
             <Button 
               onClick={handleSave}
-              disabled={!user || !selectedStatus} // Disable when not authenticated or no status selected
+              disabled={!user || !selectedStatus || (user?.role === 'user' && isAdopted === false)} // Disable when not authenticated, no status selected, or unadopted intern
             >
               Save
             </Button>

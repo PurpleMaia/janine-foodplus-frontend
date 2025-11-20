@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/simple-auth';
 import { db } from '../../../../../db/kysely/client';
-import { ensureUserBillPreferencesTable } from '@/services/legislation';
+import { isUserAdopted } from '@/services/users';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -18,6 +18,15 @@ export async function POST(request: NextRequest) {
     if (!user || user.role !== 'user') {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    // Check if user is adopted
+    const adopted = await isUserAdopted(user.id);
+    if (!adopted) {
+      return NextResponse.json(
+        { success: false, error: 'You must be adopted by a supervisor to make changes' },
         { status: 403 }
       );
     }
@@ -47,8 +56,6 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-
-    await ensureUserBillPreferencesTable();
 
     if (!trimmedNickname) {
       // Clear nickname

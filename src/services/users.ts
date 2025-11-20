@@ -48,3 +48,23 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
     return [];
   }
 }
+
+/**
+ * Check if a user (intern) is adopted by a supervisor
+ * @param userId - The ID of the user to check
+ * @returns true if the user is adopted, false otherwise
+ */
+export async function isUserAdopted(userId: string): Promise<boolean> {
+  try {
+    const adoption = await (db as any)
+      .selectFrom('supervisor_users')
+      .select('id')
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
+
+    return !!adoption;
+  } catch (error) {
+    console.error('Error checking if user is adopted:', error);
+    return false;
+  }
+}

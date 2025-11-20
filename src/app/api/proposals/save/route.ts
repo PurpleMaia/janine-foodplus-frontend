@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/simple-auth';
 import { db } from '../../../../../db/kysely/client';
+import { isUserAdopted } from '@/services/users';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -14,6 +15,17 @@ export async function POST(request: NextRequest) {
     const user = await validateSession(session_token);
     if (!user) {
       return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
+    }
+
+    // Check if user is an intern (role === 'user') and if so, verify they are adopted
+    if (user.role === 'user') {
+      const adopted = await isUserAdopted(user.id);
+      if (!adopted) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'You must be adopted by a supervisor to make changes' 
+        }, { status: 403 });
+      }
     }
 
     const { billId, currentStatus, suggestedStatus, note } = await request.json();

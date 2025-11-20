@@ -204,7 +204,7 @@ interface KanbanBoardProps {
 export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
   const { searchQuery } = useKanbanBoard();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdopted } = useAuth();
 
   // Pull everything from a single bills context call
   const {
@@ -351,9 +351,16 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     setDraggingBillId(start.draggableId);
   }, []);
 
+  // Compute effective readOnly: true if prop is true OR if user is an unadopted intern
+  const effectiveReadOnly = useMemo(() => {
+    if (readOnly) return true;
+    if (user?.role === 'user' && isAdopted === false) return true;
+    return false;
+  }, [readOnly, user?.role, isAdopted]);
+
   const onDragEnd = useCallback(
     async (result: DropResult) => {
-      if (readOnly) return;
+      if (effectiveReadOnly) return;
 
       setDraggingBillId(null);
       const { source, destination, draggableId } = result;
@@ -369,6 +376,25 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       console.log('🔍 User role check - user:', user?.email, 'role:', user?.role);
       
       if (user?.role === 'user') {
+        // Check if user is adopted before allowing changes
+        if (isAdopted === false) {
+          toast({
+            title: 'Action not allowed',
+            description: 'You must be adopted by a supervisor to make changes.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // If adoption status is still loading, wait
+        if (isAdopted === null) {
+          toast({
+            title: 'Please wait',
+            description: 'Checking permissions...',
+          });
+          return;
+        }
+
         console.log('🔵 User proposing change:', movedBill.id, '→', destinationColumnId);
         await proposeStatusChange(movedBill, destinationColumnId, {
           userId: user.id,
@@ -440,7 +466,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         });
       }
     },
-    [bills, readOnly, user, proposeStatusChange, toast, filteredBills, searchQuery, setBills]
+    [bills, effectiveReadOnly, user, isAdopted, proposeStatusChange, toast, filteredBills, searchQuery, setBills]
   );
 
   const handleCardClick = useCallback((bill: Bill) => {
@@ -534,7 +560,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             onCardClick={handleCardClick}
                             onUnadopt={onUnadopt}
                             showUnadoptButton={showUnadoptButton}
-                            readOnly={false}
+                            readOnly={effectiveReadOnly}
                             enableDnd={true}
                             /* pending proposals */
                             pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}

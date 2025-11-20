@@ -53,6 +53,11 @@ interface BillsContextType {
   setViewMode: (mode: 'my-bills' | 'all-bills') => void;
   toggleViewMode: () => void;
 
+  // View mode controls
+  viewMode: 'my-bills' | 'all-bills';
+  setViewMode: (mode: 'my-bills' | 'all-bills') => void;
+  toggleViewMode: () => void;
+
   resetBills: () => Promise<void>;
   refreshBills: () => Promise<void>;
 }
@@ -482,22 +487,20 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       if (user) {
-        // Logged-in user: respect view mode
+        // LOGGED-IN PATH: respect view mode
         if (viewMode === 'my-bills') {
           const results = await getUserAdoptedBills(user.id);
           setBills(results);
           console.log('User adopted bills set in context');
-          console.log(results);
         } else {
           // All bills view
-          const results = await getAllFoodRelatedBills();
+          const results = await getAllBills();
           setBills(results);
           console.log('All food-related bills set in context');
-          console.log(results);
         }
         return;
       }
-      // Public view: only adopted bills
+      // Public view: only all bills
       const results = await getAllBills();
       setBills(results);
       console.log('successful results set in context');
@@ -524,7 +527,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           const results = await getUserAdoptedBills(user.id);
           setBills(results);
         } else {
-          const results = await getAllFoodRelatedBills();
+          const results = await getAllBills();
           setBills(results);
         }
       } catch (err) {
@@ -553,7 +556,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             results = await getUserAdoptedBills(user.id);
             console.log('User adopted bills set in context', results.length);
           } else {
-            results = await getAllFoodRelatedBills();
+            results = await getAllBills();
             console.log('All food-related bills set in context', results.length);
           }
           if (!cancelled) {
@@ -630,6 +633,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       setViewMode,
       toggleViewMode,
 
+      // View mode
+      viewMode,
+      setViewMode,
+      toggleViewMode,
+
       resetBills,
       refreshBills,
     }),
@@ -646,7 +654,6 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectTempChange,
       acceptAllTempChanges,
       rejectAllTempChanges,
-      updateBillNickname,
       viewMode,
       setViewMode,
       toggleViewMode,

@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
     //   }, { status: 403 });
     // }
 
-    // const { user, verificationToken } = await registerUser(email, username, password);
     const { user } = await registerUser(email, username, password);
     if (!user) {
       return NextResponse.json({ error: 'User already exists or registration failed.' }, { status: 400 });
@@ -63,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true,
-      message: 'Registration successful! Please check your email to verify your account.',
+      message: 'Registration successful! Your account is pending admin approval.',
       user 
     });
   } catch (error) {
