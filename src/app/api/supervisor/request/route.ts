@@ -16,14 +16,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user to request supervisor access
-    const result = await (db as any)
+    const result = await db
       .updateTable('user')
       .set({ requested_supervisor: true })
       .where('id', '=', user.id)
       .where('role', '!=', 'supervisor') // Prevent already supervisors from requesting
       .executeTakeFirst();
 
-    if (result.numUpdatedRows === 0) {
+    if (result.numUpdatedRows === BigInt(0)) {
       return NextResponse.json({ success: false, error: 'Already a supervisor or request already pending' }, { status: 400 });
     }
 

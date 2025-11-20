@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Check if proposal already exists (by user_id and bill_id, regardless of approval status)
     // Use (db as any) to bypass Kysely type checking for snake_case columns
-    const existing = await (db as any)
+    const existing = await db
       .selectFrom('pending_proposals')
       .selectAll()
       .where('bill_id', '=', billId)
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       console.log('💾 [SAVE PROPOSAL] Updating existing proposal:', existing.id);
       // Update existing proposal (reuse the same proposal for this user/bill combo)
-      await (db as any)
+      await db
         .updateTable('pending_proposals')
         .set({
           suggested_status: suggestedStatus,
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     // Create new proposal
     const proposalId = crypto.randomUUID();
     console.log('💾 [SAVE PROPOSAL] Creating new proposal:', proposalId);
-    await (db as any)
+    await db
       .insertInto('pending_proposals')
       .values({
         id: proposalId,

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Remove adoption relationship
-    const result = await (db as any)
+    const result = await db
       .deleteFrom('supervisor_users')
       .where('supervisor_id', '=', user.id)
       .where('user_id', '=', userId)

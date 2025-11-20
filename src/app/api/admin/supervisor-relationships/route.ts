@@ -31,9 +31,13 @@ export async function GET(request: NextRequest) {
 
     // Get all supervisors
     console.log('📋 [ADMIN] Fetching supervisors...');
-    let supervisors = [];
+    let supervisors: Array<{
+      id: string;
+      email: string;
+      username: string;
+    }> = [];
     try {
-      supervisors = await (db as any)
+      supervisors = await db
         .selectFrom('user')
         .select(['id', 'email', 'username'])
         .where('role', '=', 'supervisor')
@@ -47,9 +51,15 @@ export async function GET(request: NextRequest) {
 
     // Get all supervisor-intern relationships
     console.log('📋 [ADMIN] Fetching supervisor-intern relationships...');
-    let relationships = [];
+    let relationships: Array<{
+      supervisor_id: string;
+      intern_id: string;
+      adopted_at: Date | string;
+      intern_email: string;
+      intern_username: string;
+    }> = [];
     try {
-      relationships = await (db as any)
+      relationships = await db
         .selectFrom('supervisor_users')
         .innerJoin('user as intern', 'supervisor_users.user_id', 'intern.id')
         .select([

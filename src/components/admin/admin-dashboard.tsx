@@ -36,6 +36,15 @@ interface PendingProposal {
   proposed_at: string;
   proposing_user_id: string;
   proposing_username?: string;
+  proposing_email?: string;
+  proposed_by?: {
+    user_id: string;
+    role: string;
+    at: string;
+    note?: string;
+    username?: string;
+    email?: string;
+  };
   proposalId: string;
 }
 
@@ -288,6 +297,7 @@ export function AdminDashboard() {
       });
 
       fetchPendingProposals();
+      fetchAllInternBills();
     } catch (error) {
       toast({
         title: 'Error',
@@ -318,6 +328,7 @@ export function AdminDashboard() {
       });
 
       fetchPendingProposals();
+      fetchAllInternBills();
     } catch (error) {
       toast({
         title: 'Error',
@@ -609,6 +620,17 @@ export function AdminDashboard() {
                         <h3 className="font-semibold">{proposal.bill_number || proposal.bill_id}</h3>
                         <p className="text-sm text-muted-foreground">
                           {proposal.bill_title || `Bill ID: ${proposal.bill_id}`}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Requested by{' '}
+                          {proposal.proposing_username ||
+                            proposal.proposed_by?.username ||
+                            proposal.proposing_email ||
+                            proposal.proposed_by?.email ||
+                            'Unknown user'}
+                          {proposal.proposing_email || proposal.proposed_by?.email
+                            ? ` (${proposal.proposing_email || proposal.proposed_by?.email})`
+                            : ''}
                         </p>
                         <div className="flex gap-2">
                           <Badge variant="outline">
