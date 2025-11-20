@@ -192,17 +192,31 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     meta
   ) => {
     console.log('🟣 proposeStatusChange called:', bill.id, '→', suggested_status);
-    console.log('HOKKU IS HERE AND IT SHOULD BE WORKING IF', bill, suggested_status, "is working for now idk what it says")
+    console.log('🟣 Bill data:', {
+      id: bill.id,
+      current_status: bill.current_status,
+      suggested_status,
+    });
 
+    // Validate required fields before sending
+    if (!bill.id) {
+      throw new Error('Bill ID is missing');
+    }
     
+    // Handle missing or empty current_status with fallback
+    const currentStatus = bill.current_status?.trim() || 'unassigned';
+    if (!currentStatus || currentStatus === '') {
+      console.warn(`⚠️ Bill ${bill.id} has missing current_status, using 'unassigned' as fallback`);
+    }
+    
+    if (!suggested_status || suggested_status.trim() === '') {
+      throw new Error(`Suggested status is missing or empty. Bill ID: ${bill.id}`);
+    }
     
     const target_idx = 0; // optional: compute from KANBAN_COLUMNS if you want to scroll later
     const proposal: TempBill = {
       id: bill.id,
-      bill_id: bill.id,
-      bill_number: bill.bill_number,
-      bill_title: bill.bill_title,
-      current_status: bill.current_status,
+      current_status: currentStatus as BillStatus,
       suggested_status,
       target_idx,
       source: 'human',
@@ -218,18 +232,23 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     };
 
     try {
+      // Prepare request body
+      const requestBody = {
+        billId: bill.id,
+        currentStatus: currentStatus,
+        suggestedStatus: suggested_status,
+        note: meta.note || undefined,
+      };
+
+      console.log('🟣 Sending proposal request:', requestBody);
+
       // Save to database
       const response = await fetch('/api/proposals/save', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          billId: bill.id,
-          currentStatus: bill.current_status,
-          suggestedStatus: suggested_status,
-          note: meta.note,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -478,26 +497,31 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
   const refreshBills = async () => {
     console.log('Refreshing bills...');
+    // Clear bills first to show skeleton immediately
+    setBills([]);
     setLoadingBills(true);
     setError(null);
+    
+    // Small delay to ensure loading state is visible
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
       if (user) {
-        // Logged-in user: respect view mode
+        // LOGGED-IN PATH: respect view mode
+        let results;
         if (viewMode === 'my-bills') {
-          const results = await getUserAdoptedBills(user.id);
-          setBills(results);
+          results = await getUserAdoptedBills(user.id);
           console.log('User adopted bills set in context');
-          console.log(results);
         } else {
           // All bills view
-          const results = await getAllFoodRelatedBills();
-          setBills(results);
+          results = await getAllBills();
           console.log('All food-related bills set in context');
-          console.log(results);
         }
+        setBills(results);
+        console.log(results);
         return;
       }
-      // Public view: only adopted bills
+      // Public view: only all bills
       const results = await getAllBills();
       setBills(results);
       console.log('successful results set in context');
@@ -553,7 +577,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             results = await getUserAdoptedBills(user.id);
             console.log('User adopted bills set in context', results.length);
           } else {
-            results = await getAllFoodRelatedBills();
+            results = await getAllBills();
             console.log('All food-related bills set in context', results.length);
           }
           if (!cancelled) {
