@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { updateBillStatusServerAction } from '@/services/legislation';
+import { Input } from '@/components/ui/input';
 
 interface BillDetailsDialogProps {
   billID: string | null;
@@ -77,6 +78,8 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   const { user, isAdopted } = useAuth() // Add this line to get authentication state
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
+  const [nickname, setNickname] = useState<string>('');
+  const [isSavingNickname, setIsSavingNickname] = useState<boolean>(false);
 
   // Find the bill based on billID
   const bill = useMemo(() => {
@@ -90,13 +93,15 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   useEffect(() => {
       if (isOpen && bill) {
           setSelectedStatus(bill.current_status || '');
+          setNickname(bill.user_nickname ?? '');
       }
-  }, [isOpen, bill, bill?.current_status, bill?.id]);
+  }, [isOpen, bill, bill?.current_status, bill?.id, bill?.user_nickname]);
   
   // Clear selectedStatus when dialog closes
   useEffect(() => {
       if (!isOpen) {
           setSelectedStatus('');
+          setNickname('');
       }
   }, [isOpen]);
   
@@ -159,11 +164,55 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
         
         onClose()
     } catch (error) {
-        console.error("Failed to update bill status:", error);   
+        console.error("Failed to update bill status:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update bill status. Please try again.",
+          variant: "destructive",
+        });
     } finally {
         setSaving(false)
     }         
   } 
+
+  const handleSaveNickname = async (value?: string) => {
+    if (!bill) return;
+    if (!user || user.role !== 'user') return;
+
+    const currentNickname = value !== undefined ? value : nickname;
+    const trimmed = currentNickname.trim();
+    if (trimmed === (bill.user_nickname ?? '')) {
+      toast({
+        title: 'No changes',
+        description: 'Nickname is unchanged.',
+      });
+      return;
+    }
+
+    try {
+      setIsSavingNickname(true);
+      await updateBillNickname(bill.id, trimmed);
+      toast({
+        title: 'Nickname saved',
+        description: trimmed ? `Saved "${trimmed}"` : 'Nickname cleared.',
+      });
+    } catch (error) {
+      console.error('Failed to save nickname', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save nickname. Please try again.',
+        variant: 'destructive',
+      });
+      setNickname(bill.user_nickname ?? '');
+    } finally {
+      setIsSavingNickname(false);
+    }
+  };
+
+  const handleClearNickname = async () => {
+    setNickname('');
+    await handleSaveNickname('');
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -221,6 +270,40 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 <DetailItem label="Created" value={bill.created_at ? bill.created_at.toLocaleDateString() : ''} />
                 <DetailItem label="Last Updated" value={bill.updated_at ? bill.updated_at.toLocaleDateString() : ''} />
               </div>                
+
+              {user?.role === 'user' && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">My Nickname</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Set a personal nickname only you can see.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      value={nickname}
+                      placeholder="Add a nickname"
+                      onChange={(e) => setNickname(e.target.value)}
+                      maxLength={80}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveNickname()}
+                        disabled={isSavingNickname}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleClearNickname}
+                        disabled={isSavingNickname || (!nickname && !bill.user_nickname)}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Column: Bill URL & Additional Info */}

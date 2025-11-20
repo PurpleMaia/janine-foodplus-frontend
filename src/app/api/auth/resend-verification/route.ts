@@ -13,11 +13,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const user = await (db as any)
+    const user = await db
       .selectFrom('user')
       .select(['id', 'email', 'username', 'email_verified', 'verification_token'])
-      .where('email', '=', email)
-      .orWhere('username', '=', email)
+      .where((eb) => eb.or([
+        eb('email', '=', email),
+        eb('username', '=', email)
+      ]))
       .executeTakeFirst();
 
     if (!user) {

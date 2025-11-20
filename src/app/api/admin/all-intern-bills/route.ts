@@ -42,9 +42,29 @@ export async function GET(request: NextRequest) {
 
     // Get all bills adopted by interns (users with role 'user')
     console.log('📋 [ADMIN] Fetching bills adopted by interns...');
-    let rawData = [];
+    let rawData: Array<{
+      bill_number: string | null;
+      bill_title: string | null;
+      bill_url: string;
+      committee_assignment: string | null;
+      created_at: Date | string | null;
+      current_status: string | null;
+      current_status_string: string;
+      description: string;
+      food_related: boolean | null;
+      id: string;
+      introducer: string | null;
+      nickname: string | null;
+      updated_at: Date | string | null;
+      intern_id: string | null;
+      adopted_at: Date | string | null;
+      status_update_id: string | null;
+      statustext: string | null;
+      date: string | null;
+      chamber: string | null;
+    }> = [];
     try {
-      rawData = await (db as any)
+      rawData = await db
         .selectFrom('bills as b')
         .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
         .innerJoin('user as intern', 'ub.user_id', 'intern.id')
@@ -82,9 +102,14 @@ export async function GET(request: NextRequest) {
 
     // Get supervisor relationships for interns
     console.log('📋 [ADMIN] Fetching supervisor relationships...');
-    let supervisorRelations = [];
+    let supervisorRelations: Array<{
+      intern_id: string;
+      supervisor_id: string;
+      supervisor_email: string;
+      supervisor_username: string;
+    }> = [];
     try {
-      supervisorRelations = await (db as any)
+      supervisorRelations = await db
         .selectFrom('supervisor_users')
         .innerJoin('user as supervisor', 'supervisor_users.supervisor_id', 'supervisor.id')
         .select([
@@ -112,9 +137,13 @@ export async function GET(request: NextRequest) {
 
     // Get intern details
     console.log('📋 [ADMIN] Fetching intern details...');
-    let internDetails = [];
+    let internDetails: Array<{
+      id: string;
+      email: string;
+      username: string;
+    }> = [];
     try {
-      internDetails = await (db as any)
+      internDetails = await db
         .selectFrom('user')
         .select(['id', 'email', 'username'])
         .where('role', '=', 'user')
@@ -136,9 +165,17 @@ export async function GET(request: NextRequest) {
 
     // Get pending proposals for these bills
     console.log('📋 [ADMIN] Fetching pending proposals...');
-    let pendingProposals = [];
+    let pendingProposals: Array<{
+      bill_id: string;
+      proposal_id: string;
+      intern_id: string;
+      current_status: string;
+      suggested_status: string;
+      proposed_at: Date | string;
+      intern_email: string;
+    }> = [];
     try {
-      pendingProposals = await (db as any)
+      pendingProposals = await db
         .selectFrom('pending_proposals')
         .innerJoin('user as intern', 'pending_proposals.proposed_by_user_id', 'intern.id')
         .select([
@@ -229,4 +266,3 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
-

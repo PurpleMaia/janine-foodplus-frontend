@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all users who requested supervisor access
-    const pendingRequests = await (db as any)
+    const pendingRequests = await db
       .selectFrom('user')
       .selectAll()
       .where('requested_supervisor', '=', true)

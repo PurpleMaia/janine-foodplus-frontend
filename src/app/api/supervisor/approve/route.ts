@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Promote user to supervisor and reset request flag
-    const result = await (db as any)
+    const result = await db
       .updateTable('user')
       .set({ 
         role: 'supervisor',
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       .where('requested_supervisor', '=', true)
       .executeTakeFirst();
 
-    if (result.numUpdatedRows === 0) {
+    if (result.numUpdatedRows === BigInt(0)) {
       return NextResponse.json({ success: false, error: 'User not found or not requesting supervisor access' }, { status: 404 });
     }
 

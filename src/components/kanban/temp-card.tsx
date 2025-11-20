@@ -27,6 +27,12 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
       return null; // Bill not found
     }
 
+    const proposerName =
+      tempBill.proposed_by?.username ??
+      tempBill.proposed_by?.email ??
+      tempBill.proposed_by?.user_id ??
+      'Unknown user';
+
     const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
         onTempCardClick(tempBill)
@@ -74,6 +80,10 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
                         <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700">
                         {tempBill.suggested_status}
                         </Badge>
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                      Requested by {proposerName}
                     </div>
 
                     </CardContent>

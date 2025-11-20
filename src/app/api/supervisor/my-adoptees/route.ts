@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get adopted interns for this supervisor - two simple queries
-    const super_user_records = await (db as any)
+    const super_user_records = await db
       .selectFrom('supervisor_users')
       .selectAll()
       .where('supervisor_id', '=', user.id)

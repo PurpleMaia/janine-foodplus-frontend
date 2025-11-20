@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find user by verification token
-    const user = await (db as any)
+    const user = await db
       .selectFrom('user')
       .select(['id', 'email', 'email_verified', 'account_status'])
       .where('verification_token', '=', token)
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Mark email as verified and set account_status to 'pending' for admin approval
     console.log(`📧 Verifying email for user: ${user.email}, current status: ${user.account_status}`);
-    const result = await (db as any)
+    const result = await db
       .updateTable('user')
       .set({
         email_verified: true,

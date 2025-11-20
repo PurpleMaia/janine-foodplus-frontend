@@ -3,6 +3,7 @@
 
 import {
   getAllBills,
+  getAllFoodRelatedBills,
   getUserAdoptedBills,
   updateBillStatusServerAction,
 } from '@/services/legislation';
@@ -45,6 +46,12 @@ interface BillsContextType {
   rejectTempChange: (billId: string) => Promise<void>;
   acceptAllTempChanges: () => Promise<void>;
   rejectAllTempChanges: () => Promise<void>;
+  updateBillNickname: (billId: string, nickname: string) => Promise<void>;
+
+  // View mode toggle
+  viewMode: 'my-bills' | 'all-bills';
+  setViewMode: (mode: 'my-bills' | 'all-bills') => void;
+  toggleViewMode: () => void;
 
   // View mode controls
   viewMode: 'my-bills' | 'all-bills';
@@ -67,6 +74,31 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   const [loadingBills, setLoadingBills] = useState(false);
   const [viewMode, setViewMode] = useState<'my-bills' | 'all-bills'>('my-bills');
   const { user, loading: userLoading } = useAuth();
+
+  const reloadProposalsFromServer = useCallback(async () => {
+    try {
+      console.log('🔄 [SYNC] Fetching proposals from API...');
+      const response = await fetch('/api/proposals/load');
+      if (!response.ok) {
+        console.error('❌ [SYNC] API response not OK:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.proposals)) {
+        console.log(`✅ [SYNC] Synced ${data.proposals.length} proposals from API`);
+        setTempBills(data.proposals);
+        return data.proposals as TempBill[];
+      }
+
+      console.warn('⚠️ [SYNC] Unexpected proposals payload:', data);
+      setTempBills([]);
+      return [];
+    } catch (error) {
+      console.error('❌ [SYNC] Error reloading proposals:', error);
+      return null;
+    }
+  }, []);
 
   // ========= LLM SUGGESTIONS (existing) =========
 
@@ -172,6 +204,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     const target_idx = 0; // optional: compute from KANBAN_COLUMNS if you want to scroll later
     const proposal: TempBill = {
       id: bill.id,
+      bill_id: bill.id,
+      bill_number: bill.bill_number,
+      bill_title: bill.bill_title,
       current_status: bill.current_status,
       suggested_status,
       target_idx,
@@ -182,6 +217,8 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         role: meta.role,
         at: new Date().toISOString(),
         note: meta.note,
+        username: (user?.username as string | undefined) ?? undefined,
+        email: (user?.email as string | undefined) ?? undefined,
       },
     };
 
@@ -207,28 +244,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         throw new Error(errorMsg);
       }
 
-      // Reload all proposals from database to ensure consistency
-      try {
-        console.log('🔄 [RELOAD] Fetching proposals from API...');
-        const proposalsResponse = await fetch('/api/proposals/load');
-        if (proposalsResponse.ok) {
-          const data = await proposalsResponse.json();
-          if (data.success && data.proposals) {
-            console.log('🔄 [RELOAD] Received', data.proposals.length, 'proposals from API');
-            data.proposals.forEach((p: any, idx: number) => {
-              console.log(`  [${idx + 1}] Bill ID: ${p.id}, Status: ${p.current_status} → ${p.suggested_status}`);
-            });
-            setTempBills(data.proposals);
-            console.log('✅ [RELOAD] Updated tempBills state with', data.proposals.length, 'proposals');
-          } else {
-            console.warn('⚠️ [RELOAD] API returned success but no proposals:', data);
-          }
-        } else {
-          console.error('❌ [RELOAD] API response not OK:', proposalsResponse.status);
-        }
-      } catch (reloadError) {
-        console.error('❌ [RELOAD] Error reloading proposals, using local update:', reloadError);
-        // Fallback to local state update if reload fails
+      const proposals = await reloadProposalsFromServer();
+      if (proposals === null) {
+        console.error('❌ [SYNC] Falling back to local proposal update');
         setTempBills((prev) => {
           const filtered = prev.filter((tb) => tb.id !== bill.id);
           return [...filtered, proposal];
@@ -299,6 +317,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       // Remove proposal from local state
       setTempBills((prev) => prev.filter((t) => t.id !== billId));
 
+      const proposals = await reloadProposalsFromServer();
+      if (proposals === null) {
+        console.warn('⚠️ [SYNC] Unable to reload proposals after approval; keeping local state');
+      }
+
       toast({
         title: 'Proposal Approved',
         description: `Bill updated to ${tb.suggested_status}`,
@@ -347,6 +370,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       // Remove from local state
       setTempBills((prev) => prev.filter((t) => t.id !== billId));
 
+      const proposals = await reloadProposalsFromServer();
+      if (proposals === null) {
+        console.warn('⚠️ [SYNC] Unable to reload proposals after rejection; keeping local state');
+      }
+
       toast({
         title: 'Proposal Rejected',
         description: `Pending change discarded.`,
@@ -358,6 +386,51 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         description: 'Failed to reject proposal.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const updateBillNickname: BillsContextType['updateBillNickname'] = async (
+    billId,
+    nickname
+  ) => {
+    const trimmed = nickname.trim();
+    const previous =
+      bills.find((b) => b.id === billId)?.user_nickname ?? null;
+
+    setBills((prev) =>
+      prev.map((b) =>
+        b.id === billId ? { ...b, user_nickname: trimmed || null } : b
+      )
+    );
+
+    try {
+      const response = await fetch('/api/bills/nickname', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ billId, nickname: trimmed }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save nickname');
+      }
+
+      const savedNickname = data.nickname ?? (trimmed || null);
+      setBills((prev) =>
+        prev.map((b) =>
+          b.id === billId ? { ...b, user_nickname: savedNickname } : b
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update bill nickname:', error);
+      setBills((prev) =>
+        prev.map((b) =>
+          b.id === billId ? { ...b, user_nickname: previous } : b
+        )
+      );
+      throw error instanceof Error ? error : new Error('Failed to save nickname');
     }
   };
 
@@ -374,6 +447,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       const humanProposals = tempBills.filter((t) => t.source === 'human');
       const ops = humanProposals.map((t) => acceptTempChange(t.id));
       await Promise.allSettled(ops);
+      await reloadProposalsFromServer();
       // acceptTempChange already toasts per item; you can also add a summary here if you want.
     };
 
@@ -552,6 +626,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectTempChange,
       acceptAllTempChanges,
       rejectAllTempChanges,
+      updateBillNickname,
+
+      // View mode
+      viewMode,
+      setViewMode,
+      toggleViewMode,
 
       // View mode
       viewMode,
