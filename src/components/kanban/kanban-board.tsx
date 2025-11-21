@@ -341,11 +341,37 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     const fallbackId = (KANBAN_COLUMNS.find(c => c.id === 'unassigned')?.id
                      ?? KANBAN_COLUMNS[0].id) as BillStatus;
   
+    // Group bills into columns
     for (const bill of items) {
       const valid = KANBAN_COLUMNS.some(c => c.id === bill.current_status);
       const key = (valid ? bill.current_status : fallbackId) as BillStatus;
       grouped[key].push(bill);
     }
+
+    // Sort each column's bills by latest status update date (most recent first)
+    Object.keys(grouped).forEach((status) => {
+      grouped[status as BillStatus].sort((a, b) => {
+        // Get the latest update date from the first update (most recent)
+        // bill.updates[0] is the latest update
+        const getLatestUpdateDate = (bill: Bill): number => {
+          if (bill.updates && bill.updates.length > 0 && bill.updates[0].date) {
+            const date = new Date(bill.updates[0].date);
+            return date.getTime();
+          }
+          // Fallback to updated_at if no status updates
+          if (bill.updated_at) {
+            const date = bill.updated_at instanceof Date ? bill.updated_at : new Date(bill.updated_at);
+            return date.getTime();
+          }
+          return 0; // Put bills without dates at the end
+        };
+
+        const dateA = getLatestUpdateDate(a);
+        const dateB = getLatestUpdateDate(b);
+        return dateB - dateA; // Descending order (newest first)
+      });
+    });
+
     return grouped;
   }, [bills, filteredBills, searchQuery]);
 
