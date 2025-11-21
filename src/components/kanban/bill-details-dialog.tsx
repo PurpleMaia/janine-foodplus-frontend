@@ -357,12 +357,12 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               
               <div className="space-y-3">
                 {bill.updates && bill.updates.length > 0 ? (
-                  <div className="relative">
+                  <div className="relative max-h-80 overflow-y-auto pr-2">
                     {/* Timeline line */}
                     <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
                     
                     {bill.updates.map((update, index) => (
-                      <div key={update.id || `update-${index}`} className="relative flex gap-4 mb-4 last:mb-0">
+                      <div key={`${bill.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
                         {/* Timeline dot */}
                         <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
                           {index === 0 ? (
