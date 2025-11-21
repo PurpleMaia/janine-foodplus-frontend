@@ -74,7 +74,7 @@ const getCurrentStageName = (status: BillStatus): string => {
 // --- Component ---
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange } = useBills()
+  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange, viewMode } = useBills()
   const { user } = useAuth() // Add this line to get authentication state
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
@@ -117,9 +117,25 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     setSelectedStatus(status)
   }
 
+  // Check if editing should be disabled for interns in "All Bills" view
+  const isInternInAllBillsView = user?.role === 'user' && viewMode === 'all-bills';
+  
+  // Interns can only edit bills in "My Bills" view (not in "All Bills" view)
+  const canEditBill = !isInternInAllBillsView;
+
   const handleSave = async () => {
     try {
         setSaving(true);
+
+        // If intern is in "All Bills" view, prevent editing
+        if (isInternInAllBillsView) {
+          toast({
+            title: "Cannot Edit",
+            description: "You can only edit bills in your 'My Bills' view. Switch to 'My Bills' to edit this bill.",
+            variant: "destructive",
+          });
+          return;
+        }
 
         // Interns (users with role 'user') propose changes instead of directly updating
         if (user?.role === 'user') {
@@ -276,7 +292,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 <DetailItem label="Last Updated" value={bill.updated_at ? bill.updated_at.toLocaleDateString() : ''} />
               </div>                
 
-              {user?.role === 'user' && (
+              {user?.role === 'user' && canEditBill && (
                 <div className="space-y-2">
                   <h4 className="font-semibold text-sm">My Nickname</h4>
                   <p className="text-xs text-muted-foreground">
@@ -288,12 +304,13 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                       placeholder="Add a nickname"
                       onChange={(e) => setNickname(e.target.value)}
                       maxLength={80}
+                      disabled={!canEditBill}
                     />
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         onClick={() => handleSaveNickname()}
-                        disabled={isSavingNickname}
+                        disabled={isSavingNickname || !canEditBill}
                       >
                         Save
                       </Button>
@@ -301,12 +318,20 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                         size="sm"
                         variant="ghost"
                         onClick={handleClearNickname}
-                        disabled={isSavingNickname || (!nickname && !bill.user_nickname)}
+                        disabled={isSavingNickname || (!nickname && !bill.user_nickname) || !canEditBill}
                       >
                         Clear
                       </Button>
                     </div>
                   </div>
+                </div>
+              )}
+              {user?.role === 'user' && !canEditBill && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">My Nickname</h4>
+                  <p className="text-xs text-muted-foreground">
+                    You can only edit nicknames for bills in your "My Bills" view. Adopt this bill first to edit it.
+                  </p>
                 </div>
               )}
             </div>
@@ -398,10 +423,16 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
             <Select 
               value={selectedStatus} 
               onValueChange={handleOnValueChange}
-              disabled={!user} // Disable when not authenticated
+              disabled={!user || !canEditBill} // Disable when not authenticated or intern in all-bills view
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={user ? "Select a new status" : "Login to edit status"} />
+                <SelectValue placeholder={
+                  !user 
+                    ? "Login to edit status" 
+                    : !canEditBill 
+                      ? "Only editable in 'My Bills' view" 
+                      : "Select a new status"
+                } />
               </SelectTrigger>
               <SelectContent>
                 {KANBAN_COLUMNS.map((column) => (
@@ -414,7 +445,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
             <Button 
               onClick={handleSave}
-              disabled={!user || !selectedStatus} // Disable when not authenticated or no status selected
+              disabled={!user || !selectedStatus || !canEditBill} // Disable when not authenticated, no status selected, or intern in all-bills view
             >
               Save
             </Button>

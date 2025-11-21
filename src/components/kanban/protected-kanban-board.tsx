@@ -14,7 +14,7 @@ interface ProtectedKanbanBoardProps {
 
 export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoardProps) {
   const { user, loading } = useAuth();
-  const { bills, loadingBills } = useBills();
+  const { bills, loadingBills, viewMode } = useBills();
   const { unadoptBill } = useAdoptedBills();
 
   if (loading) {
@@ -63,20 +63,26 @@ export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoard
     );
   }
 
+  // Determine if editing should be disabled
+  // For interns (role === 'user'), disable editing when viewing "All Bills"
+  const isReadOnlyForIntern = user && user.role === 'user' && viewMode === 'all-bills';
+  const shouldShowUnadoptButton = user && 
+    (user.role === 'admin' || user.role === 'supervisor' || viewMode === 'my-bills');
+
   // Show adopted bills with full functionality
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2>Your Adopted Bills</h2>
+        <h2>{viewMode === 'my-bills' ? 'Your Adopted Bills' : 'All Bills'}</h2>
         <AdoptBillDialog />
       </div>
 
       {/* <KanbanBoardOrSpreadsheet view={view} bills={adoptedBills} />  */}
       {view === 'kanban' ? (
         <KanbanBoard 
-          readOnly={false} 
+          readOnly={isReadOnlyForIntern || false} 
           onUnadopt={unadoptBill}
-          showUnadoptButton={true}
+          showUnadoptButton={shouldShowUnadoptButton}
         />
       ) : (
         <KanbanSpreadsheet />
