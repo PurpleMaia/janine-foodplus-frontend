@@ -14,6 +14,7 @@ interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   onCardClick: (bill: Bill) => void;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
+  isHighlighted?: boolean;
 }
 
 // Function to get an appropriate icon based on status
@@ -39,7 +40,7 @@ const getStatusVariant = (status: Bill['current_status']): "default" | "secondar
 };
 
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
-    ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, className, style, ...props }, ref) => {
+    ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, isHighlighted = false, className, style, ...props }, ref) => {
 
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -95,6 +96,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 w-full max-w-[300px]", // limit card width so it won't exceed board width
                 isDragging ? "opacity-80 shadow-xl rotate-3 scale-105 cursor-grabbing" : "hover:shadow-md cursor-grab",
                 bill.updates && bill.updates.length > 0 && "ring-1 ring-green-200/50", // Subtle glow for active bills
+                isHighlighted && "ring-2 ring-blue-500 ring-offset-2 bg-blue-50/50 border-blue-300", // Highlight search match
                  className
             )}
             style={style} // dnd positioning

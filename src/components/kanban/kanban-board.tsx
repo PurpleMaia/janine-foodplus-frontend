@@ -32,6 +32,7 @@ export interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> 
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
   readOnly: boolean;
+  highlightedBillId?: string | null;
 
   // Pending proposals
   pendingTempBills?: TempBill[];
@@ -55,6 +56,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
       onUnadopt,
       showUnadoptButton = false,
       readOnly,
+      highlightedBillId = null,
 
       // pending proposals
       pendingTempBills = [],
@@ -110,6 +112,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                       onCardClick={onCardClick}
                       onUnadopt={onUnadopt}
                       showUnadoptButton={showUnadoptButton}
+                      isHighlighted={highlightedBillId === bill.id}
                       style={{ ...provided.draggableProps.style }}
                     />
                   )}
@@ -122,6 +125,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                   onCardClick={onCardClick}
                   onUnadopt={onUnadopt}
                   showUnadoptButton={showUnadoptButton}
+                  isHighlighted={highlightedBillId === bill.id}
                 />
               )
             )}
@@ -223,6 +227,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [filteredBills, setFilteredBills] = useState<Bill[] | null>();
+  const [highlightedBillId, setHighlightedBillId] = useState<string | null>(null);
 
   // --- Add refs for scroll groups ---
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -271,6 +276,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredBills(null);
+      setHighlightedBillId(null);
       return;
     }
 
@@ -284,6 +290,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         console.error('Error searching bills:', err);
         setError('Failed to search bills.');
         setFilteredBills(null);
+        setHighlightedBillId(null);
       } finally {
         setLoading(false);
       }
@@ -293,6 +300,36 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       clearTimeout(handler);
     };
   }, [searchQuery, setLoading, bills]);
+
+  // Navigate to first search result
+  useEffect(() => {
+    if (!searchQuery.trim() || !filteredBills || filteredBills.length === 0) {
+      setHighlightedBillId(null);
+      return;
+    }
+
+    const firstBill = filteredBills[0];
+    if (!firstBill) return;
+
+    // Find which column this bill is in
+    const billStatus = firstBill.current_status as BillStatus;
+    const columnIndex = KANBAN_COLUMNS.findIndex(col => col.id === billStatus);
+    
+    if (columnIndex >= 0) {
+      // Scroll to the column containing the first match
+      scrollToColumnByIndex(columnIndex);
+      
+      // Highlight the first matched bill
+      setHighlightedBillId(firstBill.id);
+      
+      // Clear highlight after 3 seconds
+      const highlightTimeout = setTimeout(() => {
+        setHighlightedBillId(null);
+      }, 3000);
+      
+      return () => clearTimeout(highlightTimeout);
+    }
+  }, [filteredBills, searchQuery, scrollToColumnByIndex]);
 
   const billsByColumn = useMemo(() => {
     const grouped = Object.fromEntries(
@@ -488,6 +525,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                       showUnadoptButton={showUnadoptButton}
                       readOnly={true}
                       enableDnd={false}
+                      highlightedBillId={highlightedBillId}
 
                       pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                       canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
@@ -536,6 +574,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             showUnadoptButton={showUnadoptButton}
                             readOnly={false}
                             enableDnd={true}
+                            highlightedBillId={highlightedBillId}
                             /* pending proposals */
                             pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                             canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
