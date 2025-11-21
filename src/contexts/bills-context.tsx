@@ -62,6 +62,9 @@ const BillsContext = createContext<BillsContextType | undefined>(undefined);
 const canCommitStatus = (role?: string) =>
   role === 'supervisor' || role === 'admin';
 
+const canViewAllBills = (role?: string) =>
+  role === 'admin' || role === 'supervisor';
+
 export function BillsProvider({ children }: { children: ReactNode }) {
   const [bills, setBills] = useState<Bill[]>([]);
   const [tempBills, setTempBills] = useState<TempBill[]>([]);
