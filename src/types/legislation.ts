@@ -65,7 +65,7 @@ export interface TempBill {
   id: string;
   bill_id?: string;
   bill_number?: string | null;
-  bill_title?: string | null;
+  bill_title: string | null;
   current_status: BillStatus;
   suggested_status: BillStatus;
   target_idx: number;
