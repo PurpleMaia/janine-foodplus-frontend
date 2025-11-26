@@ -16,6 +16,7 @@ import { useBills } from '@/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { useAuth } from '@/contexts/auth-context';
 import { KanbanCard } from './kanban-card';
+import { TempBillCard } from './temp-card';
 
 
 // // ------------------------------------------------------------
@@ -133,54 +134,18 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             {/* Droppable placeholder goes here */}
             {children}
 
-            {/* Pending proposals (dashed) */}
+            {/* Pending proposals (using TempBillCard component) */}
             {pendingCount > 0 && (
               <div className="mt-2 space-y-2">
-                {pendingTempBills.map((tb) => {
-                  const proposerName =
-                    tb.proposed_by?.username ??
-                    tb.proposed_by?.email ??
-                    tb.proposed_by?.user_id ??
-                    'Unknown user';
-                  const tooltip = tb.proposed_by
-                    ? `Proposed by ${proposerName} (${tb.proposed_by.role}) at ${new Date(
-                        tb.proposed_by.at
-                      ).toLocaleString()}`
-                    : 'Pending change';
-
-                  return (
-                    <div
-                      key={`pending-${tb.id}`}
-                      className="rounded-lg border-2 border-dashed p-2 bg-muted/30"
-                      title={tooltip}
-                    >
-                      <div className="text-xs font-medium">
-                        🕒 Pending: {tb.current_status} → {tb.suggested_status}
-                        {tb.source ? ` • ${tb.source.toUpperCase()}` : null}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        Requested by {proposerName}
-                      </div>
-
-                      {canModerate && (
-                        <div className="mt-2 flex gap-2">
-                          <button
-                            className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground"
-                            onClick={() => onApproveTemp?.(tb.id)}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="px-2 py-1 text-xs rounded bg-destructive text-destructive-foreground"
-                            onClick={() => onRejectTemp?.(tb.id)}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {pendingTempBills.map((tb) => (
+                  <TempBillCard
+                    key={`pending-${tb.id}`}
+                    tempBill={tb}
+                    canModerate={canModerate}
+                    onApproveTemp={onApproveTemp}
+                    onRejectTemp={onRejectTemp}
+                  />
+                ))}
               </div>
             )}
           </div>
