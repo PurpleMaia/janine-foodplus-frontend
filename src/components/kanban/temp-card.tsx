@@ -71,7 +71,7 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
                     "opacity-75 w-full max-w-[300px]",
                     className
                 )}>
-            
+
                     <CardHeader className="p-3 pb-2">
                     <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-col gap-1 flex-1 min-w-0">

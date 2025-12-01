@@ -449,15 +449,16 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
     }
 
     // Get bills directly adopted by the user
-    let rawData = await db
+    let rawData = await (db
       .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted (bills that have a bill id in the user_bills table)
       .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
+      // @ts-expect-error - user_bill_preferences table is created dynamically and not in DB types
       .leftJoin('user_bill_preferences as ubp', (join: any) =>
         join
           .onRef('ubp.bill_id', '=', 'ub.bill_id')
           .onRef('ubp.user_id', '=', 'ub.user_id')
-      )
+      ) as any)
       .where('ub.user_id', '=', userId)
       .select([
         'b.bill_number',
