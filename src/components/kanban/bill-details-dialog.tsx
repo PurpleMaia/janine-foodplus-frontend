@@ -32,6 +32,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { updateBillStatusServerAction } from '@/services/legislation';
 import { Input } from '@/components/ui/input';
+import { TagSelector } from '../tags/tag-selector';
 
 interface BillDetailsDialogProps {
   billID: string | null;
@@ -334,6 +335,26 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                   </p>
                 </div>
               )}
+
+              {/* Tags section - only for admin and supervisor */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm">Tags</h4>
+                {(user?.role === 'admin' || user?.role === 'supervisor') ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Add tags to categorize this bill. Tags can be used to filter bills.
+                    </p>
+                    <TagSelector billId={bill.id} />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Tags assigned to this bill. Tags can be used to filter bills.
+                    </p>
+                    <TagSelector billId={bill.id} readOnly={true} />
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Right Column: Bill URL & Additional Info */}

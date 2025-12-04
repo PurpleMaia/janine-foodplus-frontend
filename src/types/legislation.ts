@@ -58,7 +58,8 @@ export interface Bill {
   updates: StatusUpdate[]
   previous_status?: string;  
   llm_suggested?: boolean;  
-  llm_processing?: boolean;  
+  llm_processing?: boolean;
+  tags?: Tag[];
 }
 
 export interface TempBill {
@@ -86,4 +87,15 @@ export interface StatusUpdate {
   date: string;
   id: string;
   statustext: string
+}
+
+/**
+ * Represents a tag that can be applied to bills.
+ */
+export interface Tag {
+  id: string;
+  name: string;
+  color?: string | null;
+  created_at?: Date | string;
+  updated_at?: Date | string;
 }
