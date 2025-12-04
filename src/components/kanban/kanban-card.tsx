@@ -7,6 +7,7 @@ import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkle
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useBills } from '@/contexts/bills-context';
+import { CardTagSelector } from '../tags/card-tag-selector';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   bill: Bill;
@@ -44,7 +45,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
 
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
-    const { acceptLLMChange, rejectLLMChange } = useBills()
+    const { acceptLLMChange, rejectLLMChange, setBills } = useBills()
 
     // Format date only on client-side after mount to prevent hydration mismatch
     useEffect(() => {
@@ -152,6 +153,12 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                       </p>
                     )}
                     <p className='text-sm text-foreground text-wrap mb-3 line-clamp-2'>{bill.description}</p>
+
+                    {/* Tags */}
+                    <CardTagSelector
+                      billId={bill.id}
+                      billTags={bill.tags}
+                    />
 
                     {/* Status Information */}
                     <div className="flex items-center justify-between mb-2">

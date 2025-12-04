@@ -171,7 +171,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
-  const { searchQuery } = useKanbanBoard();
+  const { searchQuery, selectedTagIds } = useKanbanBoard();
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -301,7 +301,36 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       KANBAN_COLUMNS.map(c => [c.id as BillStatus, [] as Bill[]])
     ) as Record<BillStatus, Bill[]>;
   
-    const items = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
+    let items = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
+  
+    // Filter by selected tags if any are selected
+    if (selectedTagIds && selectedTagIds.length > 0) {
+      console.log('🔍 [TAG FILTER] Filtering bills with selected tag IDs:', selectedTagIds);
+      console.log('🔍 [TAG FILTER] Total bills before filtering:', items.length);
+      
+      // Debug: check a few bills to see their tags
+      const billsWithTags = items.filter(b => b.tags && b.tags.length > 0);
+      console.log('🔍 [TAG FILTER] Bills with tags:', billsWithTags.length);
+      if (billsWithTags.length > 0) {
+        console.log('🔍 [TAG FILTER] Sample bill tags:', billsWithTags[0].tags?.map(t => ({ id: t.id, name: t.name })));
+      }
+      
+      items = items.filter((bill) => {
+        // Check if bill has tags
+        const billTagIds = bill.tags?.map(tag => tag.id) || [];
+        const hasMatchingTag = billTagIds.some(tagId => selectedTagIds.includes(tagId));
+        
+        if (hasMatchingTag) {
+          console.log(`✅ [TAG FILTER] Bill ${bill.bill_number} matches - has tags:`, billTagIds);
+        } else if (billTagIds.length > 0) {
+          console.log(`❌ [TAG FILTER] Bill ${bill.bill_number} doesn't match - has tags:`, billTagIds, 'selected:', selectedTagIds);
+        }
+        
+        return hasMatchingTag;
+      });
+      
+      console.log('🔍 [TAG FILTER] Bills after filtering:', items.length);
+    }
   
     const fallbackId = (KANBAN_COLUMNS.find(c => c.id === 'unassigned')?.id
                      ?? KANBAN_COLUMNS[0].id) as BillStatus;
@@ -338,7 +367,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     });
 
     return grouped;
-  }, [bills, filteredBills, searchQuery]);
+  }, [bills, filteredBills, searchQuery, selectedTagIds]);
 
   const billsToGroup: Bill[] = searchQuery.trim() && filteredBills ? filteredBills : bills;
 

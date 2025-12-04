@@ -7,6 +7,7 @@ import {
   getUserAdoptedBills,
   updateBillStatusServerAction,
 } from '@/services/legislation';
+import { getBillTags } from '@/services/tags';
 import React, {
   createContext,
   useContext,
@@ -219,6 +220,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     const target_idx = 0; // optional: compute from KANBAN_COLUMNS if you want to scroll later
     const proposal: TempBill = {
       id: bill.id,
+      bill_title: bill.bill_title || null,
       current_status: currentStatus as BillStatus,
       suggested_status,
       target_idx,
@@ -520,15 +522,43 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           results = await getAllBills();
           console.log('All food-related bills set in context');
         }
-        setBills(results);
-        console.log(results);
+        
+        // Fetch tags for all bills
+        const billsWithTags = await Promise.all(
+          results.map(async (bill) => {
+            try {
+              const tags = await getBillTags(bill.id);
+              return { ...bill, tags };
+            } catch (error) {
+              console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
+              return { ...bill, tags: [] };
+            }
+          })
+        );
+        
+        setBills(billsWithTags);
+        console.log(billsWithTags);
         return;
       }
       // Public view: only all bills
       const results = await getAllBills();
-      setBills(results);
+      
+      // Fetch tags for all bills
+      const billsWithTags = await Promise.all(
+        results.map(async (bill) => {
+          try {
+            const tags = await getBillTags(bill.id);
+            return { ...bill, tags };
+          } catch (error) {
+            console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
+            return { ...bill, tags: [] };
+          }
+        })
+      );
+      
+      setBills(billsWithTags);
       console.log('successful results set in context');
-      console.log(results);
+      console.log(billsWithTags);
     } catch (err) {
       console.error('Error searching bills:', err);
       setError('Failed to search bills.');
@@ -547,13 +577,27 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     (async () => {
       setLoadingBills(true);
       try {
+        let results;
         if (newMode === 'my-bills') {
-          const results = await getUserAdoptedBills(user.id);
-          setBills(results);
+          results = await getUserAdoptedBills(user.id);
         } else {
-          const results = await getAllFoodRelatedBills();
-          setBills(results);
+          results = await getAllFoodRelatedBills();
         }
+        
+        // Fetch tags for all bills
+        const billsWithTags = await Promise.all(
+          results.map(async (bill) => {
+            try {
+              const tags = await getBillTags(bill.id);
+              return { ...bill, tags };
+            } catch (error) {
+              console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
+              return { ...bill, tags: [] };
+            }
+          })
+        );
+        
+        setBills(billsWithTags);
       } catch (err) {
         console.error('Error refreshing bills on toggle:', err);
         setError('Failed to refresh bills.');
@@ -583,8 +627,22 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             results = await getAllBills();
             console.log('All food-related bills set in context', results.length);
           }
+          
+          // Fetch tags for all bills
+          const billsWithTags = await Promise.all(
+            results.map(async (bill) => {
+              try {
+                const tags = await getBillTags(bill.id);
+                return { ...bill, tags };
+              } catch (error) {
+                console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
+                return { ...bill, tags: [] };
+              }
+            })
+          );
+          
           if (!cancelled) {
-            setBills(results);
+            setBills(billsWithTags);
 
             // Load pending proposals for bills owned by the user
             console.log('🔄 [INITIAL LOAD] Fetching proposals from API...');
@@ -608,9 +666,23 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         } else {
           // PUBLIC PATH
           const results = await getAllBills();
+          
+          // Fetch tags for all bills
+          const billsWithTags = await Promise.all(
+            results.map(async (bill) => {
+              try {
+                const tags = await getBillTags(bill.id);
+                return { ...bill, tags };
+              } catch (error) {
+                console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
+                return { ...bill, tags: [] };
+              }
+            })
+          );
+          
           if (!cancelled) {
-            setBills(results);
-            console.log('There are', results.length, 'bills');
+            setBills(billsWithTags);
+            console.log('There are', billsWithTags.length, 'bills');
             console.log('successful results set in context');
           }
         }
