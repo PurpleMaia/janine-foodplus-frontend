@@ -388,9 +388,10 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         console.log(`    ⚠️ Filtered out (not in visible bills or search)`);
         return;
       }
-      const key = tb.suggested_status as BillStatus;
+      // Group by current_status so temp bill appears in the original column
+      const key = tb.current_status as BillStatus;
       grouped[key]?.push(tb);
-      console.log(`    ✅ Added to column: ${key}`);
+      console.log(`    ✅ Added to column: ${key} (original status, proposed to move to ${tb.suggested_status})`);
     });
 
     // Log final grouped counts

@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
 import { useBills } from '@/contexts/bills-context';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
+import { useAuth } from '@/contexts/auth-context';
 
 interface Props {
     bill: Bill
@@ -16,7 +17,11 @@ export default function AIUpdateSingleButton({ bill } : Props) {
   const [loading, setLoading] = useState<boolean>(false); // State for dialog visibility
   const { toast } = useToast();  
   const { setBills, setTempBills } = useBills()
+  const { user } = useAuth();
   
+  // Only admin and supervisor can use AI updates
+  const canUseAI = user && (user.role === 'admin' || user.role === 'supervisor');
+
 
   // Helper function to get column index based on status ID
   const getColumnIndex = (statusId: BillStatus): number => {
@@ -25,7 +30,10 @@ export default function AIUpdateSingleButton({ bill } : Props) {
   };
 
   // Handler to trigger LLM classification for all bills
-  const handleAIUpdate = async () => {     
+  const handleAIUpdate = async () => {
+    setLoading(true);
+    
+    try {
       // Mark bill as processing
       setBills(prevBills => 
         prevBills.map(b => 
@@ -41,70 +49,103 @@ export default function AIUpdateSingleButton({ bill } : Props) {
         variant: 'default',
       });
 
-      const classification = await classifyStatusWithLLM(bill.id); 
-      // await new Promise(res => setTimeout(res, 1000 + Math.random() * 1000)); // Simulate async work
+      console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_status);
 
-      // const classification = 'deferred1'
+      const classification = await classifyStatusWithLLM(bill.id); 
+      
+      console.log("CLASSIFICATION:", classification);
 
       if (!classification) {
         console.log('Error classifying bill status with LLM...')
-        toast({
-          title: `Error: ${bill.bill_number}`,
-          description: `Could not classify bill status with LLM`,
-          variant: 'destructive',
-        });
-      } else {
         
-        if (classification !== bill.current_status) {
-          // const currentColumnIdx = getColumnIndex(bill.current_status);
-          const targetColumnIdx = getColumnIndex(classification);
-  
-           // Create temp bill for the original position
-          const tempBill: TempBill = {
-            id: bill.id,
-            current_status: bill.current_status,          
-            suggested_status: classification,
-            target_idx: targetColumnIdx
-          };      
-  
-          // Set temp bill 
-          setTempBills(prevBills => [
-            ...prevBills.filter(tb => tb.id !== bill.id),
-            tempBill
-          ]);
-        }
-
-        // Update the UI with LLM suggestion (optimistic)
+        // Reset processing state on error
         setBills(prevBills => 
           prevBills.map(b => 
             b.id === bill.id 
-              ? { 
-                  ...b, 
-                  previous_status: b.current_status, // Store original status
-                  current_status: classification,
-                  llm_suggested: true,
-                  llm_processing: false
-                }
+              ? { ...b, llm_processing: false }
               : b
           )
         );
         
+        toast({
+          title: `Error: ${bill.bill_number}`,
+          description: `Could not classify bill status. Please check that VLLM or LLM environment variable is set and the API is accessible.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (classification !== bill.current_status) {
+        const targetColumnIdx = getColumnIndex(classification);
+  
+        // Create temp bill for the original position
+        const tempBill: TempBill = {
+          id: bill.id,
+          current_status: bill.current_status,          
+          suggested_status: classification,
+          target_idx: targetColumnIdx, 
+          bill_title: bill.bill_title || null
+        };      
+  
+        // Set temp bill 
+        setTempBills(prevBills => [
+          ...prevBills.filter(tb => tb.id !== bill.id),
+          tempBill
+        ]);
       }
 
+      // Update the UI with LLM suggestion (optimistic)
+      setBills(prevBills => 
+        prevBills.map(b => 
+          b.id === bill.id 
+            ? { 
+                ...b, 
+                previous_status: b.current_status, // Store original status
+                current_status: classification,
+                llm_suggested: true,
+                llm_processing: false
+              }
+            : b
+        )
+      );
+      
       toast({
         title: `Done: ${bill.bill_number}`,
         description: `AI finished categorizing this bill.`,
         variant: 'default',
       });
 
+      toast({
+        title: 'Finished AI Categorizing',
+        description: 'Please reject or accept the changes',
+        variant: 'default'      
+      });
+    } catch (error) {
+      console.error('Error in handleAIUpdate:', error);
+      
+      // Reset processing state on error
+      setBills(prevBills => 
+        prevBills.map(b => 
+          b.id === bill.id 
+            ? { ...b, llm_processing: false }
+            : b
+        )
+      );
+      
+      toast({
+        title: `Error: ${bill.bill_number}`,
+        description: error instanceof Error ? error.message : 'Failed to classify bill status. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setLoading(false)
-    toast({
-      title: 'Finished AI Categorizing',
-      description: 'Please reject or accept the changes',
-      variant: 'default'      
-    })
-  };  
+  // Don't render button for public users or interns
+  if (!canUseAI) {
+    return null;
+  }
 
   return (
     <>

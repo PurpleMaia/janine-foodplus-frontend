@@ -115,8 +115,14 @@ async function getContext(billId: string) {
         return null
     }
 }
-export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retryDelay = 1000) {    
+export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retryDelay = 1000) {  
+    console.log("HELLOOOOO");
+    console.log("MODEL:", process.env.VLLM || process.env.LLM);
+    
+    console.log("CLASSIFYING BILL:", billId);
+
     const context = await getContext(billId);
+    console.log("GOT CONTEXT FOR BILL:", billId);
     const currStatus = context ? context.split(/\r?\n/)[0] : '';
     let attempt = 0;
     // console.log('CONTEXT:\n', context)
@@ -124,8 +130,13 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
         while (attempt < maxRetries) {
 
             try {
-
                 const model = process.env.VLLM || process.env.LLM || '';
+                
+                if (!model) {
+                    console.error('LLM model not configured. Please set VLLM or LLM environment variable.');
+                    return null;
+                }
+                
                 const response = await client.chat.completions.create({
                     model,
                     messages: [
