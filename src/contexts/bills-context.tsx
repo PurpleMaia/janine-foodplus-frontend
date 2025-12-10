@@ -77,6 +77,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   const reloadProposalsFromServer = useCallback(async () => {
     try {
       console.log('🔄 [SYNC] Fetching proposals from API...');
+      
       const response = await fetch('/api/proposals/load');
       if (!response.ok) {
         console.error('❌ [SYNC] API response not OK:', response.status);
@@ -303,9 +304,19 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Check if this is an LLM suggestion (no proposalId means it's LLM-generated)
+    const proposalId = (tb as any).proposalId;
+    const bill = bills.find((b) => b.id === billId);
+    const isLLMSuggestion = !proposalId || tb.source === 'llm' || bill?.llm_suggested;
+
+    if (isLLMSuggestion) {
+      // Use LLM accept function for LLM suggestions
+      await acceptLLMChange(billId);
+      return;
+    }
+
     try {
       // Call API to approve proposal (which updates bill status and marks proposal as approved)
-      const proposalId = (tb as any).proposalId; // Get the actual proposal ID
       const response = await fetch('/api/proposals/approve', {
         method: 'POST',
         headers: {
@@ -371,9 +382,19 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Check if this is an LLM suggestion (no proposalId means it's LLM-generated)
+    const proposalId = (tb as any).proposalId;
+    const bill = bills.find((b) => b.id === billId);
+    const isLLMSuggestion = !proposalId || tb.source === 'llm' || bill?.llm_suggested;
+
+    if (isLLMSuggestion) {
+      // Use LLM reject function for LLM suggestions
+      await rejectLLMChange(billId);
+      return;
+    }
+
     try {
       // Call API to reject proposal
-      const proposalId = (tb as any).proposalId;
       const response = await fetch('/api/proposals/reject', {
         method: 'POST',
         headers: {

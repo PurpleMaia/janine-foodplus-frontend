@@ -56,7 +56,7 @@ export interface Bill {
 
   // client side attributes
   updates: StatusUpdate[]
-  previous_status?: string;  
+  previous_status?: BillStatus;  
   llm_suggested?: boolean;  
   llm_processing?: boolean;
   tags?: Tag[];
