@@ -10,7 +10,13 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "kysely:generate": "kysely-codegen"
+    "codegen": "kysely-codegen",
+    "migrate:version": "./scripts/migrations/version.sh",
+    "migrate:create": "./scripts/migrations/create.sh",
+    "migrate:up": "./scripts/migrations/migrate.sh",
+    "migrate:down": "./scripts/migrations/down.sh",
+    "migrate:down-all": "./scripts/migrations/down-all.sh",
+    "migrate:force": "./scripts/migrations/force.sh"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.0.4",
