@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-import type { Bills } from '../../db/types';
+import type { Bills } from '../db/types';
 import type { Bill } from '../types/legislation';
 
 // Helper to safely convert Kysely Timestamp/Generated<Timestamp|null> to Date|null

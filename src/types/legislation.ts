@@ -1,5 +1,5 @@
 import type { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { Timestamp } from '../../db/types';
+import { Timestamp } from '../db/types';
 
 // Extract column IDs as possible statuses
 export type BillStatus = (typeof KANBAN_COLUMNS)[number]['id'];

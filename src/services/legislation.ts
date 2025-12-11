@@ -3,8 +3,8 @@
 import type { Bill, BillStatus, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../../db/kysely/client';
-import { Bills } from '../../db/types';
+import { db } from '../db/kysely/client';
+import { Bills } from '../db/types';
 import { mapBillsToBill } from '@/lib/utils';
 import { sql } from 'kysely';
 

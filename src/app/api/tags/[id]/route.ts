@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../../../../../db/kysely/client';
+import { db } from '../../../../db/kysely/client';
 import { validateSession, getSessionCookie } from '@/lib/simple-auth';
 
 // PUT - Update a tag (admin and supervisor only)

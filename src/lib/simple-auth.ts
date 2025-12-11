@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
-import { db } from '../../db/kysely/client';
+import { db } from '../db/kysely/client';
 import { createHash, randomUUID } from 'crypto';
 
 export interface User {

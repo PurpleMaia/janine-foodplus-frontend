@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/simple-auth';
-import { db } from '../../../../../db/kysely/client';
+import { db } from '../../../../db/kysely/client';
 import { mapBillsToBill } from '@/lib/utils';
-import { Bills } from '../../../../../db/types';
+import { Bills } from '../../../../db/types';
 
 interface InternBill {
   bill: any; // Bill object

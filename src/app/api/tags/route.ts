@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../../../../db/kysely/client';
+import { db } from '../../../db/kysely/client';
 import { validateSession, getSessionCookie } from '@/lib/simple-auth';
 
 // GET - Fetch all tags (public access for filtering)

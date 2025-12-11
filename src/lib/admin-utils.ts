@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db } from "../../db/kysely/client";
+import { db } from "../db/kysely/client";
 import { User, getSessionCookie, validateSession } from "./simple-auth";
 
 export async function getAdminUserData(request: NextRequest): Promise<User | { error: string } | null> {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/simple-auth';
-import { db } from '../../../../../db/kysely/client';
+import { db } from '../../../../db/kysely/client';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {

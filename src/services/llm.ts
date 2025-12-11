@@ -1,7 +1,7 @@
 'use server'
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { OpenAI } from 'openai';
-import { db } from '../../db/kysely/client';
+import { db } from '../db/kysely/client';
 
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
