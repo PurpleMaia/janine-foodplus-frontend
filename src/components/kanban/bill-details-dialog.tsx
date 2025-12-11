@@ -479,7 +479,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
             {user ? (
               <>
                 <AIUpdateSingleButton bill={bill} />
-                <RefreshStatusesButton bill={bill} />
+                <RefreshStatusesButton bill={bill} /> 
               </>
             ) : (
               <div className="text-xs text-muted-foreground flex items-center gap-1">

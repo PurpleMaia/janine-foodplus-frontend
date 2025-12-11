@@ -11,6 +11,8 @@ interface Props {
     bill: Bill
 }
 
+// NOTE: This component does not save to the database. It only updates the UI optimistically.
+// TODO: Extend this to save to the database as well.
 export default function RefreshStatusesButton({ bill } : Props) {
     const [loading, setLoading] = useState<boolean>(false)
     const { setBills } = useBills()

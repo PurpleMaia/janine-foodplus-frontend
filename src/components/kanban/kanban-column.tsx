@@ -104,11 +104,11 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
               )}
             </span>
 
-            <RefreshColumnButton
+            {/* <RefreshColumnButton
               bills={bills}
               onRefreshStart={() => setRefreshing(true)}
               onRefreshEnd={() => setRefreshing(false)}
-            />
+            /> */}
           </h2>
 
           {bills.length >= 20 && (
