@@ -3,12 +3,15 @@
 ENV_ARG=$1
 
 case $ENV_ARG in
+  d|dev)
+    ENV="dev"
+    ;;
   p|prod)
     ENV="prod"
     ;;
   *)
     echo "Error: Invalid environment specified"
-    echo "Usage: ./scripts/migrate.sh [p|prod]"
+    echo "Usage: ./scripts/migrate.sh [d|dev|p|prod]"
     exit 1
     ;;
 esac
