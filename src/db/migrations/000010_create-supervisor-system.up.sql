@@ -7,8 +7,8 @@ ADD COLUMN IF NOT EXISTS requested_supervisor BOOLEAN DEFAULT false;
 -- Create supervisor_users table for adoption relationships
 CREATE TABLE IF NOT EXISTS supervisor_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    supervisor_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    supervisor_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(supervisor_id, user_id)
 );

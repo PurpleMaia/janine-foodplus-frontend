@@ -4,5 +4,5 @@ ALTER TABLE "user"
 DROP CONSTRAINT IF EXISTS check_valid_role;
 
 ALTER TABLE "user" 
-ADD CONSTRAINT IF NOT EXISTS check_valid_role 
+ADD CONSTRAINT check_valid_role 
 CHECK (role IN ('user', 'intern', 'supervisor', 'admin'));
