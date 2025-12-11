@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Bill } from '@/types/legislation';
 import {
   Table,
@@ -9,13 +9,52 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { useState } from 'react';
 import { useBills } from '@/contexts/bills-context';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { searchBills } from '@/services/legislation';
 
 
 export function KanbanSpreadsheet() {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const { bills } = useBills();
+  const { searchQuery } = useKanbanBoard();
+  const [filteredBills, setFilteredBills] = useState<Bill[]>([]);
+  const firstMatchRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Filter bills based on search query (async)
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredBills(bills);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      try {
+        const results = await searchBills(bills, searchQuery);
+        setFilteredBills(results);
+      } catch (err) {
+        console.error('Error searching bills:', err);
+        setFilteredBills(bills);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [bills, searchQuery]);
+
+  // Scroll to first match when search results change
+  useEffect(() => {
+    if (searchQuery.trim() && filteredBills.length > 0 && firstMatchRef.current) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        firstMatchRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 100);
+    }
+  }, [filteredBills, searchQuery]);
 
   return (
     <div className="h-full w-full overflow-auto">
@@ -35,8 +74,19 @@ export function KanbanSpreadsheet() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bills.map((bill) => (
-              <TableRow key={bill.id}>
+            {filteredBills.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  {searchQuery.trim() ? `No bills found matching "${searchQuery}"` : 'No bills available'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredBills.map((bill, index) => (
+                <TableRow 
+                  key={bill.id}
+                  ref={index === 0 && searchQuery.trim() ? firstMatchRef : null}
+                  className={index === 0 && searchQuery.trim() ? 'bg-blue-50 border-blue-300 border-2' : ''}
+                >
                 <TableCell className="sticky left-0 z-20 bg-background min-w-[10rem] max-w-[10rem] w-[10rem] truncate py-4">{bill.bill_number}</TableCell>
                 <TableCell className="sticky left-[10rem] z-20 bg-background min-w-[10rem] max-w-[10rem] w-[10rem] truncate cursor-pointer py-4">
                   <Popover open={openPopover === bill.id} onOpenChange={(open) => setOpenPopover(open ? bill.id : null)}>
@@ -76,7 +126,8 @@ export function KanbanSpreadsheet() {
                 <TableCell>{bill.created_at ? new Date(bill.created_at).toLocaleDateString() : 'N/A'}</TableCell>
                 <TableCell>{bill.updated_at ? new Date(bill.updated_at).toLocaleDateString() : 'N/A'}</TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

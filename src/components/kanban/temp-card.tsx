@@ -9,23 +9,40 @@ import { useBills } from '@/contexts/bills-context';
 
 interface TempBillCardProps {
     tempBill: TempBill;
-    onTempCardClick: (tempBill: TempBill) => void;
+    onTempCardClick?: (tempBill: TempBill) => void;
     className?: string;
+    canModerate?: boolean;
+    onApproveTemp?: (billId: string) => void;
+    onRejectTemp?: (billId: string) => void;
   }
 
 export const TempBillCard: React.FC<TempBillCardProps> = ({ 
     tempBill, 
     onTempCardClick,
-    className 
+    className,
+    canModerate = false,
+    onApproveTemp,
+    onRejectTemp
   }) => {
     const { bills } = useBills();
     
-    // Get the actual bill data for display
+    // Get the actual bill data for display (for description and other fields)
     const actualBill = bills.find(b => b.id === tempBill.id);
     
-    if (!actualBill) {
-      return null; // Bill not found
-    }
+    // Use TempBill's own fields first, fallback to actualBill if available
+    const billNumber = tempBill.bill_number || actualBill?.bill_number || tempBill.id || 'Unknown Bill';
+    const billTitle = tempBill.bill_title || actualBill?.bill_title || '';
+    const description = actualBill?.description || '';
+
+    // Debug logging
+    console.log('TempBillCard rendering:', {
+      tempBillId: tempBill.id,
+      billNumber,
+      billTitle,
+      tempBillBillNumber: tempBill.bill_number,
+      tempBillBillTitle: tempBill.bill_title,
+      actualBillFound: !!actualBill
+    });
 
     const proposerName =
       tempBill.proposed_by?.username ??
@@ -35,7 +52,7 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
 
     const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
-        onTempCardClick(tempBill)
+        onTempCardClick?.(tempBill);
     }
   
     return (
@@ -51,25 +68,38 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
                     "relative transition-all duration-300",
                     "border-2 border-dashed border-gray-300 bg-gray-50/80",
                     "hover:border-blue-300 hover:bg-blue-50/50",
-                    "opacity-75 w-full",
+                    "opacity-75 w-full max-w-[300px]",
                     className
                 )}>
-            
+
                     <CardHeader className="p-3 pb-2">
                     <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-sm font-medium text-gray-600">
-                        {actualBill.bill_number}
-                        </CardTitle>
-                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                        <div className="flex flex-col gap-1 flex-1 min-w-0">
+                            <CardTitle className="text-sm font-bold text-gray-900" title={billTitle || billNumber}>
+                                {billNumber}
+                            </CardTitle>
+                            {billTitle ? (
+                                <p className="text-xs text-gray-600 line-clamp-1 break-words">
+                                    {billTitle}
+                                </p>
+                            ) : (
+                                <p className="text-xs text-gray-400 italic">
+                                    No title available
+                                </p>
+                            )}
+                        </div>
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200 shrink-0">
                         Moved
                         </Badge>
                     </div>
                     </CardHeader>
                     
                     <CardContent className="p-3 pt-0">
-                    <p className="text-xs text-gray-500 mb-3 line-clamp-2 text-wrap">
-                        {actualBill.description}
-                    </p>
+                    {description && (
+                        <p className="text-xs text-gray-500 mb-3 line-clamp-2 text-wrap">
+                            {description}
+                        </p>
+                    )}
                     
                     {/* Status change indicator */}
                     <div className="flex items-center gap-2 mb-3 text-xs">
@@ -87,6 +117,30 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
                     </div>
 
                     </CardContent>
+                    
+                    {/* Approve/Reject buttons */}
+                    {canModerate && (
+                        <div className="p-3 pt-2 flex gap-2 mt-2 border-t border-gray-200">
+                            <button
+                                className="px-3 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex-1"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onApproveTemp?.(tempBill.id);
+                                }}
+                            >
+                                Approve
+                            </button>
+                            <button
+                                className="px-3 py-1.5 text-xs rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex-1"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRejectTemp?.(tempBill.id);
+                                }}
+                            >
+                                Reject
+                            </button>
+                        </div>
+                    )}
                 </Card>
             </div>
         </>

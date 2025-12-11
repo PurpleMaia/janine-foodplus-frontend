@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
 import { useBills } from '@/contexts/bills-context';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function AIUpdateButton() {
   const [processing, setProcessing] = useState<boolean>(false); // State for dialog visibility
@@ -14,6 +15,10 @@ export default function AIUpdateButton() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();  
   const { bills, setBills, setTempBills, acceptAllLLMChanges, rejectAllLLMChanges, resetBills } = useBills()
+  const { user } = useAuth();
+  
+  // Only admin and supervisor can use AI updates
+  const canUseAI = user && (user.role === 'admin' || user.role === 'supervisor');
 
   // Helper function to get column index based on status ID
   const getColumnIndex = (statusId: BillStatus): number => {
@@ -59,9 +64,9 @@ export default function AIUpdateButton() {
       );    
       return null
     }
-
+    console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_status);
     const classification = await classifyStatusWithLLM(bill.id); 
-
+    // console.log("CLASSIFICATION:", classification);
     // Check if cancelled after LLM call
     if (abortSignal?.aborted || shouldStop) {
       console.log(`🛑 ${bill.bill_number} cancelled after LLM call - ignoring result`);
@@ -101,7 +106,8 @@ export default function AIUpdateButton() {
           id: bill.id,
           current_status: bill.current_status,          
           suggested_status: classification,
-          target_idx: targetColumnIdx
+          target_idx: targetColumnIdx, 
+          bill_title: bill.bill_title
         };
 
         if (abortSignal?.aborted) {
@@ -237,6 +243,11 @@ export default function AIUpdateButton() {
     }
 
     setProcessing(false);
+  }
+
+  // Don't render button for public users or interns
+  if (!canUseAI) {
+    return null;
   }
 
   return (

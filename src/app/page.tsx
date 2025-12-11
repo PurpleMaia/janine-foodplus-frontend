@@ -14,6 +14,7 @@ import { ApprovalsDashboard } from '@/components/approvals/approvals-dashboard';
 import { SupervisorDashboard } from '@/components/supervisor/supervisor-dashboard';
 import { useAuth } from '@/contexts/auth-context';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import AIUpdateButton from '@/components/llm/llm-update-button';
 
 
 
@@ -34,7 +35,7 @@ export default function Home() {
             <KanbanHeader />
           </div>
           <div className='flex items-center gap-2'>
-            {/* <AIUpdateButton/> */}
+            <AIUpdateButton/>
             <ProtectedComponent>
               <NewBillButton />
             </ProtectedComponent>

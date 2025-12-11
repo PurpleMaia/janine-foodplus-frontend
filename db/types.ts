@@ -109,15 +109,32 @@ export interface UserBills {
   user_id: string | null;
 }
 
+export interface Tags {
+  id: Generated<string>;
+  name: string;
+  color: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface BillTags {
+  id: Generated<string>;
+  bill_id: string;
+  tag_id: string;
+  created_at: Generated<Timestamp>;
+}
+
 export interface DB {
   auth_key: AuthKey;
   bills: Bills;
+  bill_tags: BillTags;
   pending_proposals: PendingProposals;
   schema_migrations: SchemaMigrations;
   scraping_stats: ScrapingStats;
   sessions: Sessions;
   status_updates: StatusUpdates;
   supervisor_users: SupervisorUsers;
+  tags: Tags;
   user: User;
   user_bills: UserBills;
 }

@@ -16,6 +16,7 @@ import { useBills } from '@/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { useAuth } from '@/contexts/auth-context';
 import { KanbanCard } from './kanban-card';
+import { TempBillCard } from './temp-card';
 
 
 // // ------------------------------------------------------------
@@ -32,6 +33,7 @@ export interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> 
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
   readOnly: boolean;
+  highlightedBillId?: string | null;
 
   // Pending proposals
   pendingTempBills?: TempBill[];
@@ -55,6 +57,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
       onUnadopt,
       showUnadoptButton = false,
       readOnly,
+      highlightedBillId = null,
 
       // pending proposals
       pendingTempBills = [],
@@ -110,6 +113,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                       onCardClick={onCardClick}
                       onUnadopt={onUnadopt}
                       showUnadoptButton={showUnadoptButton}
+                      isHighlighted={highlightedBillId === bill.id}
                       style={{ ...provided.draggableProps.style }}
                     />
                   )}
@@ -122,6 +126,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                   onCardClick={onCardClick}
                   onUnadopt={onUnadopt}
                   showUnadoptButton={showUnadoptButton}
+                  isHighlighted={highlightedBillId === bill.id}
                 />
               )
             )}
@@ -129,54 +134,18 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             {/* Droppable placeholder goes here */}
             {children}
 
-            {/* Pending proposals (dashed) */}
+            {/* Pending proposals (using TempBillCard component) */}
             {pendingCount > 0 && (
               <div className="mt-2 space-y-2">
-                {pendingTempBills.map((tb) => {
-                  const proposerName =
-                    tb.proposed_by?.username ??
-                    tb.proposed_by?.email ??
-                    tb.proposed_by?.user_id ??
-                    'Unknown user';
-                  const tooltip = tb.proposed_by
-                    ? `Proposed by ${proposerName} (${tb.proposed_by.role}) at ${new Date(
-                        tb.proposed_by.at
-                      ).toLocaleString()}`
-                    : 'Pending change';
-
-                  return (
-                    <div
-                      key={`pending-${tb.id}`}
-                      className="rounded-lg border-2 border-dashed p-2 bg-muted/30"
-                      title={tooltip}
-                    >
-                      <div className="text-xs font-medium">
-                        🕒 Pending: {tb.current_status} → {tb.suggested_status}
-                        {tb.source ? ` • ${tb.source.toUpperCase()}` : null}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        Requested by {proposerName}
-                      </div>
-
-                      {canModerate && (
-                        <div className="mt-2 flex gap-2">
-                          <button
-                            className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground"
-                            onClick={() => onApproveTemp?.(tb.id)}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="px-2 py-1 text-xs rounded bg-destructive text-destructive-foreground"
-                            onClick={() => onRejectTemp?.(tb.id)}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {pendingTempBills.map((tb) => (
+                  <TempBillCard
+                    key={`pending-${tb.id}`}
+                    tempBill={tb}
+                    canModerate={canModerate}
+                    onApproveTemp={onApproveTemp}
+                    onRejectTemp={onRejectTemp}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -202,7 +171,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
-  const { searchQuery } = useKanbanBoard();
+  const { searchQuery, selectedTagIds } = useKanbanBoard();
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -223,6 +192,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [filteredBills, setFilteredBills] = useState<Bill[] | null>();
+  const [highlightedBillId, setHighlightedBillId] = useState<string | null>(null);
 
   // --- Add refs for scroll groups ---
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -271,6 +241,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredBills(null);
+      setHighlightedBillId(null);
       return;
     }
 
@@ -284,6 +255,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         console.error('Error searching bills:', err);
         setError('Failed to search bills.');
         setFilteredBills(null);
+        setHighlightedBillId(null);
       } finally {
         setLoading(false);
       }
@@ -294,23 +266,108 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     };
   }, [searchQuery, setLoading, bills]);
 
+  // Navigate to first search result
+  useEffect(() => {
+    if (!searchQuery.trim() || !filteredBills || filteredBills.length === 0) {
+      setHighlightedBillId(null);
+      return;
+    }
+
+    const firstBill = filteredBills[0];
+    if (!firstBill) return;
+
+    // Find which column this bill is in
+    const billStatus = firstBill.current_status as BillStatus;
+    const columnIndex = KANBAN_COLUMNS.findIndex(col => col.id === billStatus);
+    
+    if (columnIndex >= 0) {
+      // Scroll to the column containing the first match
+      scrollToColumnByIndex(columnIndex);
+      
+      // Highlight the first matched bill
+      setHighlightedBillId(firstBill.id);
+      
+      // Clear highlight after 3 seconds
+      const highlightTimeout = setTimeout(() => {
+        setHighlightedBillId(null);
+      }, 3000);
+      
+      return () => clearTimeout(highlightTimeout);
+    }
+  }, [filteredBills, searchQuery, scrollToColumnByIndex]);
+
   const billsByColumn = useMemo(() => {
     const grouped = Object.fromEntries(
       KANBAN_COLUMNS.map(c => [c.id as BillStatus, [] as Bill[]])
     ) as Record<BillStatus, Bill[]>;
   
-    const items = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
+    let items = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
+  
+    // Filter by selected tags if any are selected
+    if (selectedTagIds && selectedTagIds.length > 0) {
+      console.log('🔍 [TAG FILTER] Filtering bills with selected tag IDs:', selectedTagIds);
+      console.log('🔍 [TAG FILTER] Total bills before filtering:', items.length);
+      
+      // Debug: check a few bills to see their tags
+      const billsWithTags = items.filter(b => b.tags && b.tags.length > 0);
+      console.log('🔍 [TAG FILTER] Bills with tags:', billsWithTags.length);
+      if (billsWithTags.length > 0) {
+        console.log('🔍 [TAG FILTER] Sample bill tags:', billsWithTags[0].tags?.map(t => ({ id: t.id, name: t.name })));
+      }
+      
+      items = items.filter((bill) => {
+        // Check if bill has tags
+        const billTagIds = bill.tags?.map(tag => tag.id) || [];
+        const hasMatchingTag = billTagIds.some(tagId => selectedTagIds.includes(tagId));
+        
+        if (hasMatchingTag) {
+          console.log(`✅ [TAG FILTER] Bill ${bill.bill_number} matches - has tags:`, billTagIds);
+        } else if (billTagIds.length > 0) {
+          console.log(`❌ [TAG FILTER] Bill ${bill.bill_number} doesn't match - has tags:`, billTagIds, 'selected:', selectedTagIds);
+        }
+        
+        return hasMatchingTag;
+      });
+      
+      console.log('🔍 [TAG FILTER] Bills after filtering:', items.length);
+    }
   
     const fallbackId = (KANBAN_COLUMNS.find(c => c.id === 'unassigned')?.id
                      ?? KANBAN_COLUMNS[0].id) as BillStatus;
   
+    // Group bills into columns
     for (const bill of items) {
       const valid = KANBAN_COLUMNS.some(c => c.id === bill.current_status);
       const key = (valid ? bill.current_status : fallbackId) as BillStatus;
       grouped[key].push(bill);
     }
+
+    // Sort each column's bills by latest status update date (most recent first)
+    Object.keys(grouped).forEach((status) => {
+      grouped[status as BillStatus].sort((a, b) => {
+        // Get the latest update date from the first update (most recent)
+        // bill.updates[0] is the latest update
+        const getLatestUpdateDate = (bill: Bill): number => {
+          if (bill.updates && bill.updates.length > 0 && bill.updates[0].date) {
+            const date = new Date(bill.updates[0].date);
+            return date.getTime();
+          }
+          // Fallback to updated_at if no status updates
+          if (bill.updated_at) {
+            const date = bill.updated_at instanceof Date ? bill.updated_at : new Date(bill.updated_at);
+            return date.getTime();
+          }
+          return 0; // Put bills without dates at the end
+        };
+
+        const dateA = getLatestUpdateDate(a);
+        const dateB = getLatestUpdateDate(b);
+        return dateB - dateA; // Descending order (newest first)
+      });
+    });
+
     return grouped;
-  }, [bills, filteredBills, searchQuery]);
+  }, [bills, filteredBills, searchQuery, selectedTagIds]);
 
   const billsToGroup: Bill[] = searchQuery.trim() && filteredBills ? filteredBills : bills;
 
@@ -331,9 +388,10 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         console.log(`    ⚠️ Filtered out (not in visible bills or search)`);
         return;
       }
-      const key = tb.suggested_status as BillStatus;
+      // Group by current_status so temp bill appears in the original column
+      const key = tb.current_status as BillStatus;
       grouped[key]?.push(tb);
-      console.log(`    ✅ Added to column: ${key}`);
+      console.log(`    ✅ Added to column: ${key} (original status, proposed to move to ${tb.suggested_status})`);
     });
 
     // Log final grouped counts
@@ -488,6 +546,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                       showUnadoptButton={showUnadoptButton}
                       readOnly={true}
                       enableDnd={false}
+                      highlightedBillId={highlightedBillId}
 
                       pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                       canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
@@ -536,6 +595,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             showUnadoptButton={showUnadoptButton}
                             readOnly={false}
                             enableDnd={true}
+                            highlightedBillId={highlightedBillId}
                             /* pending proposals */
                             pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                             canModerate={user?.role === 'supervisor' || user?.role === 'admin'}

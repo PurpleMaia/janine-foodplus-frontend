@@ -7,6 +7,8 @@ interface KanbanBoardContextType {
   setView: Dispatch<SetStateAction<'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor'>>;
   searchQuery: string;
   setSearchQuery: Dispatch<SetStateAction<string>>;
+  selectedTagIds: string[];
+  setSelectedTagIds: Dispatch<SetStateAction<string[]>>;
 }
 
 const KanbanBoardContext = createContext<KanbanBoardContextType | undefined>(undefined);
@@ -14,9 +16,10 @@ const KanbanBoardContext = createContext<KanbanBoardContextType | undefined>(und
 export function KanbanBoardProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState<'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor'>('kanban');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   return (
-    <KanbanBoardContext.Provider value={{ searchQuery, setSearchQuery, view, setView }}>
+    <KanbanBoardContext.Provider value={{ searchQuery, setSearchQuery, view, setView, selectedTagIds, setSelectedTagIds }}>
       {children}
     </KanbanBoardContext.Provider>
   );

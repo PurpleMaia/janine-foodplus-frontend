@@ -56,16 +56,17 @@ export interface Bill {
 
   // client side attributes
   updates: StatusUpdate[]
-  previous_status?: string;  
+  previous_status?: BillStatus;  
   llm_suggested?: boolean;  
-  llm_processing?: boolean;  
+  llm_processing?: boolean;
+  tags?: Tag[];
 }
 
 export interface TempBill {
   id: string;
   bill_id?: string;
   bill_number?: string | null;
-  bill_title?: string | null;
+  bill_title: string | null;
   current_status: BillStatus;
   suggested_status: BillStatus;
   target_idx: number;
@@ -86,4 +87,15 @@ export interface StatusUpdate {
   date: string;
   id: string;
   statustext: string
+}
+
+/**
+ * Represents a tag that can be applied to bills.
+ */
+export interface Tag {
+  id: string;
+  name: string;
+  color?: string | null;
+  created_at?: Date | string;
+  updated_at?: Date | string;
 }

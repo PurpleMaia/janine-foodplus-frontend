@@ -7,6 +7,7 @@ import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkle
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useBills } from '@/contexts/bills-context';
+import { CardTagSelector } from '../tags/card-tag-selector';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   bill: Bill;
@@ -14,6 +15,7 @@ interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   onCardClick: (bill: Bill) => void;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
+  isHighlighted?: boolean;
 }
 
 // Function to get an appropriate icon based on status
@@ -39,11 +41,11 @@ const getStatusVariant = (status: Bill['current_status']): "default" | "secondar
 };
 
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
-    ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, className, style, ...props }, ref) => {
+    ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, isHighlighted = false, className, style, ...props }, ref) => {
 
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
-    const { acceptLLMChange, rejectLLMChange } = useBills()
+    const { acceptLLMChange, rejectLLMChange, setBills } = useBills()
 
     // Format date only on client-side after mount to prevent hydration mismatch
     useEffect(() => {
@@ -92,9 +94,11 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
             ref={ref}
             className={cn(
                 "rounded-md border bg-card text-card-foreground shadow-sm transition-all duration-200",
-                "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 w-full max-w-[300px]", // limit card width so it won't exceed board width
+                "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 w-full max-w-[300px]", // limit card width
+                "flex flex-col", // Flex column layout
                 isDragging ? "opacity-80 shadow-xl rotate-3 scale-105 cursor-grabbing" : "hover:shadow-md cursor-grab",
                 bill.updates && bill.updates.length > 0 && "ring-1 ring-green-200/50", // Subtle glow for active bills
+                isHighlighted && "ring-2 ring-blue-500 ring-offset-2 bg-blue-50/50 border-blue-300", // Highlight search match
                  className
             )}
             style={style} // dnd positioning
@@ -103,7 +107,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
         >
             {/* Add click handler to the content div */}
             <div 
-                className="flex flex-col p-3 w-full min-h-[80px] cursor-pointer "
+                className="flex flex-col p-3 w-full min-h-[80px] cursor-pointer"
                 onClick={handleCardClick}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -149,6 +153,12 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                       </p>
                     )}
                     <p className='text-sm text-foreground text-wrap mb-3 line-clamp-2'>{bill.description}</p>
+
+                    {/* Tags */}
+                    <CardTagSelector
+                      billId={bill.id}
+                      billTags={bill.tags}
+                    />
 
                     {/* Status Information */}
                     <div className="flex items-center justify-between mb-2">
@@ -200,7 +210,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                     )}
                 </CardContent>                           
             </div>
-            
+
             {/* LLM Action Buttons */}
             {bill.llm_suggested && !bill.llm_processing && (
               <div className="p-4 flex gap-2 mt-3 pt-3 border-t border-blue-100">
