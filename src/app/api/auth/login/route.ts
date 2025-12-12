@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { loginSchema } from '@/lib/validators';
 import { authenticateUser, createSession, setSessionCookie } from '@/lib/auth';
 import type { User } from '@/types/users';
 
 export async function POST(request: NextRequest) {
   try {
-    // retrieve email/username and password from request body
-    const { authString, password } = await request.json();
+    // Parse and validate request body
+    const { identifier, password } = await request.json();
 
-    //validates input
-    if (!authString || !password) {
-      return NextResponse.json(
-        { error: 'Email/Username and password are required' },
-        { status: 400 }
-      );
+    const validation = loginSchema.safeParse({ identifier, password });
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Authenticate user
     try {
-      const user = await authenticateUser(authString, password);
+      const user = await authenticateUser(identifier, password);
 
       // Create session token for successfully authenticated user
       const token = await createSession(user.id);

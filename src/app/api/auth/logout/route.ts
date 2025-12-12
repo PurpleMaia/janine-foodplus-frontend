@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, deleteSession, clearSessionCookie } from '@/lib/auth';
+import { getSessionCookie, deleteSession, getClearSessionCookie } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Clear session cookie
-    const clearCookie = clearSessionCookie();
+    const clearCookie = getClearSessionCookie();
 
     return NextResponse.json(
       { success: true },

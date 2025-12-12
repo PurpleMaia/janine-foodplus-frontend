@@ -10,9 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-// Removed direct service import - will use API route instead
-import type { TempBill, Bill } from '@/types/legislation';
-import type { User } from '@/lib/auth';
+import type { User } from '@/types/users';
 
 export function ApprovalsDashboard() {
   const { tempBills, acceptTempChange, rejectTempChange, bills } = useBills();

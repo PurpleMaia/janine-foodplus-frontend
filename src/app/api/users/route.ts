@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
 import { getUsersByIds } from '@/services/db/users';
+import { usersSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
+    // Verify session
     const session_token = getSessionCookie(request);
     if (!session_token) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -20,10 +21,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
+    // Parse user IDs from request body
     const { userIds } = await request.json();
-    
-    if (!userIds || !Array.isArray(userIds)) {
-      return NextResponse.json({ error: 'Invalid user IDs' }, { status: 400 });
+
+    const validation = usersSchema.safeParse({ userIds });
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const users = await getUsersByIds(userIds);

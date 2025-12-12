@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
+import { proposalSchema } from '@/lib/validators';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -16,18 +17,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
     }
 
+    // Parse and validate request body
     const { billId, currentStatus, suggestedStatus, note } = await request.json();
+
+    const validation = proposalSchema.safeParse({ billId, currentStatus, suggestedStatus, note });
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
+    }
 
     console.log('💾 [SAVE PROPOSAL] User:', user.email, 'Role:', user.role);
     console.log('💾 [SAVE PROPOSAL] Bill ID:', billId);
     console.log('💾 [SAVE PROPOSAL] Status change:', currentStatus, '→', suggestedStatus);
 
-    if (!billId || !currentStatus || !suggestedStatus) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
-    }
-
     // Check if proposal already exists (by user_id and bill_id, regardless of approval status)
-    // Use (db as any) to bypass Kysely type checking for snake_case columns
     const existing = await db
       .selectFrom('pending_proposals')
       .selectAll()

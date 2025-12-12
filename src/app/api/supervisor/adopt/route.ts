@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
+import { uuidSchema } from '@/lib/validators';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -16,10 +17,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Supervisor access only' }, { status: 403 });
     }
 
+    // Parse and validate intern user ID from request body
     const { userId: internId } = await request.json();
 
-    if (!internId) {
-      return NextResponse.json({ success: false, error: 'Intern user ID is required' }, { status: 400 });
+    const validation = uuidSchema.safeParse(internId);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: 'Invalid intern user ID' }, { status: 400 });
     }
 
     // Check if user exists and is a regular user

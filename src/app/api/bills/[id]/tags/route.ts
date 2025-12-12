@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
+import { tagsSchema } from '@/lib/validators';
 import { validateSession, getSessionCookie } from '@/lib/auth';
 
 // GET - Get tags for a specific bill (public access for filtering)
@@ -40,6 +41,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Validate session
     const sessionToken = getSessionCookie(request);
     if (!sessionToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,6 +60,7 @@ export async function POST(
       );
     }
 
+    // Parse and validate tag IDs from request body
     const body = await request.json();
     const { tagIds } = body;
     const { id: billId } = await params;
@@ -65,6 +68,14 @@ export async function POST(
     if (!Array.isArray(tagIds)) {
       return NextResponse.json(
         { error: 'tagIds must be an array' },
+        { status: 400 }
+      );
+    }
+
+    const validation = tagsSchema.safeParse({ tagIds });
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid tag IDs' },
         { status: 400 }
       );
     }

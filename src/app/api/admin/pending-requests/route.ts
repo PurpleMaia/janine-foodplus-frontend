@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
 import { getPendingRequests } from "@/services/db/admins";
 
-export async function POST(request: NextRequest) { 
+export async function GET(request: NextRequest) { 
     try {
         // Validate custom session
         const session_token = getSessionCookie(request);
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Unauthorized: Admin Access only' }, { status: 403 });
         }
 
+        // Get pending requests
         const result = await getPendingRequests(user.id);
         return NextResponse.json({ success: true, pendingAccountRequests: result }, { status: 200 });
     } catch (error) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,17 +15,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Admin access only' }, { status: 403 });
     }
 
-    const { userId } = await request.json();
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
-    }
-
     // Reject the supervisor request by clearing the flag
     const result = await db
       .updateTable('user')
       .set({ requested_supervisor: false })
-      .where('id', '=', userId)
+      .where('id', '=', user.id)
       .where('requested_supervisor', '=', true)
       .executeTakeFirst();
 

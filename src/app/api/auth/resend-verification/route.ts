@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { getSessionCookie, validateSession } from '@/lib/auth'; // not sure if we need to validate session yet
+import { emailSchema } from '@/lib/validators';
 import { sendVerificationEmail } from '@/services/email';
+import { db } from '@/db/kysely/client';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is logged in (optional - can also work without session for resend)
+    // Parse and validate email from request body
     const { email } = await request.json();
-    
-    if (!email) {
-      return NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 });
+
+    const validation = emailSchema.safeParse(email);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
 
     // Find user by email

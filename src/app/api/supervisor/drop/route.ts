@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
+import { uuidSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +16,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Supervisor access only' }, { status: 403 });
     }
 
+    // Parse and validate userId from request body
     const { userId } = await request.json();
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
+    const validation = uuidSchema.safeParse(userId);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: 'Invalid user ID' }, { status: 400 });
     }
 
     // Remove adoption relationship

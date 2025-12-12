@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { nicknameSchema } from '@/lib/validators';
+import { db } from '@/db/kysely/client';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate session
     const sessionToken = getSessionCookie(request);
     if (!sessionToken) {
       return NextResponse.json(
@@ -21,10 +23,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Parse and validate request body
     const { billId, nickname } = await request.json();
-    if (!billId || typeof billId !== 'string') {
+    const validation = nicknameSchema.safeParse({ billId, nickname });
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Bill ID is required' },
+        { success: false, error: validation.error },
         { status: 400 }
       );
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
+import { uuidSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,10 +21,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
     }
 
+    // Parse and validate proposalId from request body
     const { proposalId } = await request.json();
 
-    if (!proposalId) {
-      return NextResponse.json({ success: false, error: 'Missing proposal ID' }, { status: 400 });
+    const validation = uuidSchema.safeParse(proposalId);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: 'Invalid proposal ID' }, { status: 400 });
     }
 
     // Mark proposal as rejected (soft delete by changing status)

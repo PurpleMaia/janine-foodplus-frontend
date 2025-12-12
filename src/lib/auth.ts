@@ -4,7 +4,11 @@ import { db } from '../db/kysely/client';
 import { createHash, randomUUID } from 'crypto';
 import { User } from '@/types/users';
 
-
+/**
+ * Creates a session for a user and stores the hashed token in the database
+ * @param userId ID of user to create session for
+ * @returns raw session token to be set in cookie
+ */
 export async function createSession(userId: string): Promise<string> {
 
   // Generate a secure random token
@@ -59,7 +63,7 @@ export async function validateSession(token: string): Promise<User | null> {
       return {
         id: result.id,
         email: result.email,
-        role: result.role || result.role, // Ensure role is returned as-is from DB
+        role: result.role,
         username: result.username
       };
     }
@@ -70,6 +74,10 @@ export async function validateSession(token: string): Promise<User | null> {
   }
 }
 
+/**
+ * Deletes a session from the database.
+ * @param token Raw session token from cookie
+ */
 export async function deleteSession(token: string): Promise<void> {
   const hashedToken = createHash('sha256').update(token).digest('hex');
   await db
@@ -78,14 +86,20 @@ export async function deleteSession(token: string): Promise<void> {
     .execute();
 }
 
-export async function authenticateUser(authString: string, password: string): Promise<User> {
+/**
+ * Authenticates a user by email or username and password
+ * @param identifier email or username 
+ * @param password 
+ * @returns User object if authentication is successful, otherwise throws an error
+ */
+export async function authenticateUser(identifier: string, password: string): Promise<User> {
   //1. Looks up user by email or username in user table
   const userResult = await db
     .selectFrom('user')
     .select(['id', 'email', 'username', 'role', 'account_status', 'requested_admin', 'email_verified'])
     .where((eb: any) => eb.or([
-      eb('email', '=', authString),
-      eb('username', '=', authString)  // using email parameter as it could be either email or username
+      eb('email', '=', identifier),
+      eb('username', '=', identifier)  // using email parameter as it could be either email or username
     ]))
     .executeTakeFirst();      
   if (!userResult) {
@@ -134,6 +148,13 @@ export async function authenticateUser(authString: string, password: string): Pr
 } 
 
 // NOTE; will return verificationToken for email sending at a later date
+/**
+ * Registers a new user.
+ * @param email 
+ * @param username 
+ * @param password 
+ * @returns Newly created User object or null if registration failed
+ */
 export async function registerUser(email: string, username: string, password: string): Promise<{ user: User | null }> {
   try {
     //1. Check if user already exists
@@ -189,7 +210,10 @@ export async function registerUser(email: string, username: string, password: st
 }
 
 // Cookie helpers
-//Gets session id from cookie
+/**
+ * Retrieves the session cookie value from the request.
+ * @returns The session cookie value or null if not found.
+ */
 export function getSessionCookie(request: NextRequest): string | null {
   return request.cookies.get('session')?.value || null;
 }
@@ -199,7 +223,9 @@ export function setSessionCookie(token: string): string {
   return `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
 }
 
-//Removes session cookes on logout
-export function clearSessionCookie(): string {
+/**
+ * Get the clear session cookie by setting its expiration to the past.
+ */
+export function getClearSessionCookie(): string {
   return 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
 }

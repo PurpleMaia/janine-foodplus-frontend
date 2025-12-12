@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerUser } from '@/lib/auth';
+import { registerSchema } from '@/lib/validators';
+
+// NOTE: Email domain restriction and email sending are currently disabled!!!
+
 // import { sendVerificationEmail } from '@/services/email';
 
 // Allowed email domains
@@ -15,9 +19,11 @@ import { registerUser } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    // Parse and validate request body
     const { username, email, password } = await req.json();
-    if (!username || !email || !password) {
-      return NextResponse.json({ error: 'Username, email, and password are required.' }, { status: 400 });
+    const validation = registerSchema.safeParse({ username, email, password });
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Validate email domain

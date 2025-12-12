@@ -1,15 +1,10 @@
-import { denyUser } from "@/services/db/admins";
-import { getSessionCookie, validateSession } from "@/lib/auth";
 import { NextResponse, NextRequest } from "next/server";
+import { getSessionCookie, validateSession } from "@/lib/auth";
+import { userIdSchema } from "@/lib/validators";
+import { denyUser } from "@/services/db/admins";
 
 export async function POST(request: NextRequest) {
     try {
-        const { userIDToDeny } = await request.json()
-
-        if (!userIDToDeny) {
-            return NextResponse.json({ success: false, error: 'User ID to deny is required' }, { status: 400 });            
-        }
-
         // Validate custom session
         const session_token = getSessionCookie(request);
         console.log('Checking session token from cookie:', session_token);
@@ -27,6 +22,21 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Unauthorized: Admin Access only' }, { status: 403 });
         }
 
+        // Parse and validate userIDToDeny from request body
+        const { userIDToDeny } = await request.json()
+
+        if (!userIDToDeny) {
+            return NextResponse.json({ success: false, error: 'User ID to deny is required' }, { status: 400 });            
+        }
+
+        const validation = userIdSchema.safeParse({ userId: userIDToDeny });
+        if (!validation.success) {
+            return NextResponse.json({ success: false, error: 'Invalid user ID' }, { status: 400 });
+        }
+
+
+
+        // Deny the user
         console.log('Denying user with ID:', userIDToDeny);
         const result = await denyUser(userIDToDeny);
         

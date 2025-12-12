@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../db/kysely/client';
 import { validateSession, getSessionCookie } from '@/lib/auth';
+import { newTagSchema } from '@/lib/validators';
 
 // GET - Fetch all tags (public access for filtering)
 export async function GET(request: NextRequest) {
@@ -53,14 +54,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Parse and validate request body
     const body = await request.json();
     const { name, color } = body;
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Tag name is required' },
-        { status: 400 }
-      );
+    const validation = newTagSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Check if tag with same name already exists
@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Finally, create the new tag and insert into database
     const newTag = await db
       .insertInto('tags')
       .values({
