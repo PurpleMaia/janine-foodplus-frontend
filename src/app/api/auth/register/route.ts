@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerUser } from '@/lib/auth';
 import { registerSchema } from '@/lib/validators';
+import { ApiError } from '@/lib/errors';
 
 // NOTE: Email domain restriction and email sending are currently disabled!!!
 
@@ -21,10 +22,19 @@ export async function POST(req: NextRequest) {
   try {
     // Parse and validate request body
     const { username, email, password } = await req.json();
+
+    console.log('[REGISTER] Attempting registration for:', email);
+
     const validation = registerSchema.safeParse({ username, email, password });
     if (!validation.success) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+      console.log('[REGISTER] Validation failed:', validation.error);
+      return NextResponse.json(
+        { error: "Invalid Input", issues: validation.error.issues },
+        { status: 400 }
+      );
     }
+
+    console.log('[REGISTER] Validation succeeded for:', email);
 
     // Validate email domain
     // if (!isValidEmailDomain(email)) {
@@ -34,10 +44,7 @@ export async function POST(req: NextRequest) {
     // }
 
     // const { user, verificationToken } = await registerUser(email, username, password);
-    const { user } = await registerUser(email, username, password);
-    if (!user) {
-      return NextResponse.json({ error: 'User already exists or registration failed.' }, { status: 400 });
-    }
+    const { user } = await registerUser(email, username, password);    
 
     // Send verification email
     // const emailResult = await sendVerificationEmail(email, username, verificationToken);
@@ -72,8 +79,19 @@ export async function POST(req: NextRequest) {
       message: 'Registration successful! Please check your email to verify your account.',
       user 
     });
-  } catch (error) {
-    console.error('Registration error:', error);
-    return NextResponse.json({ error: 'Registration error.' }, { status: 500 });
+  } catch (error) {    
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+
+    // Unknown error
+    console.error('[REGISTER]', error);
+    return NextResponse.json(
+        { error: 'Internal Server Error' }, 
+        { status: 500 }
+    );
   }
 }

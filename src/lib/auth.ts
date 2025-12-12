@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { db } from '../db/kysely/client';
 import { createHash, randomUUID } from 'crypto';
 import { User } from '@/types/users';
+import { ApiError, Errors } from './errors';
 
 /**
  * Creates a session for a user and stores the hashed token in the database
@@ -41,37 +42,44 @@ export async function createSession(userId: string): Promise<string> {
 }
 
 
-
-export async function validateSession(token: string): Promise<User | null> {
-  try {
-    // // Hash the token from the cookie
-    const hashedToken = createHash('sha256').update(token).digest('hex');
-
-    // Query the database for the session and associated user
-    const result = await db
-      .selectFrom('sessions as s')
-      .innerJoin('user as u', 's.user_id', 'u.id')
-      .select(['u.id', 'u.role', 'u.email', 'u.username', 'u.email_verified'])
-      .where('s.session_token', '=', hashedToken)
-      .where('s.expires_at', '>', new Date())
-      .executeTakeFirst();    
-    
-    if (result) {
-      // Debug log to see what role is being returned
-      console.log('🔍 [DEBUG] Session validation - User role from DB:', result.role, 'User email:', result.email);
-      
-      return {
-        id: result.id,
-        email: result.email,
-        role: result.role,
-        username: result.username
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('Session validation error:', error);
-    return null;
+/**
+ * Validates the session for a given request.
+ * @param request The NextRequest object
+ * @returns The user object if the session is valid
+ * @throws ApiError if session is invalid or not found
+ */
+export async function validateSession(request: NextRequest): Promise<User> {  
+  const token = getSessionCookie(request);
+  if (!token) {
+    console.log('[validateSession] No session cookie found');
+    throw Errors.NO_SESSION_COOKIE;
   }
+
+  // Hash the token from the cookie
+  const hashedToken = createHash('sha256').update(token).digest('hex');
+
+  // Query the database for the session and associated user
+  const result = await db
+    .selectFrom('sessions as s')
+    .innerJoin('user as u', 's.user_id', 'u.id')
+    .select(['u.id', 'u.role', 'u.email', 'u.username', 'u.email_verified'])
+    .where('s.session_token', '=', hashedToken)
+    .where('s.expires_at', '>', new Date())
+    .executeTakeFirst();  
+  if (!result) {
+    console.log('[validateSession] No session found in database for token');
+    throw Errors.UNAUTHORIZED;
+  }
+
+  // Debug log to see what role is being returned
+  console.log('🔍 [DEBUG] Session validation - User role from DB:', result.role, 'User email:', result.email);
+
+  return {
+    id: result.id,
+    email: result.email,
+    role: result.role,
+    username: result.username
+  };
 }
 
 /**
@@ -150,13 +158,10 @@ export async function authenticateUser(identifier: string, password: string): Pr
 // NOTE; will return verificationToken for email sending at a later date
 /**
  * Registers a new user.
- * @param email 
- * @param username 
- * @param password 
- * @returns Newly created User object or null if registration failed
+ * @returns Newly created User object
+ * @throws If user already exists or database insert errors occur
  */
-export async function registerUser(email: string, username: string, password: string): Promise<{ user: User | null }> {
-  try {
+export async function registerUser(email: string, username: string, password: string): Promise<{ user: User }> {  
     //1. Check if user already exists
     const existingUser = await db.selectFrom('user')
       .selectAll()
@@ -167,7 +172,7 @@ export async function registerUser(email: string, username: string, password: st
       .executeTakeFirst();
 
     if (existingUser) {
-      return { user: null }; // User already exists
+      throw Errors.USER_ALREADY_EXISTS;
     }
 
     //2. Generate verification token (NOTE: not storing verification token for now)
@@ -186,27 +191,28 @@ export async function registerUser(email: string, username: string, password: st
     }).returning('id').executeTakeFirst();
 
     if (!userResult || !userResult.id) {
-      throw new Error('Failed to create user');
+      console.log('[registerUser] Failed to insert new user into database');
+      throw Errors.INTERNAL_ERROR;
     }
 
     const userId = userResult.id;
 
     //4. Hash password and store in auth_key table
     const hashedPassword = await bcrypt.hash(password, 10);
-    await db
+    const authKeyResult = await db
       .insertInto('auth_key')
       .values({ id: randomUUID(), user_id: userId, hashed_password: hashedPassword })
       .execute();
 
-    return { 
-      user: { id: userId, email, role: 'user', username }, 
-      // verificationToken 
-    };
-  } catch (error) {
-    console.error('Registration error:', error);
-    // return { user: null, verificationToken: null };
-    return { user: null };
-  }
+    if (!authKeyResult) {
+      console.log('[registerUser] Failed to insert auth key into database');
+      throw Errors.INTERNAL_ERROR;
+    }
+
+    return {
+      user: { id: userId, email, role: 'user', username },
+      // verificationToken
+    };  
 }
 
 // Cookie helpers

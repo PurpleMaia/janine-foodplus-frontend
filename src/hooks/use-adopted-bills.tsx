@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { getUserAdoptedBills, adoptBill, unadoptBill } from '@/services/legislation';
+import { getUserAdoptedBills, adoptBill, unadoptBill } from '@/services/db/legislation';
 import { useToast } from '@/hooks/use-toast';
 import type { Bill } from '@/types/legislation';
 import { useBills } from '@/contexts/bills-context';
