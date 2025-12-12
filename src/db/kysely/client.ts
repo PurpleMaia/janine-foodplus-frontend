@@ -20,7 +20,9 @@ class KyselySingleton {
 
   static getInstance() {
     if (globalThis.__kysely_singleton) {
-      // console.log('[DB] Reusing existing Kysely instance');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🟡 [DB] Reusing existing Kysely instance');
+      }
       return globalThis.__kysely_singleton;
     }
 
@@ -48,6 +50,10 @@ class KyselySingleton {
         createQueryCompiler: () => new PostgresQueryCompiler(),
       },
     });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🟢 [DB] Created new Kysely instance (#${globalThis.__kysely_instance_count})`);
+    }
 
     // ...existing code...
     if (process.env.NODE_ENV === 'development') {
