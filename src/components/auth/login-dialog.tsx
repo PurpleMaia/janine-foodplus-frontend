@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 export function LoginDialog() {
-  const [authString, setAuthString] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +25,7 @@ export function LoginDialog() {
     try {
 
       //calls login from auth context
-      const result = await login(authString, password);
+      const result = await login(identifier, password);
 
       if (result && result.success) {
         //shows success message
@@ -36,7 +36,7 @@ export function LoginDialog() {
 
         //closes dialog and clears form
         setIsOpen(false);
-        setAuthString('');
+        setIdentifier('');
         setPassword('');
       } else if (result && result.error) {
         //shows error message from context
@@ -75,12 +75,12 @@ export function LoginDialog() {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="authString">Email/Username</Label>
+            <Label htmlFor="identifier">Email/Username</Label>
             <Input
-              id="authString"
+              id="identifier"
               type="text"
-              value={authString}
-              onChange={(e) => setAuthString(e.target.value)}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               placeholder="Enter your email or username"
               required
             />

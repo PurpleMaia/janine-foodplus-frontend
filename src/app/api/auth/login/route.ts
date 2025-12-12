@@ -2,62 +2,51 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loginSchema } from '@/lib/validators';
 import { authenticateUser, createSession, setSessionCookie } from '@/lib/auth';
 import type { User } from '@/types/users';
+import { ApiError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
     // Parse and validate request body
     const { identifier, password } = await request.json();
 
+    console.log('[LOGIN] Attempting login for:', identifier);
+
     const validation = loginSchema.safeParse({ identifier, password });
     if (!validation.success) {
+      console.log('[LOGIN] Validation failed:', validation.error);
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Authenticate user
-    try {
-      const user = await authenticateUser(identifier, password);
+    const user = await authenticateUser(identifier, password);
 
-      // Create session token for successfully authenticated user
-      const token = await createSession(user.id);
-      console.log('Created session token:', token);
+    // Create session token for successfully authenticated user
+    const token = await createSession(user.id);
+    console.log('Created session token:', token);
 
-      // Set session token in cookie and return user information
-      return NextResponse.json(
-        { success: true, user: user as User },
-        {
-          status: 200,
-          headers: {
-            'Set-Cookie': setSessionCookie(token),
-          },
-        }
-      );
-    } catch (error) {
-      // Rethrow known authentication errors to be handled in the outer catch block
-      throw error;
-    }
-  } catch (error) {
-    if (error instanceof Error) {
-        if (error.message === 'USER_NOT_FOUND' || error.message === 'INVALID_CREDENTIALS') {
-          return NextResponse.json(
-            { error: 'Invalid email/username or password' },
-            { status: 401 }
-          );
-        } else if (error.message === 'EMAIL_NOT_VERIFIED') {
-          return NextResponse.json(
-            { error: 'Please verify your email address before logging in. Check your inbox for the verification email.' },
-            { status: 403 }
-          );
-        } else if (error.message === 'ACCOUNT_INACTIVE') {
-          return NextResponse.json(
-            { error: 'Account is inactive. Please contact support.' },
-            { status: 403 }
-          );
-        } else {
-          return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-          );        
-        }
+    // Set session token in cookie and return user information
+    return NextResponse.json(
+      { success: true, user: user as User },
+      {
+        status: 200,
+        headers: {
+          'Set-Cookie': setSessionCookie(token),
+        },
       }
-  }
+    );    
+  } catch (error) {
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: error.statusCode }
+        );
+      }
+  
+      // Unknown error
+      console.error('[LOGIN]', error);
+      return NextResponse.json(
+          { error: 'Unknown Error' }, 
+          { status: 500 }
+      );
+    }
 }

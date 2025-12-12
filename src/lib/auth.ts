@@ -6,7 +6,7 @@ import { User } from '@/types/users';
 import { ApiError, Errors } from './errors';
 
 /**
- * Creates a session for a user and stores the hashed token in the database
+ * Creates session tokens for a user and stores the hashed token in the database
  * @param userId ID of user to create session for
  * @returns raw session token to be set in cookie
  */
@@ -35,7 +35,8 @@ export async function createSession(userId: string): Promise<string> {
     .executeTakeFirst();  
 
   if (!result || !result.session_token) {
-    throw new Error('Failed to create session');
+    console.error('[createSession] Failed to create session in database for user ID:', userId);
+    throw Errors.INTERNAL_ERROR;
   }
 
   return rawToken;
@@ -111,7 +112,8 @@ export async function authenticateUser(identifier: string, password: string): Pr
     ]))
     .executeTakeFirst();      
   if (!userResult) {
-    throw new Error('USER_NOT_FOUND');
+    console.error('[authenticateUser] No user found with identifier:', identifier);
+    throw Errors.INVALID_CREDENTIALS;
   }
   
   // Only accounts with 'active' status can log in
@@ -121,15 +123,16 @@ export async function authenticateUser(identifier: string, password: string): Pr
     // For new accounts: check if email is verified (for better error message)
     if (userResult.account_status === 'unverified' || userResult.account_status === 'pending') {
       if (!userResult.email_verified) {
-        throw new Error('EMAIL_NOT_VERIFIED');
+        console.error('[authenticateUser] Email not verified for user:', userResult.email);
+        throw Errors.EMAIL_NOT_VERIFIED;
       }
       // Email is verified but account is pending admin approval
-      console.error('Account pending admin approval for user:', userResult.email);
-      throw new Error('ACCOUNT_INACTIVE');
+      console.error('[authenticateUser] Email is verified BUT account pending admin approval for user:', userResult.email);
+      throw Errors.ACCOUNT_INACTIVE;
     }
     // Any other non-active status (denied, etc.)
-    console.error('Account not active for user:', userResult.email, 'Status:', userResult.account_status);
-    throw new Error('ACCOUNT_INACTIVE');
+    console.error('[authenticateUser] Account not active for user:', userResult.email, 'Status:', userResult.account_status);
+    throw Errors.ACCOUNT_INACTIVE;
   }
   
   // Account is active - can log in
@@ -144,12 +147,14 @@ export async function authenticateUser(identifier: string, password: string): Pr
     .executeTakeFirst();
 
   if (!keyResult) {
-    throw new Error('AUTH_KEY_NOT_FOUND');
+    console.error('[authenticateUser] No auth key found in auth_key for user ID:', userResult.id);
+    throw Errors.INTERNAL_ERROR;
   }
 
   //3. Compares password using bycrypt (hashed)
   if (!keyResult.hashed_password || !(await bcrypt.compare(password, keyResult.hashed_password))) {
-    throw new Error('INVALID_CREDENTIALS');
+    console.error('[authenticateUser] Password mismatch for user:', identifier);
+    throw Errors.INVALID_CREDENTIALS;
   }
 
   return { id: userResult.id, email: userResult.email, role: userResult.role, username: userResult.username };  //Success
@@ -172,6 +177,7 @@ export async function registerUser(email: string, username: string, password: st
       .executeTakeFirst();
 
     if (existingUser) {
+      console.error('[registerUser] User already exists with email or username:', email, username);
       throw Errors.USER_ALREADY_EXISTS;
     }
 
@@ -191,7 +197,7 @@ export async function registerUser(email: string, username: string, password: st
     }).returning('id').executeTakeFirst();
 
     if (!userResult || !userResult.id) {
-      console.log('[registerUser] Failed to insert new user into database');
+      console.error('[registerUser] Failed to insert new user into database');
       throw Errors.INTERNAL_ERROR;
     }
 
@@ -205,7 +211,7 @@ export async function registerUser(email: string, username: string, password: st
       .execute();
 
     if (!authKeyResult) {
-      console.log('[registerUser] Failed to insert auth key into database');
+      console.error('[registerUser] Failed to insert auth key into database');
       throw Errors.INTERNAL_ERROR;
     }
 
@@ -224,7 +230,11 @@ export function getSessionCookie(request: NextRequest): string | null {
   return request.cookies.get('session')?.value || null;
 }
 
-//Creates a secure cookie with session token
+/**
+ * Gets the Set-Cookie header string to set the session cookie.
+ * @param token Raw session token
+ * @returns Set-Cookie header string
+ */
 export function setSessionCookie(token: string): string {
   return `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
 }

@@ -5,17 +5,8 @@ import { User } from "@/types/users";
 
 export async function getAdminUserData(request: NextRequest): Promise<User | { error: string } | null> {
   try {
-    //gets session token from cookie 
-    const session_token = getSessionCookie(request);
-    console.log('Session token from cookie:', session_token);
-    
-    //if there is no cookie, user is not logged in
-    if (!session_token) {
-        return { error: 'Invalid session' };
-    }
-
     //validates session in the databse 
-    const user = await validateSession(session_token);
+    const user = await validateSession(request);
     console.log('Validated user from session token:', user);
 
     if (!user) {

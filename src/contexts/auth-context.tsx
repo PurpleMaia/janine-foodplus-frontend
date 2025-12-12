@@ -50,14 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * @param password - The password of the user.
    * @returns An object containing the success status and an optional error message.
    */
-  const login = async (authString: string, password: string): Promise<{ success: boolean, error?: string }> => {
+  const login = async (identifier: string, password: string): Promise<{ success: boolean, error?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ authString, password }),
+        body: JSON.stringify({ identifier, password }),
       });
 
       if (response.ok) {

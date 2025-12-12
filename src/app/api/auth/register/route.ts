@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     // Unknown error
     console.error('[REGISTER]', error);
     return NextResponse.json(
-        { error: 'Internal Server Error' }, 
+        { error: 'Unknown Error' }, 
         { status: 500 }
     );
   }
