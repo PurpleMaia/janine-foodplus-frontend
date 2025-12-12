@@ -1,4 +1,4 @@
-import { checkAdminRequestStatus } from "@/lib/admin-utils";
+import { checkAdminRequestStatus } from "@/services/db/admins";
 import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
     const { email } = await request.json();

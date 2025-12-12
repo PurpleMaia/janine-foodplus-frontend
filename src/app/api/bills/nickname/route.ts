@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { getSessionCookie, validateSession } from '@/lib/auth';
 import { db } from '../../../../db/kysely/client';
-import { ensureUserBillPreferencesTable } from '@/services/legislation';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -47,8 +46,6 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-
-    await ensureUserBillPreferencesTable();
 
     if (!trimmedNickname) {
       // Clear nickname

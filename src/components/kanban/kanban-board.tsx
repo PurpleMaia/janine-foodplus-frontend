@@ -6,7 +6,7 @@ import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
 // import { KanbanColumn } from './kanban-column'; // we inline KanbanColumn below
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
-import { updateBillStatusServerAction, searchBills } from '@/services/legislation';
+import { updateBillStatusServerAction, searchBills } from '@/services/db/legislation';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useToast } from '@/hooks/use-toast';

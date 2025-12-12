@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
-import { getPendingRequests } from '@/lib/admin-utils';
+import { getSessionCookie, validateSession } from '@/lib/auth';
+import { getPendingRequests } from "@/services/db/admins";
 
 export async function POST(request: NextRequest) { 
     try {

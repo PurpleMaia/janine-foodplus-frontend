@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, deleteSession, clearSessionCookie } from '@/lib/simple-auth';
+import { getSessionCookie, deleteSession, clearSessionCookie } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { registerUser } from '@/lib/simple-auth';
+import { registerUser } from '@/lib/auth';
 // import { sendVerificationEmail } from '@/services/email';
 
 // Allowed email domains

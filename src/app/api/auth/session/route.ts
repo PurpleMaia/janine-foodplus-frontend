@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { getSessionCookie, validateSession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {

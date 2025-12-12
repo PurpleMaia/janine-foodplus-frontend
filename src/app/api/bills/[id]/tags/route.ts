@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../../../db/kysely/client';
-import { validateSession, getSessionCookie } from '@/lib/simple-auth';
+import { validateSession, getSessionCookie } from '@/lib/auth';
 
 // GET - Get tags for a specific bill (public access for filtering)
 export async function GET(

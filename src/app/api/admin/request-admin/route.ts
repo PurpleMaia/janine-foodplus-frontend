@@ -1,4 +1,4 @@
-import { requestAdminAccess } from '@/lib/admin-utils';
+import { requestAdminAccess } from "@/services/db/admins";
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {

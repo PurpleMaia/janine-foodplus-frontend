@@ -11,7 +11,7 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useBills } from '@/contexts/bills-context';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
-import { searchBills } from '@/services/legislation';
+import { searchBills } from '@/services/db/legislation';
 
 
 export function KanbanSpreadsheet() {

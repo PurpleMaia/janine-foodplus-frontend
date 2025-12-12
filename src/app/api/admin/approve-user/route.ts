@@ -1,5 +1,5 @@
-import { approveUser } from "@/lib/admin-utils";
-import { getSessionCookie, validateSession } from "@/lib/simple-auth";
+import { approveUser } from "@/services/db/admins";
+import { getSessionCookie, validateSession } from "@/lib/auth";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {

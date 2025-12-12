@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../../db/kysely/client';
-import { validateSession, getSessionCookie } from '@/lib/simple-auth';
+import { validateSession, getSessionCookie } from '@/lib/auth';
 
 // PUT - Update a tag (admin and supervisor only)
 export async function PUT(

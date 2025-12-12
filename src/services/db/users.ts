@@ -1,5 +1,5 @@
-import { db } from '../db/kysely/client';
-import type { User } from '@/lib/simple-auth';
+import { db } from '../../db/kysely/client';
+import type { User } from '@/types/users';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {

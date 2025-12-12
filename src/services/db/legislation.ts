@@ -1,94 +1,12 @@
 'use server';
 
-import type { Bill, BillStatus, StatusUpdate } from '@/types/legislation';
+import type { Bill, BillStatus } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../db/kysely/client';
-import { Bills } from '../db/types';
+import { db } from '@/db/kysely/client';
+import { Bills } from '@/db/types';
 import { mapBillsToBill } from '@/lib/utils';
-import { sql } from 'kysely';
 
-let userBillPreferencesInitialized = false;
-
-export async function ensureUserBillPreferencesTable() {
-  if (userBillPreferencesInitialized) {
-    return;
-  }
-
-  try {
-    await db.schema
-      .createTable('user_bill_preferences')
-      .ifNotExists()
-      .addColumn('id', 'uuid', (col) => col.primaryKey())
-      .addColumn('user_id', 'uuid', (col) => col.notNull())
-      .addColumn('bill_id', 'uuid', (col) => col.notNull())
-      .addColumn('nickname', 'text', (col) => col.notNull())
-      .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-      .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-      .addUniqueConstraint('user_bill_preferences_user_bill_unique', ['user_id', 'bill_id'])
-      .execute();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('already exists')) {
-      console.error('Failed to ensure user_bill_preferences table:', error);
-      throw error;
-    }
-  } finally {
-    userBillPreferencesInitialized = true;
-  }
-}
-
-// Helper function to create placeholder introducers
-// const createIntroducers = (names: string[]): Introducer[] =>
-//     names.map((name, index) => ({
-//         name,
-//         // Placeholder image URL using picsum.photos - requires next.config.js update if not already present
-//         imageUrl: `https://picsum.photos/seed/${name.replace(/\s+/g, '')}/40/40`,
-//     }));
-
-// Helper function to create placeholder bill drafts
-// const createBillDrafts = (billId: string, versions: string[]): BillDraft[] =>
-//     versions.map((version, index) => ({
-//         version,
-//         htmlUrl: `/bills/${billId}/drafts/${version}.html`, // Placeholder links
-//         pdfUrl: `/bills/${billId}/drafts/${version}.pdf`, // Placeholder links
-//         date: new Date(2024, 5, 25 - index * 5), // Stagger dates
-//     }));
-
-// Helper function to create placeholder news articles
-// const createNewsArticles = (count: number): NewsArticle[] =>
-//     Array.from({ length: count }, (_, index) => ({
-//         title: `Article Title ${index + 1} about the Bill`,
-//         url: `https://news.example.com/article${index + 1}`, // Placeholder links
-//         source: index % 2 === 0 ? 'Honolulu Star-Advertiser' : 'Civil Beat',
-//         date: new Date(2024, 5, 28 - index * 3),
-//     }));
-
-
-/**
- * Asynchronously retrieves bill information by ID.
- *
- * @param id The ID of the bill to retrieve.
- * @returns A promise that resolves to a Bill object or null if not found.
- */
-// export async function getBill(id: string): Promise<Bill | null> {
-//   // Simulate API call delay
-//   await new Promise(resolve => setTimeout(resolve, 100));
-//   const bill = mockBills.find(b => b.id === id);
-//   // Ensure dates are Date objects (if they were strings)
-//    if (bill) {
-//      bill.created_at = new Date(bill.created_at);
-//      bill.updated_at = new Date(bill.updated_at);
-//    }
-//   return bill ? { ...bill } : null; // Return a copy
-// }
-
-/**
- * Asynchronously retrieves all bills.
- *
- * @returns A promise that resolves to an array of all Bill objects.
- */
-
+// NOTE: Used these keywords to initially set food_related flags in DB
 // const FOOD_KEYWORDS = [
 //   'agriculture', 'food', 'farm', 'pesticides', 'eating', 'edible', 'meal',
 //   'crop', 'harvest', 'organic', 'nutrition', 'diet', 'restaurant', 'cafe',
@@ -97,11 +15,34 @@ export async function ensureUserBillPreferencesTable() {
 //   'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
 // ];
 
+// ----- Holding this code here if need to set the flags based on the filter ----------
+// const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
+// const billIds = filteredData.map(bill => bill.id)
+// if (billIds.length > 0) {
+  //   if (billIds.length > 0) {
+    //     const result = await sql`
+    //       UPDATE bills 
+    //       SET food_related = true 
+    //       WHERE id = ANY(${billIds})
+    //     `;
+    //     console.log(`Updated ${result.count} rows`);
+    //   }
+    // }
+  // ----- Holding this code here if need to set the flags based on the filter again ----------
+
+// const containsFoodKeywords = (bill: Bill) => {
+//   const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
+//   return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
+// }
+
 /**
- * Gets all food-related bills that have been adopted (at least one adoption)
- * Used for public view
+ * Gets all food-related bills either adopted by a specific user or just all food-related bills.
+ * @param adopted - If true, gets only bills adopted by the user; if false, gets all food-related bills.
  */
-export async function getAllBills(): Promise<Bill[]> {
+export async function getAllBills({ adopted }: { adopted: boolean }): Promise<Bill[]> {
+    if (!adopted) {
+        return getAllFoodRelatedBills();
+    }
     try {
         const rawData = await db
           .selectFrom('bills as b')
@@ -226,25 +167,6 @@ export async function getAllFoodRelatedBills(): Promise<Bill[]> {
       }
     }
     
-// ----- Holding this code here if need to set the flags based on the filter ----------
-// const filteredData = [...data].filter((bill) => containsFoodKeywords(bill))
-// const billIds = filteredData.map(bill => bill.id)
-// if (billIds.length > 0) {
-  //   if (billIds.length > 0) {
-    //     const result = await sql`
-    //       UPDATE bills 
-    //       SET food_related = true 
-    //       WHERE id = ANY(${billIds})
-    //     `;
-    //     console.log(`Updated ${result.count} rows`);
-    //   }
-    // }
-  // ----- Holding this code here if need to set the flags based on the filter again ----------
-
-// const containsFoodKeywords = (bill: Bill) => {
-//   const searchText = `${bill.bill_title || ''} ${bill.description || ''}`.toLowerCase();
-//   return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
-// }
 
 
 /**
@@ -435,8 +357,7 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
 }
 
 export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
-  try {
-    await ensureUserBillPreferencesTable();
+  try {    
     // First, check if the user is a supervisor
     const user = await db
       .selectFrom('user')

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { getSessionCookie, validateSession } from '@/lib/auth';
 import { db } from '../../../../db/kysely/client';
-import { updateBillStatusServerAction } from '@/services/legislation';
+import { updateBillStatusServerAction } from '@/services/db/legislation';
 
 export async function POST(request: NextRequest) {
   try {

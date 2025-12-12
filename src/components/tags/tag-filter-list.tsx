@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X, Settings } from 'lucide-react';
-import { getAllTags } from '@/services/tags';
+import { getAllTags } from '@/services/db/tags';
 import type { Tag } from '@/types/legislation';
 import { TagManagementDialog } from './tag-management-dialog';
 import { useAuth } from '@/contexts/auth-context';

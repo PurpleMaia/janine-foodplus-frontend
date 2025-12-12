@@ -2,19 +2,8 @@ import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { db } from '../db/kysely/client';
 import { createHash, randomUUID } from 'crypto';
+import { User } from '@/types/users';
 
-export interface User {
-  id: string;
-  email: string;
-  role: string;
-  username: string;
-}
-
-export interface Session {
-  id: string;
-  userId: string;
-  expiresAt: Date;
-}
 
 export async function createSession(userId: string): Promise<string> {
 
@@ -160,12 +149,10 @@ export async function registerUser(email: string, username: string, password: st
       return { user: null }; // User already exists
     }
 
-    //2. Generate verification token
-    const verificationTokenBytes = new Uint8Array(32);
-    crypto.getRandomValues(verificationTokenBytes);
-    const verificationToken = Buffer.from(verificationTokenBytes).toString('hex');
-
-    // 
+    //2. Generate verification token (NOTE: not storing verification token for now)
+    // const verificationTokenBytes = new Uint8Array(32);
+    // crypto.getRandomValues(verificationTokenBytes);
+    // const verificationToken = Buffer.from(verificationTokenBytes).toString('hex');    
 
     //3. Create new user (status: 'unverified' - waiting for email verification)
     const userResult = await db.insertInto('user').values({

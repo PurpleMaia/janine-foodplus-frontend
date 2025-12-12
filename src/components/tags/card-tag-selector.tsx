@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Plus, X } from 'lucide-react';
-import { getAllTags, getBillTags, updateBillTags } from '@/services/tags';
+import { getAllTags, getBillTags, updateBillTags } from '@/services/db/tags';
 import type { Tag } from '@/types/legislation';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';

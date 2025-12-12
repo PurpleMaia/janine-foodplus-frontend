@@ -6,9 +6,8 @@ import {
   getAllFoodRelatedBills,
   getUserAdoptedBills,
   updateBillStatusServerAction,
-} from '@/services/legislation';
-import { getBillTags } from '@/services/tags';
-import React, {
+} from '@/services/db/legislation';
+import {
   createContext,
   useContext,
   useState,
@@ -19,9 +18,10 @@ import React, {
   useMemo,
   useCallback,
 } from 'react';
+import { getBillTags } from '@/services/db/tags';
+import { useAuth } from '@/contexts/auth-context';
 import type { Bill, BillStatus, TempBill } from '@/types/legislation';
 import { toast } from '../hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
 
 interface BillsContextType {
   loadingBills: boolean;
@@ -540,7 +540,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           console.log('User adopted bills set in context');
         } else {
           // All bills view
-          results = await getAllBills();
+          results = await getAllBills({ adopted: true });
           console.log('All food-related bills set in context');
         }
         
@@ -562,7 +562,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         return;
       }
       // Public view: only all bills
-      const results = await getAllBills();
+      const results = await getAllBills({ adopted: false });
       
       // Fetch tags for all bills
       const billsWithTags = await Promise.all(
@@ -645,7 +645,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             results = await getUserAdoptedBills(user.id);
             console.log('User adopted bills set in context', results.length);
           } else {
-            results = await getAllBills();
+            results = await getAllBills({ adopted: false });
             console.log('All food-related bills set in context', results.length);
           }
           
@@ -686,7 +686,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           }
         } else {
           // PUBLIC PATH
-          const results = await getAllBills();
+          const results = await getAllBills({ adopted: false });
           
           // Fetch tags for all bills
           const billsWithTags = await Promise.all(

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { adoptBill } from '@/services/legislation';
+import { adoptBill } from '@/services/db/legislation';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 
 export function AdoptBillDialog() {
