@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/db/kysely/client"
 import { getSessionCookie, validateSession } from "@/lib/auth";
 import { User } from "@/types/users";
+import { Errors } from "@/lib/errors";
 
 export async function getAdminUserData(request: NextRequest): Promise<User | { error: string } | null> {
   try {
@@ -107,7 +108,8 @@ export async function checkAdminRequestStatus(email: string): Promise<boolean | 
       .executeTakeFirst();
 
     if (!user) {
-      return null; // User not found
+      console.error('[checkAdminRequestStatus] User not found in database');
+      throw Errors.INTERNAL_ERROR;
     }
 
     return user.requested_admin;

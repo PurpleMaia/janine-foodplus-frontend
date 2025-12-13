@@ -47,7 +47,7 @@ export async function createSession(userId: string): Promise<string> {
  * Validates the session for a given request.
  * @param request The NextRequest object
  * @returns The user object if the session is valid
- * @throws ApiError if session is invalid or not found
+ * @throws NO_SESSION_COOKIE - if session is invalid || UNAUTHORIZED - if not found in DB
  */
 export async function validateSession(token: string | null): Promise<User> {    
   if (!token) {
