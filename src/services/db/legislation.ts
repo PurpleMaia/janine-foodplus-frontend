@@ -4,7 +4,7 @@ import type { Bill, BillStatus } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { db } from '@/db/kysely/client';
 import { Bills } from '@/db/types';
-import { mapBillsToBill } from '@/lib/utils';
+import { mapBillsToBill, mapRawBillsWithUpdates } from '@/lib/utils';
 
 // NOTE: Used these keywords to initially set food_related flags in DB
 // const FOOD_KEYWORDS = [
@@ -35,138 +35,74 @@ import { mapBillsToBill } from '@/lib/utils';
 //   return FOOD_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
 // }
 
+const BILL_SELECT_FIELDS = [
+  'b.bill_number',
+  'b.bill_title',
+  'b.bill_url',
+  'b.committee_assignment',
+  'b.created_at',
+  'b.current_status',
+  'b.current_status_string',
+  'b.description',
+  'b.food_related',
+  'b.id',
+  'b.introducer',
+  'b.nickname',
+  'b.updated_at',
+  'su.id as status_update_id', 
+  'su.statustext',
+  'su.date',
+  'su.chamber'
+] as const;
+
 /**
- * Gets all food-related bills either adopted by a specific user or just all food-related bills.
- * @param adopted - If true, gets only bills adopted by the user; if false, gets all food-related bills.
+ * Gets all food-related bills adopted/tracked by users
  */
-export async function getAllBills({ adopted }: { adopted: boolean }): Promise<Bill[]> {
-    if (!adopted) {
-        return getAllFoodRelatedBills();
-    }
-    try {
-        const rawData = await db
-          .selectFrom('bills as b')
-          .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted
-          .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
-          .select([
-            'b.bill_number',
-            'b.bill_title',
-            'b.bill_url',
-            'b.committee_assignment',
-            'b.created_at',
-            'b.current_status',
-            'b.current_status_string',
-            'b.description',
-            'b.food_related',
-            'b.id',
-            'b.introducer',
-            'b.nickname',
-            'b.updated_at',
-            'su.id as status_update_id', 
-            'su.statustext',
-            'su.date',
-            'su.chamber'
-          ])
-          .where('food_related', '=', true) // Only food-related bills
-          .orderBy('b.updated_at', 'desc')  // Most recently updated first
-          .orderBy('su.date', 'desc')       // Then most recently created
-          .execute()
-        
-        // Map rawData to Bill objects
-        const billObject = new Map<string, Bill>();
+export async function getAllUserAdoptedBills(): Promise<Bill[]> {
+      console.log('📋 [ALL USER BILLS] Fetching all bills tracked by users...')
 
-        rawData.forEach((row: any) => {
+      const rawData = await db
+        .selectFrom('bills as b')
+        .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted
+        .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
+        .select(BILL_SELECT_FIELDS)
+        .where('food_related', '=', true) // Only food-related bills
+        .orderBy('b.updated_at', 'desc')  // Most recently updated first
+        .orderBy('su.date', 'desc')       // Then most recently created
+        .execute()
+      
+      // Map rawData to Bill objects
+      const bills = mapRawBillsWithUpdates(rawData);
 
-          // If bill not already added to client-side bill object, map to client container
-          if (!billObject.has(row.id)) {
-            billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
-          }
-
-          // Add status update if it exists
-          if (row.status_update_id) {
-              const bill = billObject.get(row.id);
-              if (bill) {
-                  bill.updates.push({
-                      id: row.status_update_id,
-                      statustext: row.statustext || '',
-                      date: row.date || '',
-                      chamber: row.chamber || ''
-                  });
-              }
-          }
-        });
-
-        return Array.from(billObject.values());
-      } catch (e) {
-        console.log('Data fetch did not work: ', e);
-        return [];
-      }
-    }
-
+      console.log(`✅ [ALL USER BILLS] Fetched ${bills.length} bills tracked by users`);
+      return bills;
+}
 /**
  * Gets ALL food-related bills from the database (regardless of adoption status)
  * Used for logged-in users who want to see all bills
  */
-export async function getAllFoodRelatedBills(): Promise<Bill[]> {
-    try {
-        const rawData = await (db as any)
-          .selectFrom('bills as b')
-          .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
-          .select([
-            'b.bill_number',
-            'b.bill_title',
-            'b.bill_url',
-            'b.committee_assignment',
-            'b.created_at',
-            'b.current_status',
-            'b.current_status_string',
-            'b.description',
-            'b.food_related',
-            'b.id',
-            'b.introducer',
-            'b.nickname',
-            'b.updated_at',
-            'su.id as status_update_id', 
-            'su.statustext',
-            'su.date',
-            'su.chamber'
-          ])
-          .where('food_related', '=', true) // Only food-related bills
-          .orderBy('b.updated_at', 'desc')  // Most recently updated first
-          .orderBy('su.date', 'desc')       // Then most recently created
-          .execute()
-        
-        // Map rawData to Bill objects
-        const billObject = new Map<string, Bill>();
+export async function getAllBills(): Promise<Bill[]> {  
+    console.log('📋 [ALL BILLS] Fetching all food-related bills...')
+    const rawData = await db
+      .selectFrom('bills as b')
+      .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
+      .select(BILL_SELECT_FIELDS)
+      .where('food_related', '=', true) // Only food-related bills
+      .orderBy('b.updated_at', 'desc')  // Most recently updated first
+      .orderBy('su.date', 'desc')       // Then most recently created
+      .execute()
 
-        rawData.forEach((row: any) => {
-
-          // If bill not already added to client-side bill object, map to client container
-          if (!billObject.has(row.id)) {
-            billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
-          }
-
-          // Add status update if it exists
-          if (row.status_update_id) {
-              const bill = billObject.get(row.id);
-              if (bill) {
-                  bill.updates.push({
-                      id: row.status_update_id,
-                      statustext: row.statustext || '',
-                      date: row.date || '',
-                      chamber: row.chamber || ''
-                  });
-              }
-          }
-        });
-
-        return Array.from(billObject.values());
-      } catch (e) {
-        console.log('Data fetch did not work: ', e);
-        return [];
-      }
+    if (!rawData || rawData.length === 0) {
+      console.log('[ALL BILLS] No food-related bills found in database.');
+      return [];
     }
-    
+
+    // On successful fetch, map to Bill objects
+    const bills = mapRawBillsWithUpdates(rawData);
+
+    console.log(`✅ [ALL BILLS] Fetched ${bills.length} food-related bills from database.`);
+    return bills;
+}
 
 
 /**

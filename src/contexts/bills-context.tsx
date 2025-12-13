@@ -2,8 +2,8 @@
 'use client';
 
 import {
-  getAllBills,
-  getAllFoodRelatedBills,
+  getAllBills,  
+  getAllUserAdoptedBills,
   getUserAdoptedBills,
   updateBillStatusServerAction,
 } from '@/services/db/legislation';
@@ -540,7 +540,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           console.log('User adopted bills set in context');
         } else {
           // All bills view
-          results = await getAllBills({ adopted: true });
+          results = await getAllBills();
           console.log('All food-related bills set in context');
         }
         
@@ -562,7 +562,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         return;
       }
       // Public view: only all bills
-      const results = await getAllBills({ adopted: false });
+      const results = await getAllBills();
       
       // Fetch tags for all bills
       const billsWithTags = await Promise.all(
@@ -602,7 +602,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         if (newMode === 'my-bills') {
           results = await getUserAdoptedBills(user.id);
         } else {
-          results = await getAllFoodRelatedBills();
+          results = await getAllUserAdoptedBills();
         }
         
         // Fetch tags for all bills
@@ -645,7 +645,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             results = await getUserAdoptedBills(user.id);
             console.log('User adopted bills set in context', results.length);
           } else {
-            results = await getAllBills({ adopted: false });
+            results = await getAllBills();
             console.log('All food-related bills set in context', results.length);
           }
           
@@ -686,7 +686,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           }
         } else {
           // PUBLIC PATH
-          const results = await getAllBills({ adopted: false });
+          const results = await getAllBills();
           
           // Fetch tags for all bills
           const billsWithTags = await Promise.all(

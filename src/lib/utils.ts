@@ -41,3 +41,45 @@ export function mapBillsToBill(raw: Bills): Bill {
     llm_processing: undefined,
   };
 }
+
+/**
+ * Maps raw bill data with their status updates.
+ * @param rawData Raw data from joined bills and status_updates tables
+ * @returns Mapped Bill objects with updates
+ */
+export function mapRawBillsWithUpdates(rawData: any[]): Bill[] {
+  const billObject = new Map<string, Bill>();
+
+  rawData.forEach((row: any) => {
+    // If bill not already added to client-side bill object, map to client container
+    if (!billObject.has(row.id)) {
+      billObject.set(row.id, mapBillsToBill(row as unknown as Bills));
+    }
+
+    // Add status update if it exists
+    if (row.status_update_id) {
+      const bill = billObject.get(row.id);
+      if (bill) {
+        if (!bill.updates) {
+          bill.updates = [];
+        }
+        bill.updates.push({
+          id: row.status_update_id,
+          statustext: row.statustext || '',
+          date: row.date || '',
+          chamber: row.chamber || ''
+        });
+      }
+    }
+
+    // Optionally handle user_nickname if present
+    if (Object.prototype.hasOwnProperty.call(row, 'user_nickname')) {
+      const bill = billObject.get(row.id);
+      if (bill) {
+        bill.user_nickname = row.user_nickname ?? null;
+      }
+    }
+  });
+
+  return Array.from(billObject.values());
+}

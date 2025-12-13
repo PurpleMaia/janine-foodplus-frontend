@@ -1,4 +1,5 @@
 import AdminPage from '@/components/admin/admin-server';
+import KanbanBoardPage from '@/components/kanban/kanban-server';
 import { KanbanHeader } from '@/components/main/kanban-header';
 import { auth } from '@/lib/auth';
 
@@ -25,7 +26,7 @@ export default async function Home({ searchParams,
 function MainContent({ view }: { view: string }) {
   switch (view) {
     case 'kanban':
-      return <div>Kanban Board</div>;
+      return <KanbanBoardPage />;
     case 'spreadsheet':
       return <div>Spreadsheet View</div>;
     case 'admin':
