@@ -9,7 +9,6 @@ import { useAuth } from '@/contexts/auth-context';
 // import { TagFilterList } from '../tags/tag-filter-list';
 import NewBillButton from '../new-bill/new-bill-button';
 import { AuthHeader } from '../auth/auth-header';
-import { Menubar, MenubarMenu, MenubarTrigger } from '../ui/menubar';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
@@ -128,7 +127,9 @@ function ViewBar() {
     <Tabs value={currentView} onValueChange={setView}>
       <TabsList>
         {views.map(v => (
-          <TabsTrigger key={v.key} value={v.key}>
+          <TabsTrigger key={v.key} value={v.key}
+            className='data-[state=active]:bg-accent data-[state=active]:text-white'
+          >
             {v.label}
           </TabsTrigger>
         ))}

@@ -1,8 +1,12 @@
 import AdminPage from '@/components/admin/admin-server';
 import { KanbanHeader } from '@/components/kanban/kanban-header';
 
-export default async function Home(searchParams: Promise<{ view?: string }>) {
-  const { view } = await searchParams;
+export default async function Home({ searchParams,
+}: {
+  searchParams: { view?: string };
+}) {
+  const params = await searchParams;
+  const view = params.view ?? 'kanban';
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -14,7 +18,7 @@ export default async function Home(searchParams: Promise<{ view?: string }>) {
   );
 }
 
-function MainContent({ view }: { view: string | undefined }) {
+function MainContent({ view }: { view: string }) {
   switch (view) {
     case 'kanban':
       // return <KanbanBoard />;
