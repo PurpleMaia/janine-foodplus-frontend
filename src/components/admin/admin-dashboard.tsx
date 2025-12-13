@@ -21,17 +21,13 @@ import { useToast } from '@/hooks/use-toast';
 //   getAllInternBills,
 // } from '@/services/actions/admin';
 import type { User } from '@/types/users';
+import { PendingProposal, PendingSupervisor, PendingUser } from '@/types/admin';
 
 interface AdminDashboardClientProps {
   initialData: {
-    // pendingUsers: any[];
-    pendingProposals: any[];
-    // supervisorRequests: any[];
-    // counts: {
-    //   pendingUsers: number;
-    //   pendingProposals: number;
-    //   supervisorRequests: number;
-    // };
+    pendingUsers: PendingUser[];
+    pendingProposals: PendingProposal[];
+    supervisorRequests: PendingSupervisor[];
   };
   user: User;
 }
@@ -41,9 +37,9 @@ export function AdminDashboardClient({ initialData, user }: AdminDashboardClient
   const [isPending, startTransition] = useTransition();
   
   // Initial tab data (already loaded)
-  // const [pendingUsers, setPendingUsers] = useState(initialData.pendingUsers);
+  const [pendingUsers, setPendingUsers] = useState(initialData.pendingUsers);
   const [pendingProposals, setPendingProposals] = useState(initialData.pendingProposals);
-  // const [supervisorRequests, setSupervisorRequests] = useState(initialData.supervisorRequests);
+  const [supervisorRequests, setSupervisorRequests] = useState(initialData.supervisorRequests);
   
   // Lazy-loaded tab data
   const [interns, setInterns] = useState<any[] | null>(null);
@@ -173,32 +169,32 @@ export function AdminDashboardClient({ initialData, user }: AdminDashboardClient
         // onValueChange={handleTabChange}
       >
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="pending-requests">
+          <TabsTrigger value="pending-requests" className='data-[state=active]:bg-background data-[state=active]:text-foreground'>
             Pending Requests
             {/* {pendingUsers.length > 0 && (
               <Badge variant="secondary" className="ml-2">{pendingUsers.length}</Badge>
             )} */}
           </TabsTrigger>
-          <TabsTrigger value="all-interns">All Interns</TabsTrigger>
-          <TabsTrigger value="supervisor-relationships">Supervisors</TabsTrigger>
-          <TabsTrigger value="all-bills">All Bills</TabsTrigger>
+          <TabsTrigger value="all-interns" className='data-[state=active]:bg-background data-[state=active]:text-foreground'>All Interns</TabsTrigger>
+          <TabsTrigger value="supervisor-relationships" className='data-[state=active]:bg-background data-[state=active]:text-black'>Supervisors</TabsTrigger>
+          <TabsTrigger value="all-bills" className='data-[state=active]:bg-background data-[state=active]:text-black'>All Bills</TabsTrigger>
         </TabsList>
 
         {/* Pending Requests Tab - Already loaded */}
         <TabsContent value="pending-requests" className="space-y-8 mt-6">
-          {/* <PendingUsersSection
+          <PendingUsersSection
             users={pendingUsers}
-            onApprove={handleApproveUser}
-            onDeny={handleDenyUser}
+            // onApprove={handleApproveUser}
+            // onDeny={handleDenyUser}
             isPending={isPending}
           />
           
           <SupervisorRequestsSection
             requests={supervisorRequests}
-            onApprove={handleApproveSupervisor}
-            onReject={handleRejectSupervisor}
+            // onApprove={handleApproveSupervisor}
+            // onReject={handleRejectSupervisor}
             isPending={isPending}
-          /> */}
+          />
           
           <PendingProposalsSection
             proposals={pendingProposals}
@@ -256,13 +252,13 @@ function LoadingSkeleton() {
 
 function PendingUsersSection({ 
   users, 
-  onApprove, 
-  onDeny, 
+  // onApprove, 
+  // onDeny, 
   isPending 
 }: { 
-  users: any[]; 
-  onApprove: (id: string) => void; 
-  onDeny: (id: string) => void;
+  users: PendingUser[]; 
+  // onApprove: (id: string) => void; 
+  // onDeny: (id: string) => void;
   isPending: boolean;
 }) {
   return (
@@ -285,7 +281,7 @@ function PendingUsersSection({
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                     <div className="flex gap-2">
                       <Badge variant="outline">
-                        Joined: {new Date(user.created_at).toLocaleDateString()}
+                        Joined: {user.created_at?.toLocaleDateString()}
                       </Badge>
                       {user.requested_admin && (
                         <Badge variant="secondary">Requested Admin</Badge>
@@ -293,7 +289,7 @@ function PendingUsersSection({
                     </div>
                   </div>
                   <div className="space-x-2">
-                    <Button
+                    {/* <Button
                       onClick={() => onApprove(user.id)}
                       disabled={isPending}
                     >
@@ -305,7 +301,7 @@ function PendingUsersSection({
                       disabled={isPending}
                     >
                       Deny
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </Card>
@@ -318,14 +314,14 @@ function PendingUsersSection({
 }
 
 function SupervisorRequestsSection({
-  requests,
-  onApprove,
-  onReject,
+  requests = [],
+  // onApprove,
+  // onReject,
   isPending,
 }: {
-  requests: any[];
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
+  requests: PendingSupervisor[];
+  // onApprove: (id: string) => void;
+  // onReject: (id: string) => void;
   isPending: boolean;
 }) {
   return (
@@ -347,11 +343,11 @@ function SupervisorRequestsSection({
                     <h3 className="font-semibold">{request.username}</h3>
                     <p className="text-sm text-muted-foreground">{request.email}</p>
                     <Badge variant="outline">
-                      Joined: {new Date(request.created_at).toLocaleDateString()}
+                      Joined: {request.created_at?.toLocaleDateString()}
                     </Badge>
                   </div>
                   <div className="space-x-2">
-                    <Button onClick={() => onApprove(request.id)} disabled={isPending}>
+                    {/* <Button onClick={() => onApprove(request.id)} disabled={isPending}>
                       Approve
                     </Button>
                     <Button
@@ -360,7 +356,7 @@ function SupervisorRequestsSection({
                       disabled={isPending}
                     >
                       Reject
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </Card>
@@ -378,7 +374,7 @@ function PendingProposalsSection({
   // onReject,
   isPending,
 }: {
-  proposals: any[];
+  proposals: PendingProposal[];
   // onApprove: (id: string) => void;
   // onReject: (id: string) => void;
   isPending: boolean;
@@ -400,20 +396,20 @@ function PendingProposalsSection({
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <h3 className="font-semibold">
-                      {proposal.bill?.bill_number || proposal.bill_id}
+                      {proposal.bill_number || proposal.bill_id}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {proposal.bill?.bill_title || `Bill ID: ${proposal.bill_id}`}
+                      {proposal.bill_title || `Bill ID: ${proposal.bill_id}`}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Requested by {proposal.proposer?.username || proposal.proposer?.email || 'Unknown'}
+                      Requested by {proposal.proposer.username || proposal.proposer?.email || 'Unknown'}
                     </p>
                     <div className="flex gap-2">
                       <Badge variant="outline">
-                        {proposal.current_status} → {proposal.suggested_status}
+                        {proposal.current_status} → {proposal.proposed_status}
                       </Badge>
                       <Badge variant="outline">
-                        {new Date(proposal.created_at).toLocaleDateString()}
+                        {proposal.created_at?.toLocaleDateString()}
                       </Badge>
                     </div>
                   </div>
