@@ -1,16 +1,20 @@
 import AdminPage from '@/components/admin/admin-server';
-import { KanbanHeader } from '@/components/kanban/kanban-header';
+import { KanbanHeader } from '@/components/main/kanban-header';
+import { auth } from '@/lib/auth';
 
 export default async function Home({ searchParams,
 }: {
   searchParams: { view?: string };
 }) {
   const params = await searchParams;
-  const view = params.view ?? 'kanban';
+  const view = params.view || 'kanban';
+
+  const session = await auth()
+  const user = session?.user;  
 
   return (
     <div className="flex min-h-screen flex-col">
-      <KanbanHeader />
+      <KanbanHeader user={user} />
 
       <MainContent view={view} />
 
@@ -21,13 +25,13 @@ export default async function Home({ searchParams,
 function MainContent({ view }: { view: string }) {
   switch (view) {
     case 'kanban':
-      // return <KanbanBoard />;
-    // case 'spreadsheet':
-    //     return <KanbanSpreadsheet />;
+      return <div>Kanban Board</div>;
+    case 'spreadsheet':
+      return <div>Spreadsheet View</div>;
     case 'admin':
       return <AdminPage />;
-    // case 'supervisor':
-    //     return <SupervisorPage />;
+    case 'supervisor':
+      return <div>Supervisor View</div>
     default:
       return <div>Invalid view</div>;
   }

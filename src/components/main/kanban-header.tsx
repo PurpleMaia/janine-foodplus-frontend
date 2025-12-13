@@ -4,17 +4,19 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
-import { useBills } from '@/contexts/bills-context';
 import { useAuth } from '@/contexts/auth-context';
 // import { TagFilterList } from '../tags/tag-filter-list';
-import NewBillButton from '../new-bill/new-bill-button';
 import { AuthHeader } from '../auth/auth-header';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
+import { User } from '@/types/users';
 
-export function KanbanHeader() {
+interface KanbanHeaderProps {
+  user: User | undefined;
+}
+
+export function KanbanHeader({ user }: KanbanHeaderProps) {
   const { setSearchQuery, selectedTagIds, setSelectedTagIds } = useKanbanBoard(); // Access context
-  const { user } = useAuth();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.target.value
@@ -38,7 +40,7 @@ export function KanbanHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex items-center px-8 py-4 border-b shadow-lg">
+      <header className="sticky top-0 z-10 flex items-center px-8 py-4 border-b shadow-lg bg-white ">
         {/* Info */}
         <div className="flex-shrink-0">
           {/* FOOD+ LOGO HERE */}
@@ -48,7 +50,7 @@ export function KanbanHeader() {
 
         {/* View Select Bar */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex justify-center w-fit">
-          <ViewBar />
+          <ViewBar user={user} />
         </div>
         
         {/* Search and Auth */}
@@ -57,7 +59,7 @@ export function KanbanHeader() {
           <Input
             type="search"
             placeholder="Search..."
-            className="w-full rounded-md bg-muted pl-9 focus:bg-background "
+            className="w-full rounded-md bg-muted pl-9 focus:bg-background shadow-sm"
             onChange={handleSearchChange}
             aria-label="Search bills"
           />
@@ -102,7 +104,7 @@ function MyBillsButton(user: any, viewMode: string, toggleViewMode: () => void) 
   );
 }
 
-function ViewBar() {
+function ViewBar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentView = searchParams.get('view') ?? 'kanban';
@@ -116,21 +118,22 @@ function ViewBar() {
     });
   };
   
-  const views = [
-    { key: 'kanban', label: 'Board' },
-    { key: 'spreadsheet', label: 'Spreadsheet' },
-    { key: 'admin', label: 'Admin' },
-    { key: 'supervisor', label: 'Supervisor' },
-  ];
+  const publicViews = ['kanban', 'spreadsheet'];
+  const adminViews = ['admin', 'supervisor'];
+
+  const role = user?.role;
+  const views = role === 'admin' || role === 'supervisor'
+    ? [...publicViews, ...adminViews]
+    : publicViews;
 
   return (
-    <Tabs value={currentView} onValueChange={setView}>
+    <Tabs value={currentView} onValueChange={setView} className='border rounded-md shadow-sm'>
       <TabsList>
         {views.map(v => (
-          <TabsTrigger key={v.key} value={v.key}
+          <TabsTrigger key={v} value={v}
             className='data-[state=active]:bg-accent data-[state=active]:text-white'
           >
-            {v.label}
+            {v.charAt(0).toUpperCase() + v.slice(1)}
           </TabsTrigger>
         ))}
       </TabsList>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, deleteSession, getClearSessionCookie } from '@/lib/auth';
+import { deleteSession } from '@/lib/auth';
+import { getSessionCookie, getClearSessionCookie } from '@/lib/edge-session';
 
 export async function POST(request: NextRequest) {
   try {

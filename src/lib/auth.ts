@@ -20,8 +20,12 @@ export const auth = cache(async (): Promise<{ user: User } | null> => {
     const token = cookieStore.get('session')?.value ?? null;
     const user = await validateSession(token);
     return { user };
-  } catch (error) {    
-    console.error('[ADMIN] Auth failed in admin actions', error);
+  } catch (error) {
+    if (error === Errors.NO_SESSION_COOKIE || error === Errors.UNAUTHORIZED) {
+      console.error('❌ [AUTH] No valid session found');
+    } else {
+      console.error('❌ [AUTH] Error during authentication:', error);
+    }
     return null;
   }
 });
