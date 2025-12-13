@@ -175,6 +175,7 @@ export function AdminDashboard() {
       }
       const data = await response.json();
       if (data.success && data.requests) {
+        console.log('📥 [ADMIN] Received supervisor requests:', data.requests);
         setSupervisorRequests(data.requests);
       }
     } catch (error) {

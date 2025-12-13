@@ -1,27 +1,6 @@
-import { NextRequest } from "next/server";
 import { db } from "@/db/kysely/client"
-import { getSessionCookie, validateSession } from "@/lib/auth";
 import { User } from "@/types/users";
 import { Errors } from "@/lib/errors";
-
-export async function getAdminUserData(request: NextRequest): Promise<User | { error: string } | null> {
-  try {
-    //validates session in the databse 
-    const user = await validateSession(request);
-    console.log('Validated user from session token:', user);
-
-    if (!user) {
-        return { error: 'Not authorized' };
-    } else if (user.role !== 'admin') {
-        return { error: 'Unauthorized: Admin Access only' };
-    }
-
-    return user;
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-    return null;
-  }
-}
 
 export async function getPendingRequests(userID: string): Promise<User[]> {
     const pendingRequests = await db.selectFrom('user')
@@ -32,56 +11,62 @@ export async function getPendingRequests(userID: string): Promise<User[]> {
     return pendingRequests;
 } 
 
-export async function approveUser(userIDtoApprove: string): Promise<boolean> {
-  try {
-    // First, get the user to check if they requested admin access
-    const user = await db
-      .selectFrom('user')
-      .select(['id', 'requested_admin'])
-      .where('id', '=', userIDtoApprove)
-      .where('account_status', '=', 'pending')
-      .executeTakeFirst();
+/**
+ * Approves a user by their ID.
+ * @param userIDtoApprove The ID of the user to approve.
+ * @throws INTERNAL_ERROR - if the user is not found or the update fails.
+ */
+export async function approveUser(userIDtoApprove: string) : Promise<void> {  
+  // First, get the user to check if they requested admin access
+  const user = await db
+    .selectFrom('user')
+    .select(['id', 'requested_admin'])
+    .where('id', '=', userIDtoApprove)
+    .where('account_status', '=', 'pending')
+    .executeTakeFirst();
 
-    if (!user) {
-      return false; // User not found or not pending
-    }
-
-    // Update user based on whether they requested admin access
-    const updateData: any = {
-      account_status: 'active',
-      requested_admin: false // Reset the admin request flag
-    };
-
-    // If they requested admin access, grant admin role
-    if (user.requested_admin) {
-      updateData.role = 'admin';
-    }
-
-    const result = await db.updateTable('user')
-      .set(updateData)
-      .where('id', '=', userIDtoApprove)
-      .where('account_status', '=', 'pending')
-      .executeTakeFirst();
-
-    return result.numUpdatedRows > 0;
-  } catch (error) {
-    console.error('Error approving user:', error);
-    return false;
+  if (!user) {
+    console.error('[approveUser] User not found or not pending for ID:', userIDtoApprove);
+    throw Errors.INTERNAL_ERROR;
   }
+
+  // Update user based on whether they requested admin access
+  const updateData: any = {
+    account_status: 'active',
+    requested_admin: false // Reset the admin request flag
+  };
+
+  // If they requested admin access, grant admin role
+  if (user.requested_admin) {
+    updateData.role = 'admin';
+  }
+
+  const result = await db.updateTable('user')
+    .set(updateData)
+    .where('id', '=', userIDtoApprove)
+    .where('account_status', '=', 'pending')
+    .executeTakeFirst();
+  
+  if (!result) {
+    console.error('[approveUser] Failed to update user for ID:', userIDtoApprove);
+    throw Errors.INTERNAL_ERROR;
+  }  
 }
 
-export async function denyUser(userIDtoDeny: string): Promise<boolean> {
-  try {
-    const result = await db.updateTable('user')
-      .set({ account_status: 'denied', requested_admin: false })
-      .where('id', '=', userIDtoDeny)
-      .where('account_status', '=', 'pending')
-      .executeTakeFirst();
+/**
+ * @param userIDtoDeny The ID of the user to deny.
+ * @returns INTERNAL_ERROR - if the update fails.
+ */
+export async function denyUser(userIDtoDeny: string): Promise<void> {
+  const result = await db.updateTable('user')
+    .set({ account_status: 'denied', requested_admin: false })
+    .where('id', '=', userIDtoDeny)
+    .where('account_status', '=', 'pending')
+    .executeTakeFirst();
 
-    return result.numUpdatedRows > 0;
-  } catch (error) {
-    console.error('Error denying user:', error);
-    return false;
+  if (!result) {
+    console.error('[denyUser] Failed to update user for ID:', userIDtoDeny);
+    throw Errors.INTERNAL_ERROR;
   }
 }
 

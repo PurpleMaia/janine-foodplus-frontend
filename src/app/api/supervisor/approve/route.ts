@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
 import { uuidSchema } from '@/lib/validators';
+import { ApiError, Errors } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
     // Validate session
-    const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
+    const session_token = getSessionCookie(request);    
     const user = await validateSession(session_token);
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Admin access only' }, { status: 403 });
+    if (user.role !== 'admin') {
+      console.error('[APPROVE SUPERVISOR] Unauthorized access attempt by user:', user.email, '(ADMIN ONLY)');
+      throw Errors.UNAUTHORIZED;
     }
 
     // Parse and validate userId from request body
@@ -21,10 +19,13 @@ export async function POST(request: NextRequest) {
 
     const validation = uuidSchema.safeParse(userId);
     if (!validation.success) {
-      return NextResponse.json({ success: false, error: 'Invalid user ID' }, { status: 400 });
+      console.error('[APPROVE SUPERVISOR] Failed to validate user ID:', userId);
+      throw Errors.INVALID_REQUEST;
     }
 
     // Promote user to supervisor and reset request flag
+    console.log('📋 [APPROVE SUPERVISOR] Approving supervisor request for user ID:', userId);
+
     const result = await db
       .updateTable('user')
       .set({ 
@@ -35,14 +36,26 @@ export async function POST(request: NextRequest) {
       .where('requested_supervisor', '=', true)
       .executeTakeFirst();
 
-    if (result.numUpdatedRows === BigInt(0)) {
-      return NextResponse.json({ success: false, error: 'User not found or not requesting supervisor access' }, { status: 404 });
+    if (!result || result.numUpdatedRows === BigInt(0)) {
+      console.error('[APPROVE SUPERVISOR] No pending supervisor request found for user ID:', userId);
+      throw Errors.INTERNAL_ERROR;
     }
 
+    console.log('✅ [APPROVE SUPERVISOR] Supervisor request approved for user ID:', userId);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error approving supervisor request:', error);
-    return NextResponse.json({ success: false, error: 'Failed to approve supervisor request' }, { status: 500 });
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+
+    console.error('[APPROVE SUPERVISOR] Unknown error:', error);
+    return NextResponse.json(
+      { error: 'Unknown Error' },
+      { status: 500 }
+    );
   }
 }
 

@@ -2,51 +2,47 @@ import { NextResponse, NextRequest } from "next/server";
 import { getSessionCookie, validateSession } from "@/lib/auth";
 import { userIdSchema } from "@/lib/validators";
 import { denyUser } from "@/services/db/admins";
+import { ApiError, Errors } from "@/lib/errors";
 
 export async function POST(request: NextRequest) {
     try {
         // Validate custom session
-        const session_token = getSessionCookie(request);
-        console.log('Checking session token from cookie:', session_token);
-    
-        if (!session_token) {
-            return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-        }
-    
-        const user = await validateSession(session_token);
-        console.log('Validated user from session token:', user);
-
-        if (!user) {
-            return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 });
-        } else if (user.role !== 'admin') {
-            return NextResponse.json({ success: false, error: 'Unauthorized: Admin Access only' }, { status: 403 });
+        const session_token = getSessionCookie(request);            
+        const user = await validateSession(session_token);        
+        if (user.role !== 'admin') {
+            console.error('[DENY USER] Unauthorized access attempt by user:', user.email, '(ADMIN ONLY)');
+            throw Errors.UNAUTHORIZED;
         }
 
         // Parse and validate userIDToDeny from request body
-        const { userIDToDeny } = await request.json()
-
-        if (!userIDToDeny) {
-            return NextResponse.json({ success: false, error: 'User ID to deny is required' }, { status: 400 });            
-        }
+        const { userIDToDeny } = await request.json()        
 
         const validation = userIdSchema.safeParse({ userId: userIDToDeny });
         if (!validation.success) {
-            return NextResponse.json({ success: false, error: 'Invalid user ID' }, { status: 400 });
+            console.error('[DENY USER] Failed to validate user ID to deny:', userIDToDeny);
+            throw Errors.INVALID_REQUEST;
         }
-
-
 
         // Deny the user
-        console.log('Denying user with ID:', userIDToDeny);
-        const result = await denyUser(userIDToDeny);
-        
-        if (result) {
-            return NextResponse.json({ success: true }, { status: 200 });
-        } else {
-            return NextResponse.json({ success: false, error: 'User denial failed or user not found' }, { status: 402 });
-        }
+        console.log('📋 [DENY USER] Denying user with ID:', userIDToDeny);
+
+        await denyUser(userIDToDeny);
+
+        console.log('✅ [DENY USER] User denied successfully:', userIDToDeny);
+        return NextResponse.json({ success: true }, { status: 200 });            
     } catch (error) {
-        console.error('Error denying user:', error);
-        return NextResponse.json({ success: false, error: 'Failed to deny user' }, { status: 500 });
+        if (error instanceof ApiError) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: error.statusCode }
+            );
+        }
+            
+        // Unknown error
+        console.error('[ADMIN/DENY-USER] Unknown error:', error);
+        return NextResponse.json(
+            { error: 'Unknown Error' }, 
+            { status: 500 }
+        );
     }
 }
