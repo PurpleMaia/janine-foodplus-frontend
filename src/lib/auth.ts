@@ -22,9 +22,9 @@ export const auth = cache(async (): Promise<{ user: User } | null> => {
     return { user };
   } catch (error) {
     if (error === Errors.NO_SESSION_COOKIE || error === Errors.UNAUTHORIZED) {
-      console.error('❌ [AUTH] No valid session found');
+      console.log('❌ [AUTH] No valid session found');
     } else {
-      console.error('❌ [AUTH] Error during authentication:', error);
+      console.log('❌ [AUTH] Error during authentication:', error);
     }
     return null;
   }

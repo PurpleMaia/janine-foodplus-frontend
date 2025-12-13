@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { LogIn } from 'lucide-react';
 
 export function LoginDialog() {
   const [identifier, setIdentifier] = useState('');
@@ -67,7 +68,10 @@ export function LoginDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="h-10">Intern Login</Button>
+        <Button variant="outline" className="h-10 shadow-sm">
+          <LogIn className="mr-1" />
+          Login
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

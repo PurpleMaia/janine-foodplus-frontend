@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loginSchema } from '@/lib/validators';
-import { authenticateUser, createSession, setSessionCookie } from '@/lib/auth';
+import { authenticateUser, createSession } from '@/lib/auth';
+import { setSessionCookie } from '@/lib/edge-session';
 import type { User } from '@/types/users';
 import { ApiError } from '@/lib/errors';
 

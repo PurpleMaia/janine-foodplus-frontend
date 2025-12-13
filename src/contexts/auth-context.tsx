@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
+        window.location.reload();
         return {
           success: true
         };

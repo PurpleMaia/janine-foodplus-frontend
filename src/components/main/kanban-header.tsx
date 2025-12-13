@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { KanbanSquareIcon, Search, Table, UserCheck2Icon, Users2Icon } from 'lucide-react';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useAuth } from '@/contexts/auth-context';
 // import { TagFilterList } from '../tags/tag-filter-list';
@@ -133,10 +133,24 @@ function ViewBar({ user }: { user: User | undefined }) {
           <TabsTrigger key={v} value={v}
             className='data-[state=active]:bg-accent data-[state=active]:text-white'
           >
-            {v.charAt(0).toUpperCase() + v.slice(1)}
+            {getIconForView(v)} {v.charAt(0).toUpperCase() + v.slice(1)}
           </TabsTrigger>
         ))}
       </TabsList>
     </Tabs>
   );
+}
+function getIconForView(view: string) {
+  switch (view) {
+    case 'kanban':
+      return <KanbanSquareIcon className="h-5 w-5 mr-2" />;
+    case 'spreadsheet':
+      return <Table className="h-5 w-5 mr-2" />;
+    case 'admin':
+      return <UserCheck2Icon className="h-5 w-5 mr-2" />;
+      case 'supervisor':
+      return <Users2Icon className="h-5 w-5 mr-2" />;
+    default:
+      return null;
+  }
 }
