@@ -270,10 +270,10 @@ export function AdminDashboard() {
     fetchPendingRequests();
     fetchPendingProposals();
     fetchAllInterns();
-    // fetchSupervisorRequests();
+    fetchSupervisorRequests();
     // // Also fetch the new tab data on initial load
-    // fetchSupervisorRelationships();
-    // fetchAllInternBills();
+    fetchSupervisorRelationships();
+    fetchAllInternBills();
   }, []);
 
   // Handle approving proposal

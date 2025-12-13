@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
         .selectFrom('pending_proposals')
         .innerJoin('supervisor_users', 'pending_proposals.proposed_by_user_id', 'supervisor_users.user_id')
         .leftJoin('user as proposer', (join: any) =>
-          join.on(sql`pending_proposals.proposed_by_user_id::uuid = proposer.id`)
+          join.onRef('pending_proposals.proposed_by_user_id', '=', 'proposer.id')
         )
         .leftJoin('bills', (join: any) =>
-          join.on(sql`pending_proposals.bill_id::uuid = bills.id`)
+          join.onRef('pending_proposals.bill_id', '=', 'bills.id')
         )
         .selectAll('pending_proposals')
         .select([
@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
       proposals = await db
         .selectFrom('pending_proposals')
         .leftJoin('user as proposer', (join: any) =>
-          join.on(sql`pending_proposals.proposed_by_user_id::uuid = proposer.id`)
+          join.onRef('pending_proposals.proposed_by_user_id', '=', 'proposer.id')
         )
         .leftJoin('bills', (join: any) =>
-          join.on(sql`pending_proposals.bill_id::uuid = bills.id`)
+          join.onRef('pending_proposals.bill_id', '=', 'bills.id')
         )
         .selectAll('pending_proposals')
         .select([
@@ -64,10 +64,10 @@ export async function GET(request: NextRequest) {
       proposals = await db
         .selectFrom('pending_proposals')
         .leftJoin('user as proposer', (join: any) =>
-          join.on(sql`pending_proposals.proposed_by_user_id::uuid = proposer.id`)
+          join.onRef('pending_proposals.proposed_by_user_id', '=', 'proposer.id')
         )
         .leftJoin('bills', (join: any) =>
-          join.on(sql`pending_proposals.bill_id::uuid = bills.id`)
+          join.onRef('pending_proposals.bill_id', '=', 'bills.id')
         )
         .selectAll('pending_proposals')
         .select([
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
           'bills.bill_number',
           'bills.bill_title',
         ])
-        .where('pending_proposals.user_id', '=', user.id)
+        .where('pending_proposals.proposed_by_user_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
       console.log(`📋 [LOAD PROPOSALS] Found ${proposals.length} pending proposals from database`);

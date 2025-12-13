@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
 import { ApiError, Errors } from '@/lib/errors';
 
 interface InternWithBills {
@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
     const interns = await db
       .selectFrom('user')
       .select(['id', 'email', 'username', 'created_at', 'account_status'])
-      .innerJoin('supervisor_users', 'user.id', 'supervisor_users.user_id') // Ensure they have a supervisor
       .where('role', '=', 'user')
       .execute();
 

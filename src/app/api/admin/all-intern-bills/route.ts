@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
 import { mapBillsToBill } from '@/lib/utils';
-import { Bills } from '../../../../db/types';
+import { Bills } from '@/db/types';
+import { ApiError } from '@/lib/errors';
 
 interface InternBill {
   bill: any; // Bill object
@@ -38,10 +39,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Admin access only' }, { status: 403 });
     }
 
-    console.log('📋 [ADMIN] Loading all bills adopted by interns...');
+    console.log('📋 [ALL INTERN BILLS] Loading all bills adopted by interns...');
 
     // Get all bills adopted by interns (users with role 'user')
-    console.log('📋 [ADMIN] Fetching bills adopted by interns...');
+    console.log('📋 [ALL INTERN BILLS] Fetching bills adopted by interns...');
     let rawData: Array<{
       bill_number: string | null;
       bill_title: string | null;
@@ -94,14 +95,14 @@ export async function GET(request: NextRequest) {
         .orderBy('b.updated_at', 'desc')
         .orderBy('su.date', 'desc')
         .execute();
-      console.log(`📋 [ADMIN] Found ${rawData.length} bill records`);
+      console.log(`📋 [ALL INTERN BILLS] Found ${rawData.length} bill records`);
     } catch (billsError) {
-      console.error('❌ [ADMIN] Error fetching bills:', billsError);
+      console.error('❌ [ALL INTERN BILLS] Error fetching bills:', billsError);
       throw billsError;
     }
 
     // Get supervisor relationships for interns
-    console.log('📋 [ADMIN] Fetching supervisor relationships...');
+    console.log('📋 [ALL INTERN BILLS] Fetching supervisor relationships...');
     let supervisorRelations: Array<{
       intern_id: string;
       supervisor_id: string;
@@ -119,9 +120,9 @@ export async function GET(request: NextRequest) {
           'supervisor.username as supervisor_username'
         ])
         .execute();
-      console.log(`📋 [ADMIN] Found ${supervisorRelations.length} supervisor relationships`);
+      console.log(`📋 [ALL INTERN BILLS] Found ${supervisorRelations.length} supervisor relationships`);
     } catch (supervisorError) {
-      console.error('❌ [ADMIN] Error fetching supervisor relationships:', supervisorError);
+      console.error('❌ [ALL INTERN BILLS] Error fetching supervisor relationships:', supervisorError);
       // Continue without supervisor relationships if the join fails
       supervisorRelations = [];
     }
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get intern details
-    console.log('📋 [ADMIN] Fetching intern details...');
+    console.log('📋 [ALL INTERN BILLS] Fetching intern details...');
     let internDetails: Array<{
       id: string;
       email: string;
@@ -148,9 +149,9 @@ export async function GET(request: NextRequest) {
         .select(['id', 'email', 'username'])
         .where('role', '=', 'user')
         .execute();
-      console.log(`📋 [ADMIN] Found ${internDetails.length} intern details`);
+      console.log(`📋 [ALL INTERN BILLS] Found ${internDetails.length} intern details`);
     } catch (internError) {
-      console.error('❌ [ADMIN] Error fetching intern details:', internError);
+      console.error('❌ [ALL INTERN BILLS] Error fetching intern details:', internError);
       // Continue with empty intern details if the query fails
       internDetails = [];
     }
@@ -164,13 +165,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Get pending proposals for these bills
-    console.log('📋 [ADMIN] Fetching pending proposals...');
+    console.log('📋 [ALL INTERN BILLS] Fetching pending proposals...');
     let pendingProposals: Array<{
       bill_id: string;
       proposal_id: string;
       intern_id: string;
       current_status: string;
-      suggested_status: string;
+      proposed_status: string;
       proposed_at: Date | string;
       intern_email: string;
     }> = [];
@@ -183,15 +184,15 @@ export async function GET(request: NextRequest) {
           'pending_proposals.id as proposal_id',
           'pending_proposals.proposed_by_user_id as intern_id',
           'pending_proposals.current_status',
-          'pending_proposals.suggested_status',
+          'pending_proposals.proposed_status',
           'pending_proposals.proposed_at',
           'intern.email as intern_email'
         ])
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
-      console.log(`📋 [ADMIN] Found ${pendingProposals.length} pending proposals`);
+      console.log(`📋 [ALL INTERN BILLS] Found ${pendingProposals.length} pending proposals`);
     } catch (proposalError) {
-      console.error('❌ [ADMIN] Error fetching pending proposals:', proposalError);
+      console.error('❌ [ALL INTERN BILLS] Error fetching pending proposals:', proposalError);
       // Continue without pending proposals if the query fails
       pendingProposals = [];
     }
@@ -252,17 +253,21 @@ export async function GET(request: NextRequest) {
 
     const internBills = Array.from(billsMap.values());
 
-    console.log(`✅ [ADMIN] Returning ${internBills.length} bills adopted by interns`);
+    console.log(`✅ [ALL INTERN BILLS] Returning ${internBills.length} bills adopted by interns`);
     return NextResponse.json({ success: true, bills: internBills });
   } catch (error) {
-    console.error('❌ [ADMIN] Error loading intern bills:', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error('❌ [ADMIN] Error details:', { errorMessage, errorStack });
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to load intern bills',
-      details: errorMessage 
-    }, { status: 500 });
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[ADMIN/ALL-INTERN-BILLS]', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
   }
 }

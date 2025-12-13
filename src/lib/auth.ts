@@ -72,7 +72,7 @@ export async function validateSession(token: string | null): Promise<User> {
   }
 
   // Debug log to see what role is being returned
-  console.log('[validateSession] User role from DB:', result.role, 'User email:', result.email);
+  console.log('🔍 [VALIDATE SESSION] User role from DB:', result.role, 'User email:', result.email);
 
   return {
     id: result.id,

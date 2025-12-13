@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
+import { ApiError, Errors } from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
     // Validate session
-    const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
+    const session_token = getSessionCookie(request);    
     const user = await validateSession(session_token);
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Admin access only' }, { status: 403 });
+      console.error('[PENDING SUPERVISOR REQUESTS] Unauthorized access attempt by user:', user?.email || 'unknown', '(ADMIN ONLY)');
+      return Errors.UNAUTHORIZED;
     }
+
+    console.log('📋 [PENDING SUPERVISOR REQUESTS] Loading all pending supervisor requests...');
 
     // Get all users who requested supervisor access
     const pendingRequests = await db
@@ -21,12 +21,24 @@ export async function GET(request: NextRequest) {
       .selectAll()
       .where('requested_supervisor', '=', true)
       .where('role', '!=', 'supervisor') // Exclude users already promoted
-      .execute();
+      .execute();    
 
+    console.log(`✅ [PENDING SUPERVISOR REQUESTS] Found ${pendingRequests.length} pending requests`);
     return NextResponse.json({ success: true, requests: pendingRequests });
   } catch (error) {
-    console.error('Error fetching pending supervisor requests:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch pending requests' }, { status: 500 });
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[SUPERVISOR/PENDING-REQUESTS]', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
   }
 }
 

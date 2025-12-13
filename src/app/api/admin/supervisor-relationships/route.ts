@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
 import { db } from '../../../../db/kysely/client';
+import { ApiError, Errors } from '@/lib/errors';
 
 interface SupervisorRelationship {
   supervisor_id: string;
@@ -18,19 +19,16 @@ export async function GET(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
     const user = await validateSession(session_token);
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Admin access only' }, { status: 403 });
+      console.error('[ADMIN] Unauthorized access attempt by user:', user?.email || 'unknown', '(ADMIN ONLY)');
+      return Errors.UNAUTHORIZED;
     }
 
-    console.log('📋 [ADMIN] Loading supervisor-intern relationships...');
+    console.log('📋 [SUPERVISOR RELATIONS] Loading supervisor-intern relationships...');
 
     // Get all supervisors
-    console.log('📋 [ADMIN] Fetching supervisors...');
+    console.log('📋 [SUPERVISOR RELATIONS] Fetching supervisors...');
     let supervisors: Array<{
       id: string;
       email: string;
@@ -43,14 +41,14 @@ export async function GET(request: NextRequest) {
         .where('role', '=', 'supervisor')
         .where('account_status', '=', 'active')
         .execute();
-      console.log(`📋 [ADMIN] Found ${supervisors.length} supervisors`);
+      console.log(`📋 [SUPERVISOR RELATIONS] Found ${supervisors.length} supervisors`);
     } catch (supervisorError) {
-      console.error('❌ [ADMIN] Error fetching supervisors:', supervisorError);
+      console.error('❌ [SUPERVISOR RELATIONS] Error fetching supervisors:', supervisorError);
       throw supervisorError;
     }
 
     // Get all supervisor-intern relationships
-    console.log('📋 [ADMIN] Fetching supervisor-intern relationships...');
+    console.log('📋 [SUPERVISOR RELATIONS] Fetching supervisor-intern relationships...');
     let relationships: Array<{
       supervisor_id: string;
       intern_id: string;
@@ -70,9 +68,9 @@ export async function GET(request: NextRequest) {
           'intern.username as intern_username'
         ])
         .execute();
-      console.log(`📋 [ADMIN] Found ${relationships.length} relationships`);
+      console.log(`📋 [SUPERVISOR RELATIONS] Found ${relationships.length} relationships`);
     } catch (relationshipError) {
-      console.error('❌ [ADMIN] Error fetching relationships:', relationshipError);
+      console.error('❌ [SUPERVISOR RELATIONS] Error fetching relationships:', relationshipError);
       // Continue with empty relationships if the join fails
       relationships = [];
     }
@@ -105,18 +103,21 @@ export async function GET(request: NextRequest) {
       interns: internsBySupervisor.get(supervisor.id) || []
     }));
 
-    console.log(`✅ [ADMIN] Returning ${supervisorRelationships.length} supervisor relationships`);
+    console.log(`✅ [SUPERVISOR RELATIONS] Returning ${supervisorRelationships.length} supervisor relationships`);
     return NextResponse.json({ success: true, relationships: supervisorRelationships });
   } catch (error) {
-    console.error('❌ [ADMIN] Error loading supervisor relationships:', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error('❌ [ADMIN] Error details:', { errorMessage, errorStack });
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to load supervisor relationships',
-      details: errorMessage 
-    }, { status: 500 });
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[ADMIN/SUPERVISOR-RELATIONSHIP]', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
   }
 }
-
