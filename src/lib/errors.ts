@@ -23,6 +23,7 @@ export const Errors = {
     
     // Session or authorization errors
     UNAUTHORIZED: new ApiError('UNAUTHORIZED', 401, 'Unauthorized access. Please log in.'),
+    INVALID_REQUEST: new ApiError('INVALID_REQUEST', 400, 'Invalid request parameters.'),
     NO_SESSION_COOKIE: new ApiError('NO_SESSION', 401, 'No session cookie found. Please log in.'),
     
     INTERNAL_ERROR: new ApiError('INTERNAL_ERROR', 500, 'Internal server error. Please try again later.'),

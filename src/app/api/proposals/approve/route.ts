@@ -3,23 +3,18 @@ import { db } from '@/db/kysely/client';
 import { uuidSchema } from '@/lib/validators';
 import { getSessionCookie, validateSession } from '@/lib/auth';
 import { updateBillStatusServerAction } from '@/services/db/legislation';
+import { ApiError, Errors } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
     const user = await validateSession(session_token);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-    }
 
     // Check if user is admin or supervisor
     if (user.role !== 'admin' && user.role !== 'supervisor') {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+      console.error('Unauthorized access attempt by user:', user.email, '(ADMIN/SUPERVISOR ONLY)');
+      throw Errors.UNAUTHORIZED;
     }
 
     // Parse and validate proposalId from request body
@@ -27,8 +22,11 @@ export async function POST(request: NextRequest) {
 
     const validation = uuidSchema.safeParse(proposalId);
     if (!validation.success) {
-      return NextResponse.json({ success: false, error: 'Invalid proposal ID' }, { status: 400 });
+      console.error('[PROPOSAL APPROVAL] Failed to validate proposal ID:', proposalId);
+      throw Errors.INVALID_REQUEST;
     }
+
+    console.log('📋 [PROPOSAL APPROVAL] Approving proposal:', proposalId);
 
     // Get the proposal
     const proposal = await db
@@ -39,14 +37,15 @@ export async function POST(request: NextRequest) {
       .executeTakeFirst();
 
     if (!proposal) {
-      return NextResponse.json({ success: false, error: 'Proposal not found' }, { status: 404 });
+      console.error('[PROPOSAL APPROVAL] Proposal not found or already processed for ID in DB:', proposalId);
+      throw Errors.INTERNAL_ERROR;
     }
 
     // Update the bill status
-    await updateBillStatusServerAction(proposal.bill_id, proposal.suggested_status as any);
+    await updateBillStatusServerAction(proposal.bill_id, proposal.proposed_status);
 
     // Mark proposal as approved
-    await db
+    const updateResult = await db
       .updateTable('pending_proposals')
       .set({
         approval_status: 'approved',
@@ -54,9 +53,26 @@ export async function POST(request: NextRequest) {
       .where('id', '=', proposalId)
       .execute();
 
+    if (!updateResult) {
+      console.error('[PROPOSAL APPROVAL] Failed to update proposal status for ID in DB:', proposalId);      
+      throw Errors.INTERNAL_ERROR;
+    }
+
+    console.log('✅ [PROPOSAL APPROVAL] Successfully approved proposal:', proposalId);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error approving proposal:', error);
-    return NextResponse.json({ success: false, error: 'Failed to approve proposal' }, { status: 500 });
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[REGISTER]', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
   }
 }
