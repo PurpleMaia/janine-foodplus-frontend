@@ -10,6 +10,7 @@ import KanbanBoardSkeleton from "./skeletons/skeleton-board";
 interface KanbanBoardLoaderProps {
     readOnly: boolean;
 }
+
 export default async function KanbanServer({ readOnly }: KanbanBoardLoaderProps) {
     const result = await getKanbanBoardData();
 
@@ -18,8 +19,6 @@ export default async function KanbanServer({ readOnly }: KanbanBoardLoaderProps)
     }
 
     return (
-        <Suspense fallback={<KanbanBoardSkeleton />}>
-            <KanbanBoard initialData={result.data} readOnly={readOnly} />
-        </Suspense>
+        <KanbanBoard initialData={result.data} readOnly={readOnly} />
     );
 }
