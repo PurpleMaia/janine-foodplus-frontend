@@ -23,7 +23,7 @@ export default async function Home({ searchParams,
   );
 }
 
-function MainContent({ view }: { view: string }) {
+function MainContent({ view }: { view: string | undefined }) {
   switch (view) {
     case 'kanban':
       return <KanbanBoardPage />;

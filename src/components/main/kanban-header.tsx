@@ -7,6 +7,7 @@ import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useAuth } from '@/contexts/auth-context';
 // import { TagFilterList } from '../tags/tag-filter-list';
 import { AuthHeader } from '../auth/auth-header';
+import { Menubar, MenubarMenu, MenubarTrigger } from '../ui/menubar';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { User } from '@/types/users';
