@@ -2,12 +2,13 @@ import { db } from "@/db/kysely/client"
 import { User } from "@/types/users";
 import { Errors } from "@/lib/errors";
 import { auth } from "@/lib/auth";
+import { PendingProposal } from "@/types/admin";
 
 /**
  * Get all bill proposals for the current user.
  * @returns A list of all bill proposals formatted for admin/supervisor view.
  */
-export async function getAllBillProposals() {
+export async function getAllBillProposals(): Promise<PendingProposal[]> {
     const session = await auth();  
     const user = session?.user;
 
@@ -101,11 +102,8 @@ export async function getAllBillProposals() {
       proposed_status: p.proposed_status,
       target_idx: 0, // Not needed for display
       source: 'human' as const,
-      approval_status: 'pending' as const,
-      proposing_user_id: p.proposed_by_user_id,
-      proposing_username: p.proposer_username || undefined,
-      proposing_email: p.proposer_email || undefined,
-      proposed_by: {
+      approval_status: 'pending' as const,      
+      proposer: {
         user_id: p.proposed_by_user_id,
         role: p.proposer_role ?? 'intern',
         at: new Date(p.proposed_at).toISOString(),

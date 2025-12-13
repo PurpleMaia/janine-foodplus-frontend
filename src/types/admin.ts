@@ -7,8 +7,8 @@ export interface PendingSupervisor extends Selectable<User>{}
 export interface PendingProposal {
     id: string;
     bill_id: string;
-    bill_number: string | null;
-    bill_title: string | null;
+    bill_number?: string;
+    bill_title?: string;
     current_status: string | null;
     proposed_status: string | null;
     target_idx: number | null;

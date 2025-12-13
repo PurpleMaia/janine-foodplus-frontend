@@ -27,7 +27,7 @@ interface AdminDashboardClientProps {
   initialData: {
     pendingUsers: PendingUser[];
     pendingProposals: PendingProposal[];
-    supervisorRequests: PendingSupervisor[];
+    pendingSupervisorRequests: PendingSupervisor[];
   };
   user: User;
 }
@@ -39,7 +39,7 @@ export function AdminDashboardClient({ initialData, user }: AdminDashboardClient
   // Initial tab data (already loaded)
   const [pendingUsers, setPendingUsers] = useState(initialData.pendingUsers);
   const [pendingProposals, setPendingProposals] = useState(initialData.pendingProposals);
-  const [supervisorRequests, setSupervisorRequests] = useState(initialData.supervisorRequests);
+  const [supervisorRequests, setSupervisorRequests] = useState(initialData.pendingSupervisorRequests);
   
   // Lazy-loaded tab data
   const [interns, setInterns] = useState<any[] | null>(null);
