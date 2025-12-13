@@ -1,5 +1,5 @@
 import AdminPage from '@/components/admin/admin-server';
-import KanbanBoardPage from '@/components/kanban/kanban-server';
+import KanbanBoardPage from '@/components/kanban/main';
 import { KanbanHeader } from '@/components/main/kanban-header';
 import { auth } from '@/lib/auth';
 

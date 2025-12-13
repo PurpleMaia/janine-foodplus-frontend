@@ -1,191 +1,36 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Bill, BillStatus, TempBill } from '@/types/legislation';
-import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
-// import { KanbanColumn } from './kanban-column'; // we inline KanbanColumn below
+import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
-import { updateBillStatusServerAction, searchBills } from '@/services/db/legislation';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BillDetailsDialog } from './bill-details-dialog';
-import { Button } from '@/components/ui/button';
-import { useBills } from '@/contexts/bills-context';
-import KanbanBoardSkeleton from './skeletons/skeleton-board';
+
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useAuth } from '@/contexts/auth-context';
-import { KanbanCard } from './kanban-card';
-import { TempBillCard } from './temp-card';
-
-
-// // ------------------------------------------------------------
-// // Inlined KanbanColumn (with enableDnd + pending proposal UI)
-// // ------------------------------------------------------------
-
-export interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
-  columnId: BillStatus;
-  title: string;
-  bills: Bill[];
-  isDraggingOver: boolean;
-  draggingBillId: string | null;
-  onCardClick: (bill: Bill) => void;
-  onUnadopt?: (billId: string) => void;
-  showUnadoptButton?: boolean;
-  readOnly: boolean;
-  highlightedBillId?: string | null;
-
-  // Pending proposals
-  pendingTempBills?: TempBill[];
-  canModerate?: boolean;
-  onApproveTemp?: (billId: string) => void;
-  onRejectTemp?: (billId: string) => void;
-
-  // Only render <Draggable> when inside DragDropContext/Droppable
-  enableDnd?: boolean;
-}
-
-export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-  function KanbanColumn(
-    {
-      columnId,
-      title,
-      bills,
-      isDraggingOver,
-      draggingBillId,
-      onCardClick,
-      onUnadopt,
-      showUnadoptButton = false,
-      readOnly,
-      highlightedBillId = null,
-
-      // pending proposals
-      pendingTempBills = [],
-      canModerate = false,
-      onApproveTemp,
-      onRejectTemp,
-
-      // Draggable gate
-      enableDnd = false,
-
-      children, // Droppable placeholder
-      className,
-      ...divProps
-    },
-    ref
-  ) {
-    const useDnD = enableDnd && !readOnly;
-    const pendingCount = pendingTempBills?.length ?? 0;
-
-    return (
-      <div
-        ref={ref}
-        {...divProps} // enableDnd was destructured so it won't leak to DOM
-        className={`flex h-[calc(100vh-10rem)] w-80 shrink-0 flex-col rounded-lg border bg-card shadow-sm ${className ?? ''}`}
-        data-column-id={columnId}
-      >
-        {/* Sticky header */}
-        <div className="sticky top-0 z-10 rounded-t-lg bg-secondary/95 backdrop-blur p-3 shadow-sm border-b">
-          <h3 className="flex items-center justify-between gap-2 text-sm font-semibold" title={title}>
-            <span className="truncate max-w-[12rem]">{title}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">({bills.length})</span>
-            {pendingCount > 0 && (
-              <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border">
-                Pending {pendingCount}
-              </span>
-            )}
-          </h3>
-        </div>
-
-        {/* Cards list with vertical scroll */}
-        <ScrollArea className="flex-1 p-2">
-          <div className={`flex flex-col gap-2 ${isDraggingOver ? 'bg-muted/30 rounded p-1' : ''}`}>
-            {bills.map((bill, index) =>
-              useDnD ? (
-                <Draggable key={bill.id} draggableId={bill.id} index={index} isDragDisabled={readOnly}>
-                  {(provided, snapshot) => (
-                    <KanbanCard
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      bill={bill}
-                      isDragging={snapshot.isDragging || draggingBillId === bill.id}
-                      onCardClick={onCardClick}
-                      onUnadopt={onUnadopt}
-                      showUnadoptButton={showUnadoptButton}
-                      isHighlighted={highlightedBillId === bill.id}
-                      style={{ ...provided.draggableProps.style }}
-                    />
-                  )}
-                </Draggable>
-              ) : (
-                <KanbanCard
-                  key={bill.id}
-                  bill={bill}
-                  isDragging={false}
-                  onCardClick={onCardClick}
-                  onUnadopt={onUnadopt}
-                  showUnadoptButton={showUnadoptButton}
-                  isHighlighted={highlightedBillId === bill.id}
-                />
-              )
-            )}
-
-            {/* Droppable placeholder goes here */}
-            {children}
-
-            {/* Pending proposals (using TempBillCard component) */}
-            {pendingCount > 0 && (
-              <div className="mt-2 space-y-2">
-                {pendingTempBills.map((tb) => (
-                  <TempBillCard
-                    key={`pending-${tb.id}`}
-                    tempBill={tb}
-                    canModerate={canModerate}
-                    onApproveTemp={onApproveTemp}
-                    onRejectTemp={onRejectTemp}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* empty state */}
-          {!bills.length && pendingCount === 0 && !children && (
-            <p className="p-4 text-center text-sm text-muted-foreground">No bills in this stage.</p>
-          )}
-        </ScrollArea>
-      </div>
-    );
-  }
-);
-
-// ---------------------------------------------
-// Kanban Board
-// ---------------------------------------------
+import { updateBillStatusServerAction, searchBills } from '@/services/db/legislation';
+import type { Bill, BillStatus, TempBill } from '@/types/legislation';
+import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
+import { KanbanColumn } from './kanban-column';
 
 interface KanbanBoardProps {
+  initialData: {
+    bills: Bill[];
+  }
   readOnly: boolean;
   onUnadopt?: (billId: string) => void;
   showUnadoptButton?: boolean;
 }
 
-export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
+export function KanbanBoard({ readOnly, initialData }: KanbanBoardProps) {
   const { searchQuery, selectedTagIds } = useKanbanBoard();
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Pull everything from a single bills context call
-  const {
-    loadingBills: loading,
-    setLoadingBills: setLoading,
-    bills,
-    setBills,
-    tempBills,
-    proposeStatusChange,
-    acceptTempChange,
-    rejectTempChange,
-  } = useBills();
+  const [bills, setBills] = useState<Bill[]>(initialData.bills);
 
   const [, setError] = useState<string | null>(null);
   const [draggingBillId, setDraggingBillId] = useState<string | null>(null);
@@ -238,33 +83,33 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   }, []);
 
   // Debounced search effect
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredBills(null);
-      setHighlightedBillId(null);
-      return;
-    }
+  // useEffect(() => {
+  //   if (!searchQuery.trim()) {
+  //     setFilteredBills(null);
+  //     setHighlightedBillId(null);
+  //     return;
+  //   }
 
-    setError(null);
-    const handler = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const results = await searchBills(bills, searchQuery);
-        setFilteredBills(results);
-      } catch (err) {
-        console.error('Error searching bills:', err);
-        setError('Failed to search bills.');
-        setFilteredBills(null);
-        setHighlightedBillId(null);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
+  //   setError(null);
+  //   const handler = setTimeout(async () => {
+  //     setLoading(true);
+  //     try {
+  //       const results = await searchBills(bills, searchQuery);
+  //       setFilteredBills(results);
+  //     } catch (err) {
+  //       console.error('Error searching bills:', err);
+  //       setError('Failed to search bills.');
+  //       setFilteredBills(null);
+  //       setHighlightedBillId(null);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   }, 300);
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [searchQuery, setLoading, bills]);
+  //   return () => {
+  //     clearTimeout(handler);
+  //   };
+  // }, [searchQuery, setLoading, bills]);
 
   // Navigate to first search result
   useEffect(() => {
@@ -315,19 +160,19 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         console.log('🔍 [TAG FILTER] Sample bill tags:', billsWithTags[0].tags?.map(t => ({ id: t.id, name: t.name })));
       }
       
-      items = items.filter((bill) => {
-        // Check if bill has tags
-        const billTagIds = bill.tags?.map(tag => tag.id) || [];
-        const hasMatchingTag = billTagIds.some(tagId => selectedTagIds.includes(tagId));
+      // items = items.filter((bill) => {
+      //   // Check if bill has tags
+      //   const billTagIds = bill.tags?.map(tag => tag.id) || [];
+      //   const hasMatchingTag = billTagIds.some(tagId => selectedTagIds.includes(tagId));
         
-        if (hasMatchingTag) {
-          console.log(`✅ [TAG FILTER] Bill ${bill.bill_number} matches - has tags:`, billTagIds);
-        } else if (billTagIds.length > 0) {
-          console.log(`❌ [TAG FILTER] Bill ${bill.bill_number} doesn't match - has tags:`, billTagIds, 'selected:', selectedTagIds);
-        }
+      //   if (hasMatchingTag) {
+      //     console.log(`✅ [TAG FILTER] Bill ${bill.bill_number} matches - has tags:`, billTagIds);
+      //   } else if (billTagIds.length > 0) {
+      //     console.log(`❌ [TAG FILTER] Bill ${bill.bill_number} doesn't match - has tags:`, billTagIds, 'selected:', selectedTagIds);
+      //   }
         
-        return hasMatchingTag;
-      });
+      //   return hasMatchingTag;
+      // });
       
       console.log('🔍 [TAG FILTER] Bills after filtering:', items.length);
     }
@@ -374,36 +219,36 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   // For quick lookups when filtering temp bills to match search results
   const visibleBillIds = useMemo(() => new Set(billsToGroup.map((b) => b.id)), [billsToGroup]);
 
-  const tempBillsByColumn = useMemo(() => {
-    const grouped: { [key in BillStatus]?: TempBill[] } = {};
-    KANBAN_COLUMNS.forEach((c) => (grouped[c.id as BillStatus] = []));
+  // const tempBillsByColumn = useMemo(() => {
+  //   const grouped: { [key in BillStatus]?: TempBill[] } = {};
+  //   KANBAN_COLUMNS.forEach((c) => (grouped[c.id as BillStatus] = []));
 
-    console.log('📊 [TEMP BILLS BY COLUMN] Processing', tempBills.length, 'temp bills');
-    console.log('📊 [TEMP BILLS BY COLUMN] Visible bill IDs:', Array.from(visibleBillIds));
-    console.log('📊 [TEMP BILLS BY COLUMN] Search query:', searchQuery);
+  //   console.log('📊 [TEMP BILLS BY COLUMN] Processing', tempBills.length, 'temp bills');
+  //   console.log('📊 [TEMP BILLS BY COLUMN] Visible bill IDs:', Array.from(visibleBillIds));
+  //   console.log('📊 [TEMP BILLS BY COLUMN] Search query:', searchQuery);
 
-    tempBills.forEach((tb, idx) => {
-      console.log(`  [${idx + 1}] Bill ID: ${tb.id}, Status: ${tb.current_status} → ${tb.suggested_status}`);
-      if (searchQuery.trim() && !visibleBillIds.has(tb.id)) {
-        console.log(`    ⚠️ Filtered out (not in visible bills or search)`);
-        return;
-      }
-      // Group by current_status so temp bill appears in the original column
-      const key = tb.current_status as BillStatus;
-      grouped[key]?.push(tb);
-      console.log(`    ✅ Added to column: ${key} (original status, proposed to move to ${tb.suggested_status})`);
-    });
+  //   tempBills.forEach((tb, idx) => {
+  //     console.log(`  [${idx + 1}] Bill ID: ${tb.id}, Status: ${tb.current_status} → ${tb.suggested_status}`);
+  //     if (searchQuery.trim() && !visibleBillIds.has(tb.id)) {
+  //       console.log(`    ⚠️ Filtered out (not in visible bills or search)`);
+  //       return;
+  //     }
+  //     // Group by current_status so temp bill appears in the original column
+  //     const key = tb.current_status as BillStatus;
+  //     grouped[key]?.push(tb);
+  //     console.log(`    ✅ Added to column: ${key} (original status, proposed to move to ${tb.suggested_status})`);
+  //   });
 
-    // Log final grouped counts
-    Object.keys(grouped).forEach((col) => {
-      const count = grouped[col as BillStatus]?.length || 0;
-      if (count > 0) {
-        console.log(`📊 [TEMP BILLS BY COLUMN] Column "${col}": ${count} proposals`);
-      }
-    });
+  //   // Log final grouped counts
+  //   Object.keys(grouped).forEach((col) => {
+  //     const count = grouped[col as BillStatus]?.length || 0;
+  //     if (count > 0) {
+  //       console.log(`📊 [TEMP BILLS BY COLUMN] Column "${col}": ${count} proposals`);
+  //     }
+  //   });
 
-    return grouped;
-  }, [tempBills, searchQuery, visibleBillIds]);
+  //   return grouped;
+  // }, [tempBills, searchQuery, visibleBillIds]);
 
   const onDragStart = useCallback((start: any) => {
     setDraggingBillId(start.draggableId);
@@ -428,10 +273,10 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       
       if (user?.role === 'user') {
         console.log('🔵 User proposing change:', movedBill.id, '→', destinationColumnId);
-        await proposeStatusChange(movedBill, destinationColumnId, {
-          userId: user.id,
-          role: 'intern',
-        });
+        // await proposeStatusChange(movedBill, destinationColumnId, {
+        //   userId: user.id,
+        //   role: 'intern',
+        // });
         toast({
           title: 'Change proposed',
           description: `Awaiting supervisor approval.`,
@@ -498,7 +343,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         });
       }
     },
-    [bills, readOnly, user, proposeStatusChange, toast, filteredBills, searchQuery, setBills]
+    [bills, readOnly, user, toast, filteredBills, searchQuery, setBills]
   );
 
   const handleCardClick = useCallback((bill: Bill) => {
@@ -517,13 +362,15 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   return (
     <>
       {readOnly ? (
+        // READ ONLY VIEW
         <ScrollArea className="h-full w-full whitespace-nowrap p-4">
           <ScrollAreaPrimitive.Viewport
             ref={viewportRef}
             className="h-full w-full max-w-[100vw] rounded-[inherit]"
             style={{ scrollBehavior: 'smooth' }}
           >
-            {loading ? (
+
+            {bills == null ? (
               <KanbanBoardSkeleton />
             ) : (
               <div className="flex space-x-4 pb-4">
@@ -542,16 +389,10 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                       isDraggingOver={false}
                       draggingBillId={null}
                       onCardClick={handleCardClick}
-                      onUnadopt={onUnadopt}
-                      showUnadoptButton={showUnadoptButton}
                       readOnly={true}
                       enableDnd={false}
-                      highlightedBillId={highlightedBillId}
 
-                      pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                       canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
-                      onApproveTemp={(billId) => acceptTempChange(billId)}
-                      onRejectTemp={(billId) => rejectTempChange(billId)}
                     />
                   </div>
                 ))}
@@ -561,6 +402,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       ) : (
+        // INTERACTIVE DND VIEW
         <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <ScrollArea className="h-full w-full whitespace-nowrap p-4">
             <ScrollAreaPrimitive.Viewport
@@ -568,7 +410,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
               className="h-full w-full max-w-[100vw] rounded-[inherit]"
               style={{ scrollBehavior: 'smooth' }}
             >
-              {loading ? (
+              {bills == null ? (
                 <KanbanBoardSkeleton />
               ) : (
                 <div className="flex space-x-4 pb-4">
@@ -591,16 +433,10 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             isDraggingOver={snapshot.isDraggingOver}
                             draggingBillId={draggingBillId}
                             onCardClick={handleCardClick}
-                            onUnadopt={onUnadopt}
-                            showUnadoptButton={showUnadoptButton}
                             readOnly={false}
                             enableDnd={true}
-                            highlightedBillId={highlightedBillId}
                             /* pending proposals */
-                            pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                             canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
-                            onApproveTemp={(billId) => acceptTempChange(billId)}
-                            onRejectTemp={(billId) => rejectTempChange(billId)}
                           >
                             {provided.placeholder}
                           </KanbanColumn>

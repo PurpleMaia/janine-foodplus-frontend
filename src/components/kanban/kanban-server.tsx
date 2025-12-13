@@ -3,14 +3,14 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth"
 import { getKanbanBoardData } from "@/services/actions/kanban";
+import { KanbanBoard } from "./kanban-board";
+import { Suspense } from "react";
+import KanbanBoardSkeleton from "./skeletons/skeleton-board";
 
-export default async function KanbanBoardPage() {
-    const session = await auth()
-
-    if (!session?.user || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
-        redirect('/');
-    }
-
+interface KanbanBoardLoaderProps {
+    readOnly: boolean;
+}
+export default async function KanbanServer({ readOnly }: KanbanBoardLoaderProps) {
     const result = await getKanbanBoardData();
 
     if (!result.success) {
@@ -18,6 +18,8 @@ export default async function KanbanBoardPage() {
     }
 
     return (
-        <pre>{JSON.stringify(result.data, null, 2)}</pre>
+        <Suspense fallback={<KanbanBoardSkeleton />}>
+            <KanbanBoard initialData={result.data} readOnly={readOnly} />
+        </Suspense>
     );
 }
