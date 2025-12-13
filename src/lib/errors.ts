@@ -27,3 +27,20 @@ export const Errors = {
     
     INTERNAL_ERROR: new ApiError('INTERNAL_ERROR', 500, 'Internal server error. Please try again later.'),
 } as const;
+
+/**
+ * 
+ *  if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[REGISTER]', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
+ */

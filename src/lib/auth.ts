@@ -49,8 +49,7 @@ export async function createSession(userId: string): Promise<string> {
  * @returns The user object if the session is valid
  * @throws ApiError if session is invalid or not found
  */
-export async function validateSession(request: NextRequest): Promise<User> {  
-  const token = getSessionCookie(request);
+export async function validateSession(token: string | null): Promise<User> {    
   if (!token) {
     console.log('[validateSession] No session cookie found');
     throw Errors.NO_SESSION_COOKIE;
@@ -73,7 +72,7 @@ export async function validateSession(request: NextRequest): Promise<User> {
   }
 
   // Debug log to see what role is being returned
-  console.log('🔍 [DEBUG] Session validation - User role from DB:', result.role, 'User email:', result.email);
+  console.log('[validateSession] User role from DB:', result.role, 'User email:', result.email);
 
   return {
     id: result.id,

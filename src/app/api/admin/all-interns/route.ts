@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
 import { db } from '../../../../db/kysely/client';
+import { ApiError, Errors } from '@/lib/errors';
 
 interface InternWithBills {
   id: string;
@@ -22,33 +23,31 @@ interface InternWithBills {
 export async function GET(request: NextRequest) {
   try {
     // Validate session
-    const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
+    const session_token = getSessionCookie(request);    
     const user = await validateSession(session_token);
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Admin access only' }, { status: 403 });
+      console.error('[ALL INTERNS] Unauthorized access attempt by user:', user?.email || 'unknown', '(ADMIN ONLY)');
+      throw Errors.UNAUTHORIZED;
     }
 
-    console.log('📋 [ADMIN] Loading all interns with bills...');
+    console.log('📋 [ALL INTERNS] Loading all interns with bills...');
 
     // Get all interns (users with role 'user')
     // Note: Fetching all users with role 'user' regardless of account_status for admin view
     const interns = await db
       .selectFrom('user')
       .select(['id', 'email', 'username', 'created_at', 'account_status'])
+      .innerJoin('supervisor_users', 'user.id', 'supervisor_users.user_id') // Ensure they have a supervisor
       .where('role', '=', 'user')
       .execute();
 
-    console.log(`📋 [ADMIN] Found ${interns.length} users with role 'user'`);
-    interns.forEach((intern: any, idx: number) => {
-      console.log(`  [${idx + 1}] ${intern.username} (${intern.email}) - Status: ${intern.account_status}`);
-    });
+    console.log(`📋 [ALL INTERNS] Found ${interns.length} users with role 'user'`);
+    // interns.forEach((intern: any, idx: number) => {
+    //   console.log(`  [${idx + 1}] ${intern.username} (${intern.email}) - Status: ${intern.account_status}`);
+    // });
 
     // Get supervisor relationships
-    console.log('📋 [ADMIN] Fetching supervisor relationships...');
+    console.log('📋 [ALL INTERNS] Fetching supervisor relationships...');
     let supervisorRelations: Array<{
       user_id: string;
       supervisor_id: string;
@@ -66,9 +65,9 @@ export async function GET(request: NextRequest) {
           'supervisor.username as supervisor_username'
         ])
         .execute();
-      console.log(`📋 [ADMIN] Found ${supervisorRelations.length} supervisor relationships`);
+      console.log(`📋 [ALL INTERNS] Found ${supervisorRelations.length} supervisor relationships`);
     } catch (joinError) {
-      console.error('❌ [ADMIN] Error fetching supervisor relationships:', joinError);
+      console.error('❌ [ALL INTERNS] Error fetching supervisor relationships:', joinError);
       // Continue without supervisor relationships if the join fails
       supervisorRelations = [];
     }
@@ -83,7 +82,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get all bills adopted by interns
-    console.log('📋 [ADMIN] Fetching bills adopted by interns...');
+    console.log('📋 [ALL INTERNS] Fetching bills adopted by interns...');
     let internBills: Array<{
       user_id: string | null;
       bill_id: string;
@@ -103,9 +102,9 @@ export async function GET(request: NextRequest) {
           'bills.current_status'
         ])
         .execute();
-      console.log(`📋 [ADMIN] Found ${internBills.length} bills adopted by interns`);
+      console.log(`📋 [ALL INTERNS] Found ${internBills.length} bills adopted by interns`);
     } catch (billsError) {
-      console.error('❌ [ADMIN] Error fetching intern bills:', billsError);
+      console.error('❌ [ALL INTERNS] Error fetching intern bills:', billsError);
       // Continue without bills if the query fails
       internBills = [];
     }
@@ -146,18 +145,22 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    console.log(`✅ [ADMIN] Returning ${internsWithBills.length} interns with bills`);
+    console.log(`✅ [ALL INTERNS] Returning ${internsWithBills.length} interns with bills`);
     return NextResponse.json({ success: true, interns: internsWithBills });
   } catch (error) {
-    console.error('❌ [ADMIN] Error loading all interns:', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error('❌ [ADMIN] Error details:', { errorMessage, errorStack });
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to load interns',
-      details: errorMessage 
-    }, { status: 500 });
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[ADMIN/ALL-INTERNS]', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
   }
 }
 

@@ -1,26 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie, validateSession } from '@/lib/auth';
-import { db } from '../../../../db/kysely/client';
+import { db } from '@/db/kysely/client';
 import { sql } from 'kysely';
+import { ApiError } from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
-    const user = await validateSession(session_token);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-    }
+    const user = await validateSession(session_token);    
 
     let proposals;
 
     if (user.role === 'supervisor') {
       // For supervisors: get proposals from adopted interns
-      // Join on proposed_by_user_id (the intern who made the proposal)
+      // Join on proposed_by_user_id::uuid (the intern who made the proposal)
       proposals = await db
         .selectFrom('pending_proposals')
         .innerJoin('supervisor_users', 'pending_proposals.proposed_by_user_id', 'supervisor_users.user_id')
@@ -41,9 +35,10 @@ export async function GET(request: NextRequest) {
         .where('supervisor_users.supervisor_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
+        
     } else if (user.role === 'admin') {
       // For admins: get ALL pending proposals (they can approve/reject any proposal)
-      console.log('📋 Admin loading all pending proposals...');
+      console.log('📋 [LOAD PROPOSALS] Admin loading all pending proposals...');
       proposals = await db
         .selectFrom('pending_proposals')
         .leftJoin('user as proposer', (join: any) =>
@@ -62,7 +57,7 @@ export async function GET(request: NextRequest) {
         ])
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
-      console.log(`✅ Admin found ${proposals.length} pending proposals`);
+      console.log(`📋 [LOAD PROPOSALS] Admin found ${proposals.length} pending proposals`);
     } else {
       // For regular users: get their own pending proposals (so they can see the skeleton/temporary bill)
       console.log('📋 [LOAD PROPOSALS] Loading proposals for user:', user.email, 'Role:', user.role);
@@ -120,7 +115,18 @@ export async function GET(request: NextRequest) {
     console.log(`✅ [LOAD PROPOSALS] Returning ${formatted.length} formatted proposals`);
     return NextResponse.json({ success: true, proposals: formatted });
   } catch (error) {
-    console.error('Error loading proposals:', error);
-    return NextResponse.json({ success: false, error: 'Failed to load proposals' }, { status: 500 });
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[PROPOSALS/LOAD] Unknown Error:', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
   }
 }

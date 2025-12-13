@@ -117,7 +117,7 @@ export function AdminDashboard() {
   const fetchPendingRequests = async () => {
     try {
       const response = await fetch('/api/admin/pending-requests', {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -269,11 +269,11 @@ export function AdminDashboard() {
   useEffect(() => {
     fetchPendingRequests();
     fetchPendingProposals();
-    fetchSupervisorRequests();
-    // Also fetch the new tab data on initial load
     fetchAllInterns();
-    fetchSupervisorRelationships();
-    fetchAllInternBills();
+    // fetchSupervisorRequests();
+    // // Also fetch the new tab data on initial load
+    // fetchSupervisorRelationships();
+    // fetchAllInternBills();
   }, []);
 
   // Handle approving proposal
