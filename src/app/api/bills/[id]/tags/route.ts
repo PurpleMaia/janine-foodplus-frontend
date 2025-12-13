@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/kysely/client';
 import { tagsSchema } from '@/lib/validators';
-import { validateSession, getSessionCookie } from '@/lib/auth';
+import { validateSession } from '@/lib/auth';
+import { getSessionCookie } from '@/lib/edge-session';
 
 // GET - Get tags for a specific bill (public access for filtering)
 export async function GET(

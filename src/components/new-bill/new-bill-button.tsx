@@ -1,3 +1,4 @@
+'use client'
 import { CirclePlus } from "lucide-react";
 import { Button } from "../ui/button";
 import { useState } from "react";

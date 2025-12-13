@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { emailSchema } from "@/lib/validators";
 import { checkAdminRequestStatus } from "@/services/db/admins";
-import { getSessionCookie, validateSession } from "@/lib/auth";
+import { validateSession } from "@/lib/auth";
+import { getSessionCookie } from "@/lib/edge-session";
 import { ApiError } from "@/lib/errors";
 
 // note: can move this into user context 

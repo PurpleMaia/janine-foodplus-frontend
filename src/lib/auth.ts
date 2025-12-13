@@ -1,9 +1,30 @@
+'use server';
+
 import bcrypt from 'bcryptjs';
-import { NextRequest } from 'next/server';
 import { db } from '../db/kysely/client';
 import { createHash, randomUUID } from 'crypto';
 import { User } from '@/types/users';
-import { ApiError, Errors } from './errors';
+import { Errors } from './errors';
+import { cache } from 'react';
+import { cookies } from 'next/headers';
+
+/**
+ * Fetches the cached authenticated user's session and details.
+ * Uses caching to optimize repeated calls within the same request.
+ *
+ * @returns An object containing the user details if authenticated, otherwise null.
+ */
+export const auth = cache(async (): Promise<{ user: User } | null> => {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('session')?.value ?? null;
+    const user = await validateSession(token);
+    return { user };
+  } catch (error) {    
+    console.error('[ADMIN] Auth failed in admin actions', error);
+    return null;
+  }
+});
 
 /**
  * Creates session tokens for a user and stores the hashed token in the database
@@ -220,27 +241,4 @@ export async function registerUser(email: string, username: string, password: st
     };  
 }
 
-// Cookie helpers
-/**
- * Retrieves the session cookie value from the request.
- * @returns The session cookie value or null if not found.
- */
-export function getSessionCookie(request: NextRequest): string | null {
-  return request.cookies.get('session')?.value || null;
-}
 
-/**
- * Gets the Set-Cookie header string to set the session cookie.
- * @param token Raw session token
- * @returns Set-Cookie header string
- */
-export function setSessionCookie(token: string): string {
-  return `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
-}
-
-/**
- * Get the clear session cookie by setting its expiration to the past.
- */
-export function getClearSessionCookie(): string {
-  return 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
-}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/auth';
+import { validateSession } from '@/lib/auth';
+import { getSessionCookie } from '@/lib/edge-session';
 import { db } from '@/db/kysely/client';
 import { sql } from 'kysely';
 import { ApiError } from '@/lib/errors';

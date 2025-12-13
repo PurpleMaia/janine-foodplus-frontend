@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../db/kysely/client';
-import { validateSession, getSessionCookie } from '@/lib/auth';
+import { validateSession } from '@/lib/auth';
+import { getSessionCookie } from '@/lib/edge-session';
 import { newTagSchema } from '@/lib/validators';
 
 // GET - Fetch all tags (public access for filtering)
