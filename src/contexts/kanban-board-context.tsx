@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useState, ReactNode, Dispatch, SetStateAction } from 'react';
 
 interface KanbanBoardContextType {
-  view: 'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor';
-  setView: Dispatch<SetStateAction<'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor'>>;
+  view: 'kanban' | 'spreadsheet' | 'admin' | 'supervisor';
+  setView: Dispatch<SetStateAction<'kanban' | 'spreadsheet' | 'admin' | 'supervisor'>>;
   searchQuery: string;
   setSearchQuery: Dispatch<SetStateAction<string>>;
   selectedTagIds: string[];
@@ -15,7 +15,7 @@ const KanbanBoardContext = createContext<KanbanBoardContextType | undefined>(und
 
 export function KanbanBoardProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [view, setView] = useState<'kanban' | 'spreadsheet' | 'admin' | 'approvals' | 'supervisor'>('kanban');
+  const [view, setView] = useState<'kanban' | 'spreadsheet' | 'admin' | 'supervisor'>('kanban');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   return (

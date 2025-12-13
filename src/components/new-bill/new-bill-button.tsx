@@ -8,7 +8,9 @@ export default function NewBillButton() {
     const [ isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
     return (
         <>
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={() => setIsDialogOpen(true)}
+            className="shadow-md hover:opacity-80 transition-all"
+        >
            <CirclePlus />New Bill Card 
         </Button>
 

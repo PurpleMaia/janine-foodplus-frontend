@@ -1,17 +1,20 @@
 'use client'; // Keep header client-side for search input interaction
 
-import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useBills } from '@/contexts/bills-context';
 import { useAuth } from '@/contexts/auth-context';
-import { TagFilterList } from '../tags/tag-filter-list';
+// import { TagFilterList } from '../tags/tag-filter-list';
+import NewBillButton from '../new-bill/new-bill-button';
+import { AuthHeader } from '../auth/auth-header';
+import { Menubar, MenubarMenu, MenubarTrigger } from '../ui/menubar';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
 export function KanbanHeader() {
   const { setSearchQuery, selectedTagIds, setSelectedTagIds } = useKanbanBoard(); // Access context
-  const { viewMode, toggleViewMode } = useBills();
   const { user } = useAuth();
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,42 +39,100 @@ export function KanbanHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex shrink-0 items-center justify-between px-4">
-        <div>
-          <h1 className="text-xl font-semibold">Legislation Tracker</h1>
-          <h2 className="text-sm font-light">Track and manage bills</h2>
+      <header className="sticky top-0 z-10 flex items-center px-8 py-4 border-b shadow-lg">
+        {/* Info */}
+        <div className="flex-shrink-0">
+          {/* FOOD+ LOGO HERE */}
+          <h1 className="text-xl font-semibold">Food+ Bill Tracker</h1>
+          <h2 className="text-sm font-light text-gray-500">Track and manage bills</h2>
+        </div>
+
+        {/* View Select Bar */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex justify-center w-fit">
+          <ViewBar />
         </div>
         
-        <div className='flex gap-2 items-center'>        
-          {user && (
-            <Button
-              variant={viewMode === 'my-bills' ? 'default' : 'outline'}
-              size="sm"
-              onClick={toggleViewMode}
-              className="whitespace-nowrap"
-            >
-              {viewMode === 'my-bills' ? 'My Bills' : 'All Bills'}
-            </Button>
-          )}
-          <div className="relative ml-auto w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search bills..."
-              className="w-full rounded-md bg-muted pl-9 pr-4 focus:bg-background"
-              onChange={handleSearchChange}
-              aria-label="Search bills"
-            />
-          </div>
+        {/* Search and Auth */}
+        <div className="relative max-w-md flex gap-4 flex-shrink-0 ml-auto">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search..."
+            className="w-full rounded-md bg-muted pl-9 focus:bg-background "
+            onChange={handleSearchChange}
+            aria-label="Search bills"
+          />
+          <AuthHeader />
         </div>
       </header>
-      <div className="border-b bg-muted/30">
-        <TagFilterList
-          selectedTagIds={selectedTagIds || []}
-          onTagToggle={handleTagToggle}
-          onClearFilters={handleClearFilters}
-        />
-      </div>
     </>
+  );
+}
+function TagFilterList({
+  selectedTagIds,
+  onTagToggle,
+  onClearFilters
+}: {
+  selectedTagIds: string[];
+  onTagToggle: (tagId: string) => void;
+  onClearFilters: () => void;
+}) {
+  return (
+    <TagFilterList
+      selectedTagIds={selectedTagIds || []}
+      onTagToggle={onTagToggle}
+      onClearFilters={onClearFilters}
+    />
+    
+  )
+}
+function MyBillsButton(user: any, viewMode: string, toggleViewMode: () => void) {
+  return (
+    <>
+      {user && (
+        <Button
+          variant={viewMode === 'my-bills' ? 'default' : 'outline'}
+          size="sm"
+          onClick={toggleViewMode}
+          className="whitespace-nowrap"
+        >
+          {viewMode === 'my-bills' ? 'My Bills' : 'All Bills'}
+        </Button>
+      )}
+    </>
+  );
+}
+
+function ViewBar() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentView = searchParams.get('view') ?? 'kanban';
+
+  const setView = (view: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('view', view);
+
+    router.replace(`/?${params.toString()}`, {
+      scroll: false,
+    });
+  };
+  
+  const views = [
+    { key: 'kanban', label: 'Board' },
+    { key: 'spreadsheet', label: 'Spreadsheet' },
+    { key: 'admin', label: 'Admin' },
+    { key: 'supervisor', label: 'Supervisor' },
+  ];
+
+  return (
+    <Tabs value={currentView} onValueChange={setView}>
+      <TabsList>
+        {views.map(v => (
+          <TabsTrigger key={v.key} value={v.key}>
+            {v.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

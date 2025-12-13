@@ -260,6 +260,7 @@ export default function AIUpdateButton() {
           await handleAIUpdateAll();
         }}
         disabled={bills.some((bill) => bill.llm_suggested) && bills.length > 0}
+        className='bg-blue-400'
       >
         { processing ? (
           <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/>Processing</span>

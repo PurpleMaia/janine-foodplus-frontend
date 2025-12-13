@@ -22,7 +22,7 @@ export function AuthHeader() {
 
   //sows different UI based on auth states
   return (
-    <div className="flex items-center space-x-4">
+    <div className="flex items-center space-x-4 ">
       {user ? (
         <UserMenu />   //shows user menu if logged in 
       ) : (
