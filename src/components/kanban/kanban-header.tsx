@@ -45,7 +45,7 @@ export function KanbanHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex items-center px-8 py-4 border-b shadow-lg bg-white ">
+      <header className="sticky top-0 z-10 flex items-center px-8 py-4 border-b bg-white ">
         {/* Info */}
         <div className="flex-shrink-0">
           {/* FOOD+ LOGO HERE */}
