@@ -80,8 +80,8 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
+        <Button className="text-black hover:scale-110 hover:shadow-2xl h-8 w-8 rounded-full bg-slate-200 shadow-lg transition-all">
+          <Avatar className="h-8 w-8 border border-slate-300">
             <AvatarFallback>{user ? getInitials(user.username) : ''}</AvatarFallback>
           </Avatar>
         </Button>

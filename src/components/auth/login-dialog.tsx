@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { LogIn } from 'lucide-react';
 
 export function LoginDialog() {
-  const [authString, setAuthString] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +26,7 @@ export function LoginDialog() {
     try {
 
       //calls login from auth context
-      const result = await login(authString, password);
+      const result = await login(identifier, password);
 
       if (result && result.success) {
         //shows success message
@@ -36,7 +37,7 @@ export function LoginDialog() {
 
         //closes dialog and clears form
         setIsOpen(false);
-        setAuthString('');
+        setIdentifier('');
         setPassword('');
       } else if (result && result.error) {
         //shows error message from context
@@ -67,7 +68,10 @@ export function LoginDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="h-10">Intern Login</Button>
+        <Button variant="outline" className="h-10 shadow-sm">
+          <LogIn className="mr-1" />
+          Login
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -75,12 +79,12 @@ export function LoginDialog() {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="authString">Email/Username</Label>
+            <Label htmlFor="identifier">Email/Username</Label>
             <Input
-              id="authString"
+              id="identifier"
               type="text"
-              value={authString}
-              onChange={(e) => setAuthString(e.target.value)}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               placeholder="Enter your email or username"
               required
             />

@@ -30,19 +30,9 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-        <div className='flex justify-between items-center px-4 border-b py-3 shadow-sm'>
-          <div className='w-full'>
-            <KanbanHeader />
-          </div>
-          <div className='flex items-center gap-2'>
-            <AIUpdateButton/>
-            <ProtectedComponent>
-              <NewBillButton />
-            </ProtectedComponent>
-            <AuthHeader />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 p-4 border-b bg-background">
+      <KanbanHeader />
+      
+      <div className="flex items-center gap-2 p-4 border-b bg-background">
         <Button
           variant={view === 'kanban' ? 'default' : 'outline'}
           onClick={() => setView('kanban')}
