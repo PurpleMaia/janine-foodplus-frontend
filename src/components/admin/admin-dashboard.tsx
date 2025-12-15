@@ -10,9 +10,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminDashboard } from '@/hooks/use-query-admin';
 import AdminHeader from './admin-header';
-import { InternWithBills, PendingUser } from '@/types/admin';
+import { BillWithInterns, InternWithBills, PendingUser, SupervisorWithInterns } from '@/types/admin';
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import { formatBillStatusName } from '@/lib/utils';
 import React from 'react';
 import { ManageInternDialog } from './manage-intern-dialog';
@@ -20,16 +20,14 @@ import { ManageInternDialog } from './manage-intern-dialog';
 export function AdminDashboard() {
   const {
   // Data
-  pendingUsers,
-  pendingProposals,
-  supervisorRequests,
+  pendingUsers,  
   allInterns,
-  supervisorRelationships,
+  allSupervisors,
+  allInternBills,
 
   // Loading states
   isLoading,
   isLoadingProposals,
-  isLoadingSupervisor,
   isLoadingInterns,
   isLoadingRelationships,
   isLoadingBills,
@@ -49,9 +47,9 @@ export function AdminDashboard() {
 
   const counts = {
     pendingRequests: pendingUsers ? pendingUsers.length : 0,
+    allTrackedBills: allInternBills ? allInternBills.length : 0,
     allInterns: allInterns ? allInterns.length : 0,
-    supervisorRelationships: supervisorRelationships ? supervisorRelationships.length : 0,
-    approvals: pendingProposals ? pendingProposals.length : 0,
+    allSupervisors: allSupervisors ? allSupervisors.length : 0,
   };
 
   return (
@@ -65,13 +63,11 @@ export function AdminDashboard() {
           handleDenyUser={handleDenyUser}
         />
 
-        <AllInternsTab
-          interns={allInterns}
-          // handleApproveUser={handleApproveUser}
-          // handleDenyUser={handleDenyUser}
-        />
+        <AllInternsTab interns={allInterns}/>
 
+        <AllSupervisorsTab supervisors={allSupervisors}/>
 
+        <AllInternBillsTab bills={allInternBills}/>
       </Tabs>
     </div>
   );
@@ -148,7 +144,7 @@ function AllInternsTab(
 ) {
 
   const [expandedIntern, setExpandedIntern] = useState<string | null>(null);
-  const [editingIntern, setEditingIntern] = useState<boolean>(false);
+  // const [editingIntern, setEditingIntern] = useState<boolean>(false);
   return (
     <TabsContent value="all-interns" className="mx-8 space-y-8 mt-6">
           {/* All Interns */}
@@ -276,4 +272,167 @@ function AllInternsTab(
 
       </TabsContent>    
   )
+}
+
+function AllSupervisorsTab(
+  { supervisors }: {
+    supervisors: SupervisorWithInterns[];
+  }
+) {
+  return (
+    <TabsContent value="all-supervisors" className="mx-8 space-y-8 mt-6">
+      <div>
+        <h1 className="text-2xl font-bold mb-1 ">All Supervisors</h1>
+        <h2 className="text-sm mb-6 text-muted-foreground">View all supervisor accounts and their interns</h2>          
+
+      <ScrollArea className="h-[800px] w-full">
+        <div className='bg-white rounded-lg shadow-sm border'>
+            <div className="p-4 space-y-6">
+              {supervisors.length === 0 ? (
+                <Card className="p-6">
+                  <p className="text-center text-muted-foreground">
+                    No supervisors found
+                  </p>
+                </Card>
+              ) : (
+                supervisors.map((supervisor) => (
+                  <div key={supervisor.supervisor_id} className="border-b pb-4 last:border-0">
+                    <h3 className="font-semibold text-lg">
+                      {supervisor.supervisor_username}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {supervisor.supervisor_email}
+                    </p>
+                    
+                    {supervisor.interns.length === 0 ? (
+                      <p className="text-sm text-foreground">No interns assigned</p>
+                    ) : (
+                      <ul className="flex items-center gap-2 flex-wrap">
+                        {supervisor.interns.map((intern) => (
+                          <li key={intern.id} className="text-foreground">
+                            <Badge variant="outline" className="mr-2">{intern.username}</Badge> ({intern.email})
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+        </div>
+      </ScrollArea>
+      </div>
+    </TabsContent>
+  );
+}
+
+function AllInternBillsTab(
+  { bills } : {
+    bills?: BillWithInterns[];
+  }
+) {
+  return (
+    <TabsContent value="all-tracked-bills" className="mx-8 space-y-8 mt-6">
+      <div>
+        <h1 className="text-2xl font-bold mb-1 ">All Tracked Bills</h1>
+        <h2 className="text-sm mb-6 text-muted-foreground">View all bills tracked by interns</h2>
+          <div className="space-y-4">
+            {bills && bills.length === 0 ? (
+              <Card className="p-6">
+                <p className="text-center text-muted-foreground">
+                  No tracked bills found
+                </p>
+              </Card>
+            ) : (
+              bills && bills.map((bill) => (
+                <Card key={bill.bill_id} className="p-6 bg-white shadow-md">
+                  <div className="flex items-start justify-between">
+                    <div className="">
+                      <p className="text-md font-semibold text-foreground">{bill.bill_number}</p>
+                      <p className="text-sm text-muted-foreground">{bill.bill_title || 'No Title'}</p>
+                      <div className='mt-2 flex text-muted-foreground gap-2'>
+                        <Badge variant='outline'>{formatBillStatusName(bill.current_status)}</Badge>
+                      </div>
+                    </div>
+                    <div className="space-x-2">
+                      <p className="text-sm text-muted-foreground mb-2">Tracked by:</p>
+                      {bill.tracked_by.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No interns tracking this bill</p>
+                      ) : (
+                        bill.tracked_by.map((intern) => (
+                          <Badge key={intern.id} variant="secondary" className="bg-blue-100 text-blue-800">
+                            {intern.username}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+      </div>
+    </TabsContent>
+  )
+}
+
+function PendingProposalsTab(
+  { pendingProposals }: {
+    pendingProposals: PendingProposal[];
+  }
+) {
+  return (
+    <TabsContent value="pending-proposals" className="mx-8 space-y-8 mt-6">
+      <div>
+        <h1 className="text-2xl font-bold mb-1 ">Pending Proposals</h1>
+        <h2 className="text-sm mb-6 text-muted-foreground">Review and manage bill changes proposed by users</h2>
+
+        <ScrollArea className="h-[800px] w-full">
+          <div className="space-y-4">
+            {pendingProposals.length === 0 ? (
+              <Card className="p-6">
+                <p className="text-center text-muted-foreground">
+                  No pending proposals
+                </p>
+              </Card>
+            ) : (
+              pendingProposals.map((proposal) => (
+                <Card key={proposal.id} className="p-6 bg-white shadow-md">
+                  <div className="flex items-start justify-between">
+                    <div className="">
+                      <p className="text-md font-semibold text-foreground">{proposal.bill_number}</p>
+                      <div className="flex gap-2 text-sm text-muted-foreground items-center">
+                        Proposed By:<span className='text-foreground font-semibold'>{proposal.proposer.username || 'Unknown User'}</span> ({proposal.proposer.email || 'No Email'})
+                        <p> |  {new Date(proposal.proposed_at).toLocaleDateString()}</p>
+                      </div>
+                      
+                    </div>
+                    <div className="space-x-2">
+                      <Button
+                        onClick={() => console.log('Approve proposal', proposal.proposal_id)}
+                        variant="default"
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        onClick={() => console.log('Reject proposal', proposal.proposal_id)}
+                        variant="outline"
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                  <div className='mt-2 flex text-muted-foreground gap-2'>
+                    <Badge variant='outline'>{formatBillStatusName(proposal.current_status)}</Badge>
+                    <ArrowRight className='w-4 h-4 mt-1' /> 
+                    <Badge>{formatBillStatusName(proposal.proposed_status)}</Badge>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    </TabsContent>
+  );
 }

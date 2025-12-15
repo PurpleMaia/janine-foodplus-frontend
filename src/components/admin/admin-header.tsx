@@ -7,8 +7,8 @@ interface AdminHeaderProps {
   count: {
     pendingRequests: number;
     allInterns: number;
-    supervisorRelationships: number;
-    approvals: number;
+    allSupervisors: number;
+    allTrackedBills: number;
   }
 }
 export default function AdminHeader({ count }: AdminHeaderProps) {
@@ -20,14 +20,14 @@ export default function AdminHeader({ count }: AdminHeaderProps) {
                 <TabsTrigger value="pending-requests" className={activeStyle}>
                   Pending Requests <Badge className='ml-1 bg-red-100 text-red-800'>{count.pendingRequests}</Badge>
                 </TabsTrigger>
+                <TabsTrigger value="all-tracked-bills" className={activeStyle}>
+                  Tracked Bills <Badge className='ml-1 bg-yellow-100 text-yellow-800'>{count.allTrackedBills}</Badge>
+                </TabsTrigger>
                 <TabsTrigger value="all-interns" className={activeStyle}>
-                  All Interns <Badge className='ml-1 bg-blue-100 text-blue-800'>{count.allInterns}</Badge>
+                  Interns <Badge className='ml-1 bg-blue-100 text-blue-800'>{count.allInterns}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="supervisor-relationships" className={activeStyle}>
-                  Supervisor Relationships <Badge className='ml-1 bg-green-100 text-green-800'>{count.supervisorRelationships}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="approvals" className={activeStyle}>
-                  Approvals <Badge className='ml-1 bg-yellow-100 text-yellow-800'>{count.approvals}</Badge>
+                <TabsTrigger value="all-supervisors" className={activeStyle}>
+                  Supervisors <Badge className='ml-1 bg-green-100 text-green-800'>{count.allSupervisors}</Badge>
                 </TabsTrigger>
             </TabsList>
         </div>

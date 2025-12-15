@@ -44,5 +44,6 @@ export function mapBillsToBill(raw: Bills): Bill {
 }
 
 export function formatBillStatusName(status: string | null): string {
+  if (!status) return 'No Assigned Status';
   return KANBAN_COLUMNS.find(col => col.id === status)?.title || status;
 }

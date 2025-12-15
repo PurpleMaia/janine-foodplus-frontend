@@ -5,9 +5,8 @@ import { useToast } from './use-toast';
 import {
   getPendingRequests,
   getPendingProposals,
-  getSupervisorRequests,
   getAllInterns,
-  getSupervisorRelationships,
+  getAllSupervisors,
   getAllInternBills,
   approveProposal,
   rejectProposal,
@@ -23,7 +22,7 @@ const queryKeys = {
   pendingProposals: ['admin', 'pending-proposals'] as const,
   supervisorRequests: ['admin', 'supervisor-requests'] as const,
   allInterns: ['admin', 'all-interns'] as const,
-  supervisorRelationships: ['admin', 'supervisor-relationships'] as const,
+  allSupervisors: ['admin', 'all-supervisors'] as const,
   allInternBills: ['admin', 'all-intern-bills'] as const,
 };
 
@@ -55,16 +54,6 @@ export function useAdminDashboard() {
     staleTime: 30_000,
   });
 
-  const supervisorRequestsQuery = useQuery({
-    queryKey: queryKeys.supervisorRequests,
-    queryFn: async () => {
-      const result = await getSupervisorRequests();
-      if (!result.success) throw new Error(result.error);
-      return result.data ?? [];
-    },
-    staleTime: 30_000,
-  });
-
   const allInternsQuery = useQuery({
     queryKey: queryKeys.allInterns,
     queryFn: async () => {
@@ -75,10 +64,10 @@ export function useAdminDashboard() {
     staleTime: 60_000, // Less frequently changing data
   });
 
-  const supervisorRelationshipsQuery = useQuery({
-    queryKey: queryKeys.supervisorRelationships,
+  const allSupervisorsQuery = useQuery({
+    queryKey: queryKeys.allSupervisors,
     queryFn: async () => {
-      const result = await getSupervisorRelationships();
+      const result = await getAllSupervisors();
       if (!result.success) throw new Error(result.error);
       return result.data ?? [];
     },
@@ -220,7 +209,7 @@ export function useAdminDashboard() {
     onSuccess: () => {
       toast({ title: 'Success', description: 'Supervisor access granted' });
       queryClient.invalidateQueries({ queryKey: queryKeys.supervisorRequests });
-      queryClient.invalidateQueries({ queryKey: queryKeys.supervisorRelationships });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allSupervisors });
     },
     onError: (error) => {
       toast({
@@ -258,26 +247,23 @@ export function useAdminDashboard() {
     // Data
     pendingUsers: pendingRequestsQuery.data ?? [],
     pendingProposals: pendingProposalsQuery.data ?? [],
-    supervisorRequests: supervisorRequestsQuery.data ?? [],
     allInterns: allInternsQuery.data ?? [],
-    supervisorRelationships: supervisorRelationshipsQuery.data ?? [],
+    allSupervisors: allSupervisorsQuery.data ?? [],
     allInternBills: allInternBillsQuery.data ?? [],
 
     // Loading states
     isLoading: pendingRequestsQuery.isLoading,
     isLoadingProposals: pendingProposalsQuery.isLoading,
-    isLoadingSupervisor: supervisorRequestsQuery.isLoading,
     isLoadingInterns: allInternsQuery.isLoading,
-    isLoadingRelationships: supervisorRelationshipsQuery.isLoading,
+    isLoadingRelationships: allSupervisorsQuery.isLoading,
     isLoadingBills: allInternBillsQuery.isLoading,
 
     // Error states
     errors: {
       pendingRequests: pendingRequestsQuery.error,
       pendingProposals: pendingProposalsQuery.error,
-      supervisorRequests: supervisorRequestsQuery.error,
       allInterns: allInternsQuery.error,
-      supervisorRelationships: supervisorRelationshipsQuery.error,
+      allSupervisors: allSupervisorsQuery.error,
       allInternBills: allInternBillsQuery.error,
     },
 
@@ -303,9 +289,8 @@ export function useAdminDashboard() {
     refetch: {
       pendingRequests: () => queryClient.invalidateQueries({ queryKey: queryKeys.pendingRequests }),
       pendingProposals: () => queryClient.invalidateQueries({ queryKey: queryKeys.pendingProposals }),
-      supervisorRequests: () => queryClient.invalidateQueries({ queryKey: queryKeys.supervisorRequests }),
       allInterns: () => queryClient.invalidateQueries({ queryKey: queryKeys.allInterns }),
-      supervisorRelationships: () => queryClient.invalidateQueries({ queryKey: queryKeys.supervisorRelationships }),
+      allSupervisors: () => queryClient.invalidateQueries({ queryKey: queryKeys.allSupervisors }),
       allInternBills: () => queryClient.invalidateQueries({ queryKey: queryKeys.allInternBills }),
       all: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
     },
