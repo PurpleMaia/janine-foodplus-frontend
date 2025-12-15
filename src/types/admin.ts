@@ -1,4 +1,4 @@
-import { User } from "@/db/types";
+import { Bills, SupervisorUsers, User, UserBills } from "@/db/types";
 import { Selectable } from "kysely";
 
 export interface PendingUser{
@@ -40,21 +40,23 @@ export interface PendingProposal {
   proposalId: string;
 }
 
+export interface AdoptedBill {
+  bill_id: Selectable<Bills>['id'];
+  bill_number: Selectable<Bills>['bill_number'];
+  bill_title: Selectable<Bills>['bill_title'];
+  current_status: Selectable<Bills>['current_status'];
+  adopted_at: Selectable<UserBills>['adopted_at'];
+}
 export interface InternWithBills {
-  id: string;
-  email: string;
-  username: string;
-  created_at: string;
-  account_status: string;
-  supervisor_id: string | null;
-  supervisor_email: string | null;
-  supervisor_username: string | null;
-  adopted_bills: Array<{
-    bill_id: string;
-    bill_number: string;
-    bill_title: string;
-    current_status: string;
-  }>;
+  id: Selectable<User>['id'];
+  email: Selectable<User>['email'];
+  username: Selectable<User>['username'];
+  created_at: Selectable<User>['created_at'];
+  account_status: Selectable<User>['account_status'];
+  supervisor_id: Selectable<SupervisorUsers>['id'] | null;
+  supervisor_email: Selectable<User>['email'] | null;
+  supervisor_username: Selectable<User>['username'] | null;
+  adopted_bills: AdoptedBill[];
 }
 
 export interface SupervisorRelationship {
