@@ -1,21 +1,20 @@
 'use client';
 
+import React from 'react';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { useAdminDashboard } from '@/hooks/use-query-admin';
-import AdminHeader from './admin-header';
-import { BillWithInterns, InternWithBills, PendingUser, SupervisorWithInterns } from '@/types/admin';
-import { useState } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs,TabsContent } from '@/components/ui/tabs';
 import { ArrowRight, ChevronDown } from 'lucide-react';
+import AdminHeader from './admin-header';
+import { useAdminDashboard } from '@/hooks/use-query-admin';
 import { formatBillStatusName } from '@/lib/utils';
-import React from 'react';
-import { ManageInternDialog } from './manage-intern-dialog';
+import { BillWithInterns, InternWithBills, PendingUser, SupervisorWithInterns } from '@/types/admin';
+// import { ManageInternDialog } from './manage-intern-dialog';
 
 export function AdminDashboard() {
   const {
@@ -32,13 +31,9 @@ export function AdminDashboard() {
   isLoadingRelationships,
   isLoadingBills,
 
-  // Actions
-  handleApproveProposal,
-  handleRejectProposal,
+  // Actions  
   handleApproveUser,
-  handleDenyUser,
-  handleApproveSupervisor,
-  handleRejectSupervisor,
+  handleDenyUser,  
 
   // Mutation states
   isApproving,
@@ -56,18 +51,19 @@ export function AdminDashboard() {
     <div>
       <Tabs defaultValue="pending-requests" className="w-full">
         <AdminHeader count={counts} />
+          
+          <PendingUsersTab
+            pendingUsers={pendingUsers}
+            handleApproveUser={handleApproveUser}
+            handleDenyUser={handleDenyUser}
+          />
+  
+          <AllInternsTab interns={allInterns}/>
+  
+          <AllSupervisorsTab supervisors={allSupervisors}/>
+  
+          <AllInternBillsTab bills={allInternBills}/>
 
-        <PendingUsersTab
-          pendingUsers={pendingUsers}
-          handleApproveUser={handleApproveUser}
-          handleDenyUser={handleDenyUser}
-        />
-
-        <AllInternsTab interns={allInterns}/>
-
-        <AllSupervisorsTab supervisors={allSupervisors}/>
-
-        <AllInternBillsTab bills={allInternBills}/>
       </Tabs>
     </div>
   );
@@ -76,10 +72,23 @@ export function AdminDashboard() {
 function PendingUsersTab(
   { pendingUsers, handleApproveUser, handleDenyUser }: {
     pendingUsers: PendingUser[];
-    handleApproveUser: (userId: string) => void
+    handleApproveUser: (userId: string, role: string) => void
     handleDenyUser: (userId: string) => void;
   }
 ) {
+  const { isLoading, isApproving, isRejecting } = useAdminDashboard();
+
+  if (isLoading) {
+    return (
+      <TabsContent value="pending-requests" className="mx-8 space-y-8 mt-6">
+        <div className="p-8">
+          <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
+          <Skeleton className="h-[600px] w-full rounded-md" />
+        </div>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent value="pending-requests" className="mx-8 space-y-8 mt-6">
           {/* Pending Account Requests */}
@@ -113,18 +122,24 @@ function PendingUsersTab(
                           </div>
                         </div>
                         <div className="space-x-2">
-                          <Button
-                            onClick={() => handleApproveUser(user.id)}
-                            variant="default"
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            onClick={() => handleDenyUser(user.id)}
-                            variant="outline"
-                          >
-                            Deny
-                          </Button>
+                          {isApproving || isRejecting ? (
+                            <Skeleton className="h-8 w-24 rounded-md" />
+                          ) : (
+                            <>                          
+                              <Button
+                                onClick={() => handleApproveUser(user.id, user.requested_admin ? 'admin' : user.requested_supervisor ? 'supervisor' : 'user')}
+                                variant="default"
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                onClick={() => handleDenyUser(user.id)}
+                                variant="outline"
+                              >
+                                Deny
+                              </Button>
+                            </>
+                          ) }
                         </div>
                       </div>
                     </Card>
@@ -142,9 +157,21 @@ function AllInternsTab(
     interns: InternWithBills[];
   }
 ) {
-
+  const { isLoadingInterns } = useAdminDashboard();
   const [expandedIntern, setExpandedIntern] = useState<string | null>(null);
   // const [editingIntern, setEditingIntern] = useState<boolean>(false);
+
+  if (isLoadingInterns) {
+    return (
+      <TabsContent value="all-interns" className="mx-8 space-y-8 mt-6">
+        <div className="p-8">
+          <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
+          <Skeleton className="h-[600px] w-full rounded-md" />
+        </div>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent value="all-interns" className="mx-8 space-y-8 mt-6">
           {/* All Interns */}
@@ -279,6 +306,19 @@ function AllSupervisorsTab(
     supervisors: SupervisorWithInterns[];
   }
 ) {
+  const { isLoadingRelationships } = useAdminDashboard();
+  
+  if (isLoadingRelationships) {
+    return (
+      <TabsContent value="all-supervisors" className="mx-8 space-y-8 mt-6">
+        <div className="p-8">
+          <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
+          <Skeleton className="h-[600px] w-full rounded-md" />
+        </div>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent value="all-supervisors" className="mx-8 space-y-8 mt-6">
       <div>
@@ -331,6 +371,19 @@ function AllInternBillsTab(
     bills?: BillWithInterns[];
   }
 ) {
+  const { isLoadingBills } = useAdminDashboard();
+  
+  if (isLoadingBills) {
+    return (
+      <TabsContent value="all-tracked-bills" className="mx-8 space-y-8 mt-6">
+        <div className="p-8">
+          <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
+          <Skeleton className="h-[600px] w-full rounded-md" />
+        </div>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent value="all-tracked-bills" className="mx-8 space-y-8 mt-6">
       <div>

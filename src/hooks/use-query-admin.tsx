@@ -11,9 +11,7 @@ import {
   approveProposal,
   rejectProposal,
   approveUser,
-  denyUser,
-  approveSupervisor,
-  rejectSupervisor,
+  denyUser,  
 } from '@/app/actions/admin';
 
 // Query keys for cache management
@@ -130,8 +128,8 @@ export function useAdminDashboard() {
   });
 
   const approveUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const result = await approveUser(userId);
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const result = await approveUser(userId, role);
       if (!result.success) throw new Error(result.error);
       return result;
     },
@@ -198,46 +196,7 @@ export function useAdminDashboard() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.pendingRequests });
     },
-  });
-
-  const approveSupervisorMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const result = await approveSupervisor(userId);
-      if (!result.success) throw new Error(result.error);
-      return result;
-    },
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Supervisor access granted' });
-      queryClient.invalidateQueries({ queryKey: queryKeys.supervisorRequests });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allSupervisors });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to approve supervisor request',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const rejectSupervisorMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const result = await rejectSupervisor(userId);
-      if (!result.success) throw new Error(result.error);
-      return result;
-    },
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Supervisor request rejected' });
-      queryClient.invalidateQueries({ queryKey: queryKeys.supervisorRequests });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to reject supervisor request',
-        variant: 'destructive',
-      });
-    },
-  });
+  });  
 
   // ============================================
   // RETURN VALUES - Clean API for Component
@@ -272,18 +231,14 @@ export function useAdminDashboard() {
       approveProposalMutation.mutate({ proposalId, billId }),
     handleRejectProposal: (proposalId: string) => 
       rejectProposalMutation.mutate(proposalId),
-    handleApproveUser: (userId: string) => 
-      approveUserMutation.mutate(userId),
-    handleDenyUser: (userId: string) => 
+    handleApproveUser: (userId: string, role: string) => 
+      approveUserMutation.mutate({ userId, role }),
+    handleDenyUser: (userId: string,) => 
       denyUserMutation.mutate(userId),
-    handleApproveSupervisor: (userId: string) => 
-      approveSupervisorMutation.mutate(userId),
-    handleRejectSupervisor: (userId: string) => 
-      rejectSupervisorMutation.mutate(userId),
 
     // Mutation loading states (useful for disabling buttons)
-    isApproving: approveProposalMutation.isPending || approveUserMutation.isPending || approveSupervisorMutation.isPending,
-    isRejecting: rejectProposalMutation.isPending || denyUserMutation.isPending || rejectSupervisorMutation.isPending,
+    isApproving: approveProposalMutation.isPending || approveUserMutation.isPending, 
+    isRejecting: rejectProposalMutation.isPending || denyUserMutation.isPending, 
 
     // Manual refetch functions if needed
     refetch: {

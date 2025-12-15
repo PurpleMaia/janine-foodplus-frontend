@@ -52,7 +52,7 @@ export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>>
     return { success: false, error: 'Failed to fetch pending requests' };
   }
 }
-
+// NOTE will be available to all not just admin
 export async function getPendingProposals(): Promise<ActionResult<PendingProposal[]>> {
   try {
     const admin = await verifyAdminAccess();
@@ -172,7 +172,7 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
 
     return { success: true, data: internsWithDetails };
   } catch (error) {
-    console.error('Error fetching all interns:', error);
+    console.error('❌ [ALL INTERNS] Error fetching all interns:', error);
     return { success: false, error: 'Failed to fetch all interns' };
   }
 }
@@ -231,7 +231,7 @@ export async function getAllSupervisors(): Promise<ActionResult<SupervisorWithIn
 
   return { success: true, data: supervisors };
   } catch (error) {
-    console.error('Error fetching supervisor relationships:', error);
+    console.error('❌ [ALL SUPERVISORS] Error fetching supervisor relationships:', error);
     return { success: false, error: 'Failed to fetch supervisor relationships' };
   }
 }
@@ -292,7 +292,7 @@ export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[
 
     return { success: true, data: billsWithInterns };
   } catch (error) {
-    console.error('Error fetching all intern bills:', error);
+    console.error('❌ [ALL INTERN BILLS] Error fetching all intern bills:', error);
     return { success: false, error: 'Failed to fetch all intern bills' };
   }
 }
@@ -325,7 +325,7 @@ export async function approveProposal(
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {
-    console.error('Error approving proposal:', error);
+    console.error('❌ [PENDING REQUESTS] Error fetching pending requests:', error);
     return { success: false, error: 'Failed to approve proposal' };
   }
 }
@@ -356,7 +356,7 @@ export async function rejectProposal(proposalId: string): Promise<ActionResult> 
   }
 }
 
-export async function approveUser(userId: string): Promise<ActionResult> {
+export async function approveUser(userId: string, role: string): Promise<ActionResult> {
   try {
     const admin = await verifyAdminAccess();
     if (!admin) {
@@ -367,12 +367,27 @@ export async function approveUser(userId: string): Promise<ActionResult> {
       return { success: false, error: 'User ID is required' };
     }
 
-    // Replace with actual database mutation
-    // await db
-    //   .updateTable('users')
-    //   .set({ status: 'approved', approvedAt: new Date() })
-    //   .where('id', '=', userId)
-    //   .execute();
+    // First, get the user to check if they requested admin access
+    const user = await db
+      .selectFrom('user')
+      .select(['id', 'requested_admin'])
+      .where('id', '=', userId)
+      .where('account_status', '=', 'pending')
+      .executeTakeFirst();
+
+    if (!user) {
+      throw new Error('User not found or not pending');
+    }    
+
+    await db.updateTable('user')
+      .set({
+        account_status: 'active',
+        requested_admin: false, // reset
+        role
+      })
+      .where('id', '=', userId)
+      .where('account_status', '=', 'pending')
+      .executeTakeFirst();
 
     revalidatePath('/admin');
     return { success: true };
@@ -393,69 +408,17 @@ export async function denyUser(userId: string): Promise<ActionResult> {
       return { success: false, error: 'User ID is required' };
     }
 
-    // Replace with actual database mutation
-    // await db
-    //   .deleteFrom('users')
-    //   .where('id', '=', userId)
-    //   .execute();
+    await db.updateTable('user')
+      .set({ account_status: 'denied', requested_admin: false })
+      .where('id', '=', userId)
+      .where('account_status', '=', 'pending')
+      .executeTakeFirst();
 
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {
     console.error('Error denying user:', error);
     return { success: false, error: 'Failed to deny user' };
-  }
-}
-
-export async function approveSupervisor(userId: string): Promise<ActionResult> {
-  try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!userId) {
-      return { success: false, error: 'User ID is required' };
-    }
-
-    // Replace with actual database mutation
-    // await db
-    //   .updateTable('users')
-    //   .set({ isSupervisor: true, supervisorApprovedAt: new Date() })
-    //   .where('id', '=', userId)
-    //   .execute();
-
-    revalidatePath('/admin');
-    return { success: true };
-  } catch (error) {
-    console.error('Error approving supervisor:', error);
-    return { success: false, error: 'Failed to approve supervisor request' };
-  }
-}
-
-export async function rejectSupervisor(userId: string): Promise<ActionResult> {
-  try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!userId) {
-      return { success: false, error: 'User ID is required' };
-    }
-
-    // Replace with actual database mutation
-    // await db
-    //   .updateTable('supervisor_requests')
-    //   .set({ status: 'rejected', rejectedAt: new Date() })
-    //   .where('userId', '=', userId)
-    //   .execute();
-
-    revalidatePath('/admin');
-    return { success: true };
-  } catch (error) {
-    console.error('Error rejecting supervisor:', error);
-    return { success: false, error: 'Failed to reject supervisor request' };
   }
 }
 
