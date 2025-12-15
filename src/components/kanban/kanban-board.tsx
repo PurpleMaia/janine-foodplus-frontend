@@ -17,6 +17,7 @@ import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { useAuth } from '@/contexts/auth-context';
 import { KanbanCard } from './kanban-card';
 import { TempBillCard } from './temp-card';
+import LLMUpdateColumnButton from '../llm/llm-update-column-button';
 
 
 // // ------------------------------------------------------------
@@ -74,6 +75,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
     },
     ref
   ) {
+    const [refreshing, setRefreshing] = useState<boolean>(false);
     const useDnD = enableDnd && !readOnly;
     const pendingCount = pendingTempBills?.length ?? 0;
 
@@ -87,13 +89,22 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
         {/* Sticky header */}
         <div className="sticky top-0 z-10 rounded-t-lg bg-secondary/95 backdrop-blur p-3 shadow-sm border-b">
           <h3 className="flex items-center justify-between gap-2 text-sm font-semibold" title={title}>
-            <span className="truncate max-w-[12rem]">{title}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">({bills.length})</span>
-            {pendingCount > 0 && (
-              <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border">
-                Pending {pendingCount}
-              </span>
-            )}
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate max-w-[12rem]">{title}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">({bills.length})</span>
+              {pendingCount > 0 && (
+                <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border">
+                  Pending {pendingCount}
+                </span>
+              )}
+            </span>
+            <div className="flex items-center gap-1">
+              <LLMUpdateColumnButton
+                bills={bills}
+                onRefreshStart={() => setRefreshing(true)}
+                onRefreshEnd={() => setRefreshing(false)}
+              />
+            </div>
           </h3>
         </div>
 

@@ -104,10 +104,12 @@ export default function AIUpdateButton() {
          // Create temp bill for the original position
         const tempBill: TempBill = {
           id: bill.id,
+          bill_number: bill.bill_number,
           current_status: bill.current_status,          
           suggested_status: classification,
           target_idx: targetColumnIdx, 
-          bill_title: bill.bill_title
+          bill_title: bill.bill_title,
+          source: 'llm'
         };
 
         if (abortSignal?.aborted) {

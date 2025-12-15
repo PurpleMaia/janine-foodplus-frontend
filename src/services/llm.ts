@@ -128,15 +128,18 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
     // console.log('CONTEXT:\n', context)
     console.log('awaiting llm...', process.env.VLLM)   
         while (attempt < maxRetries) {
+            console.log('in while loop')   
 
             try {
+                console.log('in try block')
                 const model = process.env.VLLM || process.env.LLM || '';
-                
+                console.log('model:', model)
                 if (!model) {
+                    console.log('model not found')
                     console.error('LLM model not configured. Please set VLLM or LLM environment variable.');
                     return null;
                 }
-                
+                console.log('calling llm...')   
                 const response = await client.chat.completions.create({
                     model,
                     messages: [
@@ -154,8 +157,10 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
                     ],
                     temperature: 0.0
                 });
+                console.log('response:', response)
     
                 if (!response || !response.choices[0].message.content || !response.choices || !response.choices[0].message) {
+                    console.log('response not found')
                     return null;
                 }
     
