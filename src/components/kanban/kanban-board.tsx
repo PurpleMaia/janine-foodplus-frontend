@@ -17,148 +17,7 @@ import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { useAuth } from '@/contexts/auth-context';
 import { KanbanCard } from './kanban-card';
 import { TempBillCard } from './temp-card';
-
-
-// // ------------------------------------------------------------
-// // Inlined KanbanColumn (with enableDnd + pending proposal UI)
-// // ------------------------------------------------------------
-
-export interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> {
-  columnId: BillStatus;
-  title: string;
-  bills: Bill[];
-  isDraggingOver: boolean;
-  draggingBillId: string | null;
-  onCardClick: (bill: Bill) => void;
-  onUnadopt?: (billId: string) => void;
-  showUnadoptButton?: boolean;
-  readOnly: boolean;
-  highlightedBillId?: string | null;
-
-  // Pending proposals
-  pendingTempBills?: TempBill[];
-  canModerate?: boolean;
-  onApproveTemp?: (billId: string) => void;
-  onRejectTemp?: (billId: string) => void;
-
-  // Only render <Draggable> when inside DragDropContext/Droppable
-  enableDnd?: boolean;
-}
-
-export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
-  function KanbanColumn(
-    {
-      columnId,
-      title,
-      bills,
-      isDraggingOver,
-      draggingBillId,
-      onCardClick,
-      onUnadopt,
-      showUnadoptButton = false,
-      readOnly,
-      highlightedBillId = null,
-
-      // pending proposals
-      pendingTempBills = [],
-      canModerate = false,
-      onApproveTemp,
-      onRejectTemp,
-
-      // Draggable gate
-      enableDnd = false,
-
-      children, // Droppable placeholder
-      className,
-      ...divProps
-    },
-    ref
-  ) {
-    const useDnD = enableDnd && !readOnly;
-    const pendingCount = pendingTempBills?.length ?? 0;
-
-    return (
-      <div
-        ref={ref}
-        {...divProps} // enableDnd was destructured so it won't leak to DOM
-        className={`flex h-[calc(100vh-10rem)] w-80 shrink-0 flex-col rounded-lg border bg-card shadow-sm ${className ?? ''}`}
-        data-column-id={columnId}
-      >
-        {/* Sticky header */}
-        <div className="sticky top-0 z-10 rounded-t-lg bg-secondary/95 backdrop-blur p-3 shadow-sm border-b">
-          <h3 className="flex items-center justify-between gap-2 text-sm font-semibold" title={title}>
-            <span className="truncate max-w-[12rem]">{title}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">({bills.length})</span>
-            {pendingCount > 0 && (
-              <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border">
-                Pending {pendingCount}
-              </span>
-            )}
-          </h3>
-        </div>
-
-        {/* Cards list with vertical scroll */}
-        <ScrollArea className="flex-1 p-2">
-          <div className={`flex flex-col gap-2 ${isDraggingOver ? 'bg-muted/30 rounded p-1' : ''}`}>
-            {bills.map((bill, index) =>
-              useDnD ? (
-                <Draggable key={bill.id} draggableId={bill.id} index={index} isDragDisabled={readOnly}>
-                  {(provided, snapshot) => (
-                    <KanbanCard
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      bill={bill}
-                      isDragging={snapshot.isDragging || draggingBillId === bill.id}
-                      onCardClick={onCardClick}
-                      onUnadopt={onUnadopt}
-                      showUnadoptButton={showUnadoptButton}
-                      isHighlighted={highlightedBillId === bill.id}
-                      style={{ ...provided.draggableProps.style }}
-                    />
-                  )}
-                </Draggable>
-              ) : (
-                <KanbanCard
-                  key={bill.id}
-                  bill={bill}
-                  isDragging={false}
-                  onCardClick={onCardClick}
-                  onUnadopt={onUnadopt}
-                  showUnadoptButton={showUnadoptButton}
-                  isHighlighted={highlightedBillId === bill.id}
-                />
-              )
-            )}
-
-            {/* Droppable placeholder goes here */}
-            {children}
-
-            {/* Pending proposals (using TempBillCard component) */}
-            {pendingCount > 0 && (
-              <div className="mt-2 space-y-2">
-                {pendingTempBills.map((tb) => (
-                  <TempBillCard
-                    key={`pending-${tb.id}`}
-                    tempBill={tb}
-                    canModerate={canModerate}
-                    onApproveTemp={onApproveTemp}
-                    onRejectTemp={onRejectTemp}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* empty state */}
-          {!bills.length && pendingCount === 0 && !children && (
-            <p className="p-4 text-center text-sm text-muted-foreground">No bills in this stage.</p>
-          )}
-        </ScrollArea>
-      </div>
-    );
-  }
-);
+import { KanbanColumn } from './kanban-column';
 
 // ---------------------------------------------
 // Kanban Board
@@ -546,7 +405,6 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                       showUnadoptButton={showUnadoptButton}
                       readOnly={true}
                       enableDnd={false}
-                      highlightedBillId={highlightedBillId}
 
                       pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                       canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
@@ -595,7 +453,6 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             showUnadoptButton={showUnadoptButton}
                             readOnly={false}
                             enableDnd={true}
-                            highlightedBillId={highlightedBillId}
                             /* pending proposals */
                             pendingTempBills={tempBillsByColumn[column.id as BillStatus] || []}
                             canModerate={user?.role === 'supervisor' || user?.role === 'admin'}

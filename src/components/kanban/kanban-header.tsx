@@ -1,91 +1,56 @@
 'use client'; // Keep header client-side for search input interaction
 
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { KanbanSquareIcon, Search, Table, UserCheck2Icon, Users2Icon } from 'lucide-react';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { KanbanSquareIcon, Search, Table, Tag, UserCheck2Icon, Users2Icon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-// import { TagFilterList } from '../tags/tag-filter-list';
-import { AuthHeader } from '../auth/auth-header';
-import { Menubar, MenubarMenu, MenubarTrigger } from '../ui/menubar';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
+import { Switch } from '../ui/switch';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { Label } from '../ui/label';
+import { useState } from 'react';
+import NewBillButton from '../new-bill/new-bill-button';
+import { AdoptBillDialog } from './adopt-bill-dialog';
 
 export function KanbanHeader() {
-  const { view: currentView, setView } = useKanbanBoard();
   const { user } = useAuth();
-  const publicViews = ['kanban', 'spreadsheet'];
-  const adminViews = ['admin', 'supervisor'];
+  const {  } = useKanbanBoard();
 
-  const role = user?.role;
-  const views = role === 'admin' || role === 'supervisor'
-    ? [...publicViews, ...adminViews]
-    : publicViews;
-  const { setSearchQuery, selectedTagIds, setSelectedTagIds } = useKanbanBoard(); // Access context
+  const isPublic = !user;
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value
-
-    setSearchQuery(query);
-  };
-
-  const handleTagToggle = (tagId: string) => {
-    setSelectedTagIds((prev) => {
-      if (prev.includes(tagId)) {
-        return prev.filter((id) => id !== tagId);
-      } else {
-        return [...prev, tagId];
-      }
-    });
-  };
-
-  const handleClearFilters = () => {
-    setSelectedTagIds([]);
-  };
+  const [isNewBillDialogOpen, setIsNewBillDialogOpen] = useState(false);
 
   return (
-    <>
-      <header className="sticky top-0 z-10 flex items-center px-8 py-4 border-b bg-white ">
-        {/* Info */}
-        <div className="flex-shrink-0">
-          {/* FOOD+ LOGO HERE */}
-          <h1 className="text-xl font-semibold">Food+ Bill Tracker</h1>
-          <h2 className="text-sm font-light text-gray-500">Track and manage bills</h2>
+    <div className='p-2 border-b bg-white flex items-center justify-between shadow-md'>
+      
+        <div className=''>
+          {isPublic ? (
+            <div className='ml-6'>
+              <h2 className="text-md font-semibold">Public View</h2>
+              <p className="text-sm text-muted-foreground">Login to manage bills</p>
+            </div>
+          ) : (
+            <div className='ml-6'>
+              <h2 className="text-md font-semibold">Public View</h2>
+              <p className="text-sm text-muted-foreground">Login to manage bills</p>
+            </div>
+          )}
         </div>
 
-        {/* View Select Bar */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex justify-center w-fit">
-          <Tabs
-            value={currentView}
-            onValueChange={(v) => setView(v as "kanban" | "spreadsheet" | "admin" | "approvals" | "supervisor")}
-            className='border rounded-md shadow-sm'
-          >
-            <TabsList>
-              {views.map(v => (
-                <TabsTrigger key={v} value={v}
-                  className='data-[state=active]:bg-accent data-[state=active]:text-white'
-                >
-                  {getIconForView(v)} {v.charAt(0).toUpperCase() + v.slice(1)}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+        <div className='flex items-center space-x-2 mr-4 py-2'>
+            <Button variant="outline"><Tag /><span>Tags</span></Button>
+
+            {!isPublic && (
+              <>
+                <NewBillButton />
+                <AdoptBillDialog />
+                <div className='flex items-center space-x-2'>
+                  <Switch id='my-bills' checked={true}> View All Bills</Switch>
+                  <Label htmlFor='my-bills'>My Bills</Label>
+                </div>
+              </>
+            )}
         </div>
-        
-        {/* Search and Auth */}
-        <div className="relative max-w-md flex gap-4 flex-shrink-0 ml-auto">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="w-full rounded-md bg-muted pl-9 focus:bg-background shadow-sm"
-            onChange={handleSearchChange}
-            aria-label="Search bills"
-          />
-          <AuthHeader />
-        </div>
-      </header>
-    </>
+
+    </div>
   );
 }
 function TagFilterList({
