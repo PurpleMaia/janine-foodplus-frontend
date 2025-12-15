@@ -6,7 +6,6 @@ import { Errors } from '@/lib/errors';
 import { BillWithInterns, InternWithBills, PendingProposal, PendingUser, SupervisorWithInterns } from '@/types/admin';
 import { revalidatePath } from 'next/cache';
 
-// Types - adjust based on your actual data structures
 interface ActionResult<T = void> {
   success: boolean;
   error?: string;
@@ -29,7 +28,7 @@ async function verifyAdminAccess(): Promise<{ userId: string }> {
 }
 
 // ============================================
-// FETCH ACTIONS (replacing GET/POST fetch endpoints)
+// FETCH ACTIONS
 // ============================================
 
 export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>> {
@@ -55,10 +54,7 @@ export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>>
 // NOTE will be available to all not just admin
 export async function getPendingProposals(): Promise<ActionResult<PendingProposal[]>> {
   try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    await verifyAdminAccess();
 
     console.log('📋 [PENDING PROPOSALS] Admin loading all pending proposals...');
     const proposals = await db
@@ -102,10 +98,7 @@ export async function getPendingProposals(): Promise<ActionResult<PendingProposa
 
 export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> {
   try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    await verifyAdminAccess();    
 
     // Get all interns (users with role 'user')
     console.log('📋 [ALL INTERNS] Loading all interns with bills...');
@@ -179,10 +172,8 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
 
 export async function getAllSupervisors(): Promise<ActionResult<SupervisorWithInterns[]>> {
   try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    await verifyAdminAccess();
+
     console.log('📋 [ALL SUPERVISORS] Loading all supervisors with interns...');
 
    const rows = await db
@@ -238,10 +229,7 @@ export async function getAllSupervisors(): Promise<ActionResult<SupervisorWithIn
 
 export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[]>> {
   try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    await verifyAdminAccess();    
 
     console.log('📋 [ALL INTERN BILLS] Loading all bills tracked by users...');
 
@@ -298,7 +286,7 @@ export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[
 }
 
 // ============================================
-// MUTATION ACTIONS (replacing POST action endpoints)
+// MUTATION ACTIONS
 // ============================================
 
 export async function approveProposal(
@@ -358,14 +346,13 @@ export async function rejectProposal(proposalId: string): Promise<ActionResult> 
 
 export async function approveUser(userId: string, role: string): Promise<ActionResult> {
   try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    await verifyAdminAccess();
 
     if (!userId) {
       return { success: false, error: 'User ID is required' };
     }
+    console.log('📋 [APPROVING ACCOUNT REQUEST] Approving user account request...');
+
 
     // First, get the user to check if they requested admin access
     const user = await db
@@ -375,7 +362,7 @@ export async function approveUser(userId: string, role: string): Promise<ActionR
       .where('account_status', '=', 'pending')
       .executeTakeFirst();
 
-    if (!user) {
+    if (!user) {      
       throw new Error('User not found or not pending');
     }    
 
@@ -389,24 +376,25 @@ export async function approveUser(userId: string, role: string): Promise<ActionR
       .where('account_status', '=', 'pending')
       .executeTakeFirst();
 
+    console.log(`✅ [APPROVING ACCOUNT REQUEST] Approved user ${userId} with role ${role}`);
+
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {
-    console.error('Error approving user:', error);
+    console.error('❌ [APPROVING ACCOUNT REQUEST] Error approving user:', error);
     return { success: false, error: 'Failed to approve user' };
   }
 }
 
 export async function denyUser(userId: string): Promise<ActionResult> {
   try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    await verifyAdminAccess();
 
     if (!userId) {
       return { success: false, error: 'User ID is required' };
     }
+
+    console.log('📋 [DENYING ACCOUNT REQUEST] Denying user account request...');
 
     await db.updateTable('user')
       .set({ account_status: 'denied', requested_admin: false })
@@ -415,46 +403,11 @@ export async function denyUser(userId: string): Promise<ActionResult> {
       .executeTakeFirst();
 
     revalidatePath('/admin');
+    
+    console.log(`✅ [DENYING ACCOUNT REQUEST] Denied user ${userId}`);
     return { success: true };
   } catch (error) {
-    console.error('Error denying user:', error);
+    console.error('❌ [DENYING ACCOUNT REQUEST] Error denying user:', error);
     return { success: false, error: 'Failed to deny user' };
-  }
-}
-
-export async function manageIntern(
-  userId: string,
-  action: 'suspend' | 'reinstate'
-): Promise<ActionResult> {
-  try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!userId) {
-      return { success: false, error: 'User ID is required' };
-    }
-
-    // Replace with actual database mutation based on action
-    // if (action === 'suspend') {
-    //   await db
-    //     .updateTable('users')
-    //     .set({ account_status: 'suspended' })
-    //     .where('id', '=', userId)
-    //     .execute();
-    // } else if (action === 'reinstate') {
-    //   await db
-    //     .updateTable('users')
-    //     .set({ account_status: 'active' })
-    //     .where('id', '=', userId)
-    //     .execute();
-    // }
-
-    revalidatePath('/admin');
-    return { success: true };
-  } catch (error) {
-    console.error('Error managing intern:', error);
-    return { success: false, error: 'Failed to manage intern account' };
   }
 }
