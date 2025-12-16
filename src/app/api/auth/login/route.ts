@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createSession, } from '@/lib/auth';
 import { setSessionCookie } from '@/lib/cookies';
 import type { User } from '@/types/user';
+import { loginSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,11 +10,9 @@ export async function POST(request: NextRequest) {
     const { authString, password } = await request.json();
 
     //validates input
-    if (!authString || !password) {
-      return NextResponse.json(
-        { error: 'Email/Username and password are required' },
-        { status: 400 }
-      );
+    const validation = loginSchema.safeParse({ authString, password });
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Authenticate user
