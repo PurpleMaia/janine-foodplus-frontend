@@ -71,7 +71,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   const [tempBills, setTempBills] = useState<TempBill[]>([]);
   const [, setError] = useState<string | null>(null);
   const [loadingBills, setLoadingBills] = useState(false);
-  const [viewMode, setViewMode] = useState<'my-bills' | 'all-bills'>('my-bills');
+  const [viewMode, setViewMode] = useState<'my-bills' | 'all-bills'>('all-bills');
   const { user, loading: userLoading } = useAuth();
 
   const reloadProposalsFromServer = useCallback(async () => {

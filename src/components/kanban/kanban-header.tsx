@@ -32,8 +32,8 @@ export function KanbanHeader() {
             </div>
           ) : (
             <div className='flex items-center space-x-2'>
-              <Switch id='my-bills' checked={viewMode === 'my-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
-              <Label htmlFor='my-bills' className='text-md'>My Bills</Label>
+              <Switch id='my-bills' checked={viewMode === 'all-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
+              <Label htmlFor='my-bills' className='text-md'>All Tracked Bills</Label>
             </div>
           )}
         </div>
@@ -54,28 +54,11 @@ export function KanbanHeader() {
 
             {!isPublic && (
               <>
-                <NewBillButton />
-                <AdoptBillDialog />
-                
+                <AdoptBillDialog />                
               </>
             )}
         </div>
 
     </div>
   );
-}
-
-function getIconForView(view: string) {
-  switch (view) {
-    case 'kanban':
-      return <KanbanSquareIcon className="h-5 w-5 mr-2" />;
-    case 'spreadsheet':
-      return <Table className="h-5 w-5 mr-2" />;
-    case 'admin':
-      return <UserCheck2Icon className="h-5 w-5 mr-2" />;
-      case 'supervisor':
-      return <Users2Icon className="h-5 w-5 mr-2" />;
-    default:
-      return null;
-  }
 }

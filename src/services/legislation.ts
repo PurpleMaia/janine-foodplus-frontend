@@ -7,36 +7,7 @@ import { db } from '../db/kysely/client';
 import { Bills } from '../db/types';
 import { mapBillsToBill } from '@/lib/utils';
 import { sql } from 'kysely';
-
-let userBillPreferencesInitialized = false;
-
-export async function ensureUserBillPreferencesTable() {
-  if (userBillPreferencesInitialized) {
-    return;
-  }
-
-  try {
-    await db.schema
-      .createTable('user_bill_preferences')
-      .ifNotExists()
-      .addColumn('id', 'uuid', (col) => col.primaryKey())
-      .addColumn('user_id', 'uuid', (col) => col.notNull())
-      .addColumn('bill_id', 'uuid', (col) => col.notNull())
-      .addColumn('nickname', 'text', (col) => col.notNull())
-      .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-      .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-      .addUniqueConstraint('user_bill_preferences_user_bill_unique', ['user_id', 'bill_id'])
-      .execute();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('already exists')) {
-      console.error('Failed to ensure user_bill_preferences table:', error);
-      throw error;
-    }
-  } finally {
-    userBillPreferencesInitialized = true;
-  }
-}
+import { findBill } from './scraper';
 
 // Helper function to create placeholder introducers
 // const createIntroducers = (names: string[]): Introducer[] =>
@@ -384,13 +355,22 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
   try {
 
     // First find the bill by URL
+    let billId = '';
     const billResult = await findExistingBillByURL(billUrl);
     if (!billResult) {
-      console.log('Bill not found with URL:', billUrl);
-      return false;
-    }    
+      console.log('[ADOPT BILL] Bill not found with URL:', billUrl);
+      
+      // scrape bill URL
+      console.log('[ADOPT BILL] Scraping bill URL:', billUrl);
+      const newBill = await findBill(billUrl);
 
-    const billId = billResult.id;
+      // return new bill data
+      console.log('[ADOPT BILL] Found bill data:', newBill);
+      billId = newBill.individualBill.id;
+    } else {
+      console.log('[ADOPT BILL] Bill found with URL:', billUrl);
+      billId = billResult.id;
+    }
 
     // Check if already adopted
     const alreadyAdopted = await db.selectFrom('user_bills').selectAll()
@@ -436,7 +416,6 @@ export async function unadoptBill(userId: string, billId: string): Promise<boole
 
 export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
   try {
-    await ensureUserBillPreferencesTable();
     // First, check if the user is a supervisor
     const user = await db
       .selectFrom('user')

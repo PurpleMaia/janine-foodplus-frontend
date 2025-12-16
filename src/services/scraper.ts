@@ -26,6 +26,12 @@ export async function scrapeForUpdates(billID: string) {
     return data
 }
 
+/**
+ * Returns data for the bill (with new status updates), if it is an unrecognized bill URL
+ * then scraper service will insert this new bill to database
+ * @param billURL - the URL of the bill to find
+ * @returns individual bill data
+ */
 export async function findBill(billURL: string) {
   console.log('[SCRAPER FOR FIND BILL] calling scraping service with billURL classifier:', billURL)
     const response = await fetch(`${process.env.SCRAPER_API_URL}/scrape-individual`, {
