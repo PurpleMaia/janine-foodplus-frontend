@@ -8,9 +8,11 @@ import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 import { AdoptBillDialog } from './adopt-bill-dialog';
 import { useBills } from '@/contexts/bills-context';
 import { KanbanHeader } from './kanban-header';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
 
-export function ProtectedKanbanBoard() {
+export function ProtectedKanbanBoardOrSpreadsheet() {
   const { user, loading } = useAuth();
+  const { view } = useKanbanBoard();
   const { bills, loadingBills, viewMode } = useBills();
   const { unadoptBill } = useAdoptedBills();
 
@@ -24,7 +26,7 @@ export function ProtectedKanbanBoard() {
     return (
       <>
         <KanbanHeader />
-        <KanbanBoard readOnly={true} />
+        { view === 'kanban' ? <KanbanBoard readOnly={true} /> : <KanbanSpreadsheet />}
       </>
     );
   }
@@ -36,17 +38,20 @@ export function ProtectedKanbanBoard() {
     console.log('User has', bills.length, 'adopted bills, rendering empty state');
     
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
-          <p className="text-muted-foreground max-w-md">
-            You haven&apos;t adopted any bills yet. Use the button below to start tracking bills that interest you.
-          </p>
+      <>
+        <KanbanHeader />
+        <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
+            <p className="text-muted-foreground max-w-md">
+              You haven&apos;t adopted any bills yet. Use the button below to start tracking bills that interest you.
+            </p>
+          </div>
+          <div className="w-64">
+            <AdoptBillDialog />
+          </div>
         </div>
-        <div className="w-64">
-          <AdoptBillDialog />
-        </div>
-      </div>
+      </>
     );
   }
 
@@ -55,6 +60,16 @@ export function ProtectedKanbanBoard() {
   const isReadOnlyForIntern = user && user.role === 'user' && viewMode === 'all-bills';
   const shouldShowUnadoptButton = user && 
     (user.role === 'admin' || user.role === 'supervisor' || viewMode === 'my-bills');
+
+  if (view === 'spreadsheet') {
+    // Show adopted bills in spreadsheet view
+    return (
+      <div className="space-y-4">           
+        <KanbanHeader />
+        <KanbanSpreadsheet />      
+      </div>
+    );
+  }
 
   // Show adopted bills with full functionality
   return (

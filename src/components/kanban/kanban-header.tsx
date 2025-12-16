@@ -9,10 +9,13 @@ import { Label } from '../ui/label';
 import { useState } from 'react';
 import NewBillButton from '../new-bill/new-bill-button';
 import { AdoptBillDialog } from './adopt-bill-dialog';
+import { useBills } from '@/contexts/bills-context';
+import { TagFilterList } from '../tags/tag-filter-list';
 
 export function KanbanHeader() {
   const { user } = useAuth();
-  const {  } = useKanbanBoard();
+  const { viewMode, toggleViewMode } = useBills();
+  const { selectedTagIds, setSelectedTagIds } = useKanbanBoard();
 
   const isPublic = !user;
 
@@ -36,14 +39,24 @@ export function KanbanHeader() {
         </div>
 
         <div className='flex items-center space-x-2 mr-4 py-2'>
-            <Button variant="outline"><Tag /><span>Tags</span></Button>
+            <TagFilterList
+              selectedTagIds={selectedTagIds}
+              onTagToggle={(tagId: string) => {
+                setSelectedTagIds((prev) =>
+                  prev.includes(tagId)
+                    ? prev.filter((id) => id !== tagId)
+                    : [...prev, tagId]
+                );
+              }}
+              onClearFilters={() => setSelectedTagIds([])}
+            />
 
             {!isPublic && (
               <>
                 <NewBillButton />
                 <AdoptBillDialog />
                 <div className='flex items-center space-x-2'>
-                  <Switch id='my-bills' checked={true}> View All Bills</Switch>
+                  <Switch id='my-bills' checked={viewMode === 'my-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
                   <Label htmlFor='my-bills'>My Bills</Label>
                 </div>
               </>
@@ -51,40 +64,6 @@ export function KanbanHeader() {
         </div>
 
     </div>
-  );
-}
-function TagFilterList({
-  selectedTagIds,
-  onTagToggle,
-  onClearFilters
-}: {
-  selectedTagIds: string[];
-  onTagToggle: (tagId: string) => void;
-  onClearFilters: () => void;
-}) {
-  return (
-    <TagFilterList
-      selectedTagIds={selectedTagIds || []}
-      onTagToggle={onTagToggle}
-      onClearFilters={onClearFilters}
-    />
-    
-  )
-}
-function MyBillsButton(user: any, viewMode: string, toggleViewMode: () => void) {
-  return (
-    <>
-      {user && (
-        <Button
-          variant={viewMode === 'my-bills' ? 'default' : 'outline'}
-          size="sm"
-          onClick={toggleViewMode}
-          className="whitespace-nowrap"
-        >
-          {viewMode === 'my-bills' ? 'My Bills' : 'All Bills'}
-        </Button>
-      )}
-    </>
   );
 }
 

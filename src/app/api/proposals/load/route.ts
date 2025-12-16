@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { validateSession } from '@/lib/auth';
 import { db } from '../../../../db/kysely/client';
 import { sql } from 'kysely';
-
+import { getSessionCookie } from '@/lib/cookies';
 export async function GET(request: NextRequest) {
   try {
     // Validate session

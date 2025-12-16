@@ -1,7 +1,7 @@
 'use client'; // Keep header client-side for search input interaction
 
 import { Input } from '@/components/ui/input';
-import { KanbanSquareIcon, Search, Table, UserCheck2Icon, Users2Icon } from 'lucide-react';
+import { KanbanSquareIcon, ListCheck, Search, Table, Users2Icon } from 'lucide-react';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useAuth } from '@/contexts/auth-context';
 import { AuthHeader } from '../auth/auth-header';
@@ -10,13 +10,17 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 export function Header() {
   const { view: currentView, setView } = useKanbanBoard();
   const { user } = useAuth();
-  const publicViews = ['kanban', 'spreadsheet'];
-  const adminViews = ['admin', 'supervisor'];
+  const publicViews = ['kanban', 'spreadsheet'];  
 
   const role = user?.role;
-  const views = role === 'admin' || role === 'supervisor'
-    ? [...publicViews, ...adminViews]
+  const views = user
+    ? role === 'admin'
+      ? ['kanban', 'spreadsheet', 'approvals', 'admin']
+      : role === 'supervisor'
+        ? ['kanban', 'spreadsheet', 'approvals', 'supervisor']
+        : ['kanban', 'spreadsheet']
     : publicViews;
+
   const { setSearchQuery } = useKanbanBoard(); // Access context
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,9 +80,10 @@ function getIconForView(view: string) {
       return <KanbanSquareIcon className="h-5 w-5 mr-2" />;
     case 'spreadsheet':
       return <Table className="h-5 w-5 mr-2" />;
-    case 'admin':
-      return <UserCheck2Icon className="h-5 w-5 mr-2" />;
-      case 'supervisor':
+    case 'approvals':
+      return <ListCheck className="h-5 w-5 mr-2" />;
+      case 'admin':
+    case 'supervisor':
       return <Users2Icon className="h-5 w-5 mr-2" />;
     default:
       return null;

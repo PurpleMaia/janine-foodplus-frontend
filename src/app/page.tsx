@@ -2,7 +2,7 @@
 
 
 import { Header } from '@/components/main/header';
-import { ProtectedKanbanBoard } from '@/components/kanban/protected-kanban-board';
+import { ProtectedKanbanBoardOrSpreadsheet } from '@/components/kanban/protected-kanban-board';
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
 import { ApprovalsDashboard } from '@/components/approvals/approvals-dashboard';
 import { SupervisorDashboard } from '@/components/supervisor/supervisor-dashboard';
@@ -29,11 +29,13 @@ export default function Home() {
           { view === 'admin' ? (
               <AdminDashboard />
           ) : view === 'supervisor' ? (
-            <SupervisorDashboard />
+              <SupervisorDashboard />
           ) : view === 'approvals' ? (
-            <ApprovalsDashboard />
+              <ApprovalsDashboard />
+          ) : view === 'spreadsheet' ? (
+            <ProtectedKanbanBoardOrSpreadsheet />          
           ) : (
-            <ProtectedKanbanBoard />          
+            <ProtectedKanbanBoardOrSpreadsheet />          
           )}
       </main>
     </div>
