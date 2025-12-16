@@ -14,14 +14,12 @@ import { BillDetailsDialog } from './bill-details-dialog';
 import { Button } from '@/components/ui/button';
 import { useBills } from '@/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
+import { KanbanColumn } from './kanban-column';
 import { useAuth } from '@/contexts/auth-context';
 import { KanbanCard } from './kanban-card';
 import { TempBillCard } from './temp-card';
-import { KanbanColumn } from './kanban-column';
+import LLMUpdateColumnButton from '../llm/llm-update-column-button';
 
-// ---------------------------------------------
-// Kanban Board
-// ---------------------------------------------
 
 interface KanbanBoardProps {
   readOnly: boolean;
