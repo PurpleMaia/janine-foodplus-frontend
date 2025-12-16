@@ -24,16 +24,16 @@ export function KanbanHeader() {
   return (
     <div className='p-2 border-b bg-white flex items-center justify-between shadow-md'>
       
-        <div className=''>
+        <div className='ml-6'>
           {isPublic ? (
-            <div className='ml-6'>
+            <div className=''>
               <h2 className="text-md font-semibold">Public View</h2>
               <p className="text-sm text-muted-foreground">Login to manage bills</p>
             </div>
           ) : (
-            <div className='ml-6'>
-              <h2 className="text-md font-semibold">Public View</h2>
-              <p className="text-sm text-muted-foreground">Login to manage bills</p>
+            <div className='flex items-center space-x-2'>
+              <Switch id='my-bills' checked={viewMode === 'my-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
+              <Label htmlFor='my-bills' className='text-md'>My Bills</Label>
             </div>
           )}
         </div>
@@ -56,10 +56,7 @@ export function KanbanHeader() {
               <>
                 <NewBillButton />
                 <AdoptBillDialog />
-                <div className='flex items-center space-x-2'>
-                  <Switch id='my-bills' checked={viewMode === 'my-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
-                  <Label htmlFor='my-bills'>My Bills</Label>
-                </div>
+                
               </>
             )}
         </div>
