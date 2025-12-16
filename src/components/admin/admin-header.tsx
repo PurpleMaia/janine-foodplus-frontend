@@ -14,7 +14,7 @@ interface AdminHeaderProps {
 export default function AdminHeader({ count }: AdminHeaderProps) {
   const activeStyle = 'data-[state=active]:bg-accent data-[state=active]:text-white'
   return (
-    <div className='px-6 border-b bg-white flex items-center justify-between shadow-md'>
+    <div className='px-6 py-2 border-b bg-white flex items-center justify-between shadow-md'>
         <div className=''>
             <TabsList className="space-x-4 shadow-sm border">
                 <TabsTrigger value="pending-requests" className={activeStyle}>
@@ -32,11 +32,11 @@ export default function AdminHeader({ count }: AdminHeaderProps) {
             </TabsList>
         </div>
 
-        <div className='space-x-2 mr-4 py-2'>
+        {/* <div className='space-x-2 mr-4 py-2'>
             <Button>New Request</Button>
             <Button>New Request</Button>
             <Button>New Request</Button>
-        </div>
+        </div> */}
     </div>
   )
 }
