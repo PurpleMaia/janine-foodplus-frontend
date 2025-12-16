@@ -39,7 +39,11 @@ export function KanbanHeader() {
         </div>
 
         <div className='flex items-center space-x-2 mr-4 py-2'>
-            <TagFilterList
+            <Button variant='outline' size='sm' onClick={() => setIsNewBillDialogOpen(true)}>
+              <Tag /> Tag
+            </Button>
+
+            {/* <TagFilterList
               selectedTagIds={selectedTagIds}
               onTagToggle={(tagId: string) => {
                 setSelectedTagIds((prev) =>
@@ -49,7 +53,7 @@ export function KanbanHeader() {
                 );
               }}
               onClearFilters={() => setSelectedTagIds([])}
-            />
+            /> */}
 
             {!isPublic && (
               <>
