@@ -8,8 +8,6 @@ import {
   getAllInterns,
   getAllSupervisors,
   getAllInternBills,
-  approveProposal,
-  rejectProposal,
   approveUser,
   denyUser,  
 } from '@/app/actions/admin';
@@ -85,47 +83,6 @@ export function useAdminDashboard() {
   // ============================================
   // MUTATIONS - Actions with Optimistic Updates
   // ============================================
-
-  const approveProposalMutation = useMutation({
-    mutationFn: async ({ proposalId, billId }: { proposalId: string; billId: string }) => {
-      const result = await approveProposal(proposalId, billId);
-      if (!result.success) throw new Error(result.error);
-      return result;
-    },
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Proposal approved' });
-      // Invalidate related queries to refetch fresh data
-      queryClient.invalidateQueries({ queryKey: queryKeys.pendingProposals });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allInternBills });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to approve proposal',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const rejectProposalMutation = useMutation({
-    mutationFn: async (proposalId: string) => {
-      const result = await rejectProposal(proposalId);
-      if (!result.success) throw new Error(result.error);
-      return result;
-    },
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Proposal rejected' });
-      queryClient.invalidateQueries({ queryKey: queryKeys.pendingProposals });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allInternBills });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to reject proposal',
-        variant: 'destructive',
-      });
-    },
-  });
 
   const approveUserMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
@@ -227,18 +184,14 @@ export function useAdminDashboard() {
     },
 
     // Actions (simplified API - no need to pass refetch functions)
-    handleApproveProposal: (proposalId: string, billId: string) => 
-      approveProposalMutation.mutate({ proposalId, billId }),
-    handleRejectProposal: (proposalId: string) => 
-      rejectProposalMutation.mutate(proposalId),
     handleApproveUser: (userId: string, role: string) => 
       approveUserMutation.mutate({ userId, role }),
     handleDenyUser: (userId: string,) => 
       denyUserMutation.mutate(userId),
 
     // Mutation loading states (useful for disabling buttons)
-    isApproving: approveProposalMutation.isPending || approveUserMutation.isPending, 
-    isRejecting: rejectProposalMutation.isPending || denyUserMutation.isPending, 
+    isApproving: approveUserMutation.isPending, 
+    isRejecting: denyUserMutation.isPending, 
 
     // Manual refetch functions if needed
     refetch: {
