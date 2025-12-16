@@ -33,7 +33,7 @@ export function KanbanHeader() {
           ) : (
             <div className='flex items-center space-x-2'>
               <Switch id='my-bills' checked={viewMode === 'all-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
-              <Label htmlFor='my-bills' className='text-md'>All Tracked Bills</Label>
+              <Label htmlFor='my-bills' className='text-md'>All Bills</Label>
             </div>
           )}
         </div>
