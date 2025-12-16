@@ -289,61 +289,6 @@ export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[
 // MUTATION ACTIONS
 // ============================================
 
-export async function approveProposal(
-  proposalId: string,
-  billId: string
-): Promise<ActionResult> {
-  try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!proposalId) {
-      return { success: false, error: 'Proposal ID is required' };
-    }
-
-    // Replace with actual database mutation
-    // await db
-    //   .updateTable('proposals')
-    //   .set({ status: 'approved', approvedAt: new Date(), approvedBy: admin.userId })
-    //   .where('id', '=', proposalId)
-    //   .execute();
-
-    revalidatePath('/admin');
-    return { success: true };
-  } catch (error) {
-    console.error('❌ [PENDING REQUESTS] Error fetching pending requests:', error);
-    return { success: false, error: 'Failed to approve proposal' };
-  }
-}
-
-export async function rejectProposal(proposalId: string): Promise<ActionResult> {
-  try {
-    const admin = await verifyAdminAccess();
-    if (!admin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!proposalId) {
-      return { success: false, error: 'Proposal ID is required' };
-    }
-
-    // Replace with actual database mutation
-    // await db
-    //   .updateTable('proposals')
-    //   .set({ status: 'rejected', rejectedAt: new Date(), rejectedBy: admin.userId })
-    //   .where('id', '=', proposalId)
-    //   .execute();
-
-    revalidatePath('/admin');
-    return { success: true };
-  } catch (error) {
-    console.error('Error rejecting proposal:', error);
-    return { success: false, error: 'Failed to reject proposal' };
-  }
-}
-
 export async function approveUser(userId: string, role: string): Promise<ActionResult> {
   try {
     await verifyAdminAccess();

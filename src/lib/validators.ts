@@ -45,7 +45,7 @@ export const registerSchema = z.object({
 });
 
 export const tagsSchema = z.object({
-    tagIds: z.array(z.string().uuid()).min(1, { message: "At least one tag ID is required." })
+    tagIds: z.array(z.string().uuid())
 });
 
 export const nicknameSchema = z.object({

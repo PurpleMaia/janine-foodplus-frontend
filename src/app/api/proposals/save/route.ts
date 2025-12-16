@@ -3,29 +3,23 @@ import { validateSession } from '@/lib/auth';
 import { getSessionCookie } from '@/lib/cookies';
 import { db } from '../../../../db/kysely/client';
 import crypto from 'crypto';
+import { proposalSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
     const user = await validateSession(session_token);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-    }
 
     const { billId, currentStatus, suggestedStatus, note } = await request.json();
+    const validation = proposalSchema.safeParse({ billId, currentStatus, suggestedStatus, note });
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
+    }
 
     console.log('💾 [SAVE PROPOSAL] User:', user.email, 'Role:', user.role);
     console.log('💾 [SAVE PROPOSAL] Bill ID:', billId);
-    console.log('💾 [SAVE PROPOSAL] Status change:', currentStatus, '→', suggestedStatus);
-
-    if (!billId || !currentStatus || !suggestedStatus) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
-    }
+    console.log('💾 [SAVE PROPOSAL] Status change:', currentStatus, '→', suggestedStatus);    
 
     // Check if proposal already exists (by user_id and bill_id, regardless of approval status)
     // Use (db as any) to bypass Kysely type checking for snake_case columns

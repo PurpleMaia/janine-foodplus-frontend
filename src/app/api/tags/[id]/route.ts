@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../../db/kysely/client';
 import { validateSession } from '@/lib/auth';
 import { getSessionCookie } from '@/lib/cookies';
+import { newTagSchema } from '@/lib/validators';
 
 // PUT - Update a tag (admin and supervisor only)
 export async function PUT(
@@ -31,9 +32,10 @@ export async function PUT(
     const { name, color } = body;
     const { id: tagId } = await params;
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    const validation = newTagSchema.safeParse({ name, color });
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Tag name is required' },
+        { error: validation.error },
         { status: 400 }
       );
     }

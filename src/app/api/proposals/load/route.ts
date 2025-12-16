@@ -7,14 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
-    const user = await validateSession(session_token);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-    }
+    const user = await validateSession(session_token);    
 
     let proposals;
 

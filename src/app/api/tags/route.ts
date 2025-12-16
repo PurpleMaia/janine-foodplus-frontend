@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../db/kysely/client';
 import { validateSession } from '@/lib/auth';
 import { getSessionCookie } from '@/lib/cookies';
+import { newTagSchema } from '@/lib/validators';
 
 // GET - Fetch all tags (public access for filtering)
 export async function GET(request: NextRequest) {
@@ -57,9 +58,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, color } = body;
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    const validation = newTagSchema.safeParse({ name, color });
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Tag name is required' },
+        { error: validation.error },
         { status: 400 }
       );
     }
