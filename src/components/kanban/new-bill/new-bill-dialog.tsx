@@ -57,6 +57,11 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             return
         }
 
+        if (url.includes('measure_indiv_Archives.aspx')) {
+            setError('The bill appears to be from the Archives. Please create new bill cards from the current session for now.')
+            return
+        }
+
         scrapeForBill(url)
     }
 

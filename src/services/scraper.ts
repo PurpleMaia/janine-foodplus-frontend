@@ -6,8 +6,7 @@
 
 
 export async function scrapeForUpdates(billID: string) {
-    console.log('calling scraping service...')
-    console.log('calling api:', process.env.SCRAPER_API_URL)
+    console.log('[SCRAPER FOR UPDATES] calling scraping service with billID classifier:', billID)
     const response = await fetch(`${process.env.SCRAPER_API_URL}/scrape-individual`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -20,13 +19,15 @@ export async function scrapeForUpdates(billID: string) {
   
     const data = await response.json();
 
-    console.log('result: ', data)
+    console.log('[SCRAPER FOR UPDATES] Successfully scraped: ', data.individualBill.billTitle)
+    console.log('[SCRAPER FOR UPDATES] Total Updates: ', data.individualBill.updates.length)
+
     // test
     return data
 }
 
 export async function findBill(billURL: string) {
-  console.log('calling scraping service...')
+  console.log('[SCRAPER FOR FIND BILL] calling scraping service with billURL classifier:', billURL)
     const response = await fetch(`${process.env.SCRAPER_API_URL}/scrape-individual`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,7 +40,8 @@ export async function findBill(billURL: string) {
   
     const data = await response.json();
 
-    console.log('result: ', data)
+    console.log('[SCRAPER FOR FIND BILL] Successfully scraped: ', data)
+    // console.log('[SCRAPER FOR FIND BILL] Successfully scraped: ', data.individualBill.billTitle)
 
     return data
 }
