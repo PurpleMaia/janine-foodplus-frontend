@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { validateSession } from '@/lib/auth';
 import { db } from '../../../../db/kysely/client';
 import { sql } from 'kysely';
-
+import { getSessionCookie } from '@/lib/cookies';
 export async function GET(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
-    const user = await validateSession(session_token);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-    }
+    const user = await validateSession(session_token);    
 
     let proposals;
 

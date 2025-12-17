@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "../db/kysely/client";
-import { User, getSessionCookie, validateSession } from "./simple-auth";
+import { validateSession } from "./auth";
+import { getSessionCookie } from "./cookies";
+import { User } from "@/types/user";
 
 export async function getAdminUserData(request: NextRequest): Promise<User | { error: string } | null> {
   try {
@@ -29,15 +31,6 @@ export async function getAdminUserData(request: NextRequest): Promise<User | { e
     return null;
   }
 }
-
-export async function getPendingRequests(userID: string): Promise<User[]> {
-    const pendingRequests = await db.selectFrom('user')
-      .selectAll()    
-      .where('account_status', '=', 'pending')
-      .where('id', '!=', userID) // Exclude current user (should never happen)
-      .execute();
-    return pendingRequests;
-} 
 
 export async function approveUser(userIDtoApprove: string): Promise<boolean> {
   try {

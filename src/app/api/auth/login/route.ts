@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser, createSession, setSessionCookie } from '@/lib/simple-auth';
-import type { User } from '@/lib/simple-auth';
+import { authenticateUser, createSession, } from '@/lib/auth';
+import { setSessionCookie } from '@/lib/cookies';
+import type { User } from '@/types/user';
+import { loginSchema } from '@/lib/validators';
+import { ApiError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,11 +11,9 @@ export async function POST(request: NextRequest) {
     const { authString, password } = await request.json();
 
     //validates input
-    if (!authString || !password) {
-      return NextResponse.json(
-        { error: 'Email/Username and password are required' },
-        { status: 400 }
-      );
+    const validation = loginSchema.safeParse({ authString, password });
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Authenticate user
@@ -38,28 +39,18 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   } catch (error) {
-    if (error instanceof Error) {
-        if (error.message === 'USER_NOT_FOUND' || error.message === 'INVALID_CREDENTIALS') {
-          return NextResponse.json(
-            { error: 'Invalid email/username or password' },
-            { status: 401 }
-          );
-        } else if (error.message === 'EMAIL_NOT_VERIFIED') {
-          return NextResponse.json(
-            { error: 'Please verify your email address before logging in. Check your inbox for the verification email.' },
-            { status: 403 }
-          );
-        } else if (error.message === 'ACCOUNT_INACTIVE') {
-          return NextResponse.json(
-            { error: 'Account is inactive. Please contact support.' },
-            { status: 403 }
-          );
-        } else {
-          return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-          );        
-        }
-      }
+    if (error instanceof ApiError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        );
+    }
+         
+    // Unknown error
+    console.error('[REGISTER]', error);
+    return NextResponse.json(
+        { error: 'Unknown Error' }, 
+        { status: 500 }
+    );
   }
 }

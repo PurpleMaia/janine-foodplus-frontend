@@ -6,10 +6,10 @@ import {
     DialogDescription,
     DialogFooter,
   } from "@/components/ui/dialog";
-  import { Button } from "../ui/button";
-  import { Input } from "../ui/input";
-  import { Label } from "../ui/label";
-  import { Alert, AlertDescription } from "../ui/alert";
+  import { Button } from "@/components/ui/button";
+  import { Input } from "@/components/ui/input";
+  import { Label } from "@/components/ui/label";
+  import { Alert, AlertDescription } from "@/components/ui/alert";
   import { Loader2, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
   import { useEffect, useState } from "react";
 import { Bill } from "@/types/legislation";
@@ -54,6 +54,11 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
 
         if (!url.includes('www.capitol.hawaii.gov')) {
             setError('Please enter a valid bill url (e.g. from capitol.hawaii.gov')
+            return
+        }
+
+        if (url.includes('measure_indiv_Archives.aspx')) {
+            setError('The bill appears to be from the Archives. Please create new bill cards from the current session for now.')
             return
         }
 

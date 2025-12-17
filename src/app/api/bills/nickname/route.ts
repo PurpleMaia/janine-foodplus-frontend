@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { validateSession } from '@/lib/auth';
+import { getSessionCookie } from '@/lib/cookies';
 import { db } from '../../../../db/kysely/client';
-import { ensureUserBillPreferencesTable } from '@/services/legislation';
 import crypto from 'crypto';
+import { nicknameSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
   try {
     const sessionToken = getSessionCookie(request);
-    if (!sessionToken) {
-      return NextResponse.json(
-        { success: false, error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
-
     const user = await validateSession(sessionToken);
     if (!user || user.role !== 'user') {
       return NextResponse.json(
@@ -23,12 +17,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { billId, nickname } = await request.json();
-    if (!billId || typeof billId !== 'string') {
+    const validation = nicknameSchema.safeParse({ nickname });
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Bill ID is required' },
+        { success: false, error: validation.error },
         { status: 400 }
       );
-    }
+    }    
 
     const trimmedNickname =
       typeof nickname === 'string' ? nickname.trim().slice(0, 80) : '';
@@ -47,8 +42,6 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-
-    await ensureUserBillPreferencesTable();
 
     if (!trimmedNickname) {
       // Clear nickname

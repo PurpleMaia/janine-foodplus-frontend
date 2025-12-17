@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../../../db/kysely/client';
-import { validateSession, getSessionCookie } from '@/lib/simple-auth';
+import { validateSession } from '@/lib/auth';
+import { getSessionCookie } from '@/lib/cookies';
+import { tagsSchema } from '@/lib/validators';
 
 // GET - Get tags for a specific bill (public access for filtering)
 export async function GET(
@@ -41,14 +43,7 @@ export async function POST(
 ) {
   try {
     const sessionToken = getSessionCookie(request);
-    if (!sessionToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await validateSession(sessionToken);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await validateSession(sessionToken);    
 
     // Only admin and supervisor can tag bills
     if (user.role !== 'admin' && user.role !== 'supervisor') {
@@ -62,11 +57,9 @@ export async function POST(
     const { tagIds } = body;
     const { id: billId } = await params;
 
-    if (!Array.isArray(tagIds)) {
-      return NextResponse.json(
-        { error: 'tagIds must be an array' },
-        { status: 400 }
-      );
+    const validation = tagsSchema.safeParse({ tagIds });
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Check if bill exists

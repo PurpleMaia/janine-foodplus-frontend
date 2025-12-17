@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { TempBillCard } from './temp-card';
 import { ListRestart, TriangleAlert } from 'lucide-react';
 import RefreshColumnButton from '../scraper/update-column-button';
+import LLMUpdateColumnButton from '../llm/llm-update-column-button';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
 
 
@@ -64,8 +65,6 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
       onRejectTemp,
 
       enableDnd = false,
-
-
       ...props
     },
     ref
@@ -104,11 +103,18 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
               )}
             </span>
 
-            {/* <RefreshColumnButton
-              bills={bills}
-              onRefreshStart={() => setRefreshing(true)}
-              onRefreshEnd={() => setRefreshing(false)}
-            /> */}
+            <div className="flex items-center gap-1">
+              <LLMUpdateColumnButton
+                bills={bills}
+                onRefreshStart={() => setRefreshing(true)}
+                onRefreshEnd={() => setRefreshing(false)}
+              />
+              {/* <RefreshColumnButton
+                bills={bills}
+                onRefreshStart={() => setRefreshing(true)}
+                onRefreshEnd={() => setRefreshing(false)}
+              /> */}
+            </div>
           </h2>
 
           {bills.length >= 20 && (

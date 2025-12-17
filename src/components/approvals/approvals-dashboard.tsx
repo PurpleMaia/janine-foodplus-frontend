@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 // Removed direct service import - will use API route instead
 import type { TempBill, Bill } from '@/types/legislation';
-import type { User } from '@/lib/simple-auth';
+import type { User } from '@/lib/auth';
 
 export function ApprovalsDashboard() {
   const { tempBills, acceptTempChange, rejectTempChange, bills } = useBills();

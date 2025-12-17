@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { X, Settings } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { X, Settings, Filter, Check } from 'lucide-react';
 import { getAllTags } from '@/services/tags';
 import type { Tag } from '@/types/legislation';
 import { TagManagementDialog } from './tag-management-dialog';
@@ -23,13 +24,8 @@ export function TagFilterList({
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   const [showManagementDialog, setShowManagementDialog] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const { user } = useAuth();
-
-  // Debug log
-  useEffect(() => {
-    console.log('showManagementDialog state:', showManagementDialog);
-    console.log('canManageTags:', user?.role === 'admin' || user?.role === 'supervisor');
-  }, [showManagementDialog, user]);
 
   const canManageTags = user?.role === 'admin' || user?.role === 'supervisor';
 
@@ -49,103 +45,145 @@ export function TagFilterList({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="text-sm text-muted-foreground p-2">Loading filters...</div>
-    );
-  }
-
-  if (tags.length === 0) {
-    return (
-      <>
-        <div className="p-2 space-y-2">
-          <p className="text-sm text-muted-foreground">No tags available.</p>
-          {canManageTags && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Manage tags button clicked (no tags), setting dialog to open');
-                setShowManagementDialog(true);
-              }}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Manage Tags
-            </Button>
-          )}
-        </div>
-        <TagManagementDialog
-          isOpen={showManagementDialog}
-          onClose={() => {
-            setShowManagementDialog(false);
-            loadTags(); // Refresh tags after management
-          }}
-        />
-      </>
-    );
-  }
+  const selectedTags = tags.filter(tag => selectedTagIds.includes(tag.id));
 
   return (
     <>
-      <div className="p-2 space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Filter by Tags</h3>
-          <div className="flex gap-2">
-            {selectedTagIds.length > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={onClearFilters}
-                className="h-7 text-xs"
-              >
-                <X className="h-3 w-3 mr-1" />
-                Clear
-              </Button>
-            )}
-            {canManageTags && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('Manage tags button clicked, setting dialog to open');
-                  setShowManagementDialog(true);
-                }}
-                className="h-7 text-xs"
-              >
-                <Settings className="h-3 w-3 mr-1" />
-                Manage
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => {
-            const isSelected = selectedTagIds.includes(tag.id);
-            return (
+      <div className="flex items-center gap-2">
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" >
+              <Filter className="h-4 w-4 mr-2" />
+              Filter by Tags
+              {selectedTagIds.length > 0 && (
+                <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                  {selectedTagIds.length}
+                </Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-0" align="start">
+            <div className="p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Filter by Tags</h3>
+                <div className="flex gap-1">
+                  {selectedTagIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClearFilters();
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Clear
+                    </Button>
+                  )}
+                  {canManageTags && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowManagementDialog(true);
+                        setPopoverOpen(false);
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      <Settings className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="text-sm text-muted-foreground py-4 text-center">
+                  Loading filters...
+                </div>
+              ) : tags.length === 0 ? (
+                <div className="py-4 space-y-2">
+                  <p className="text-sm text-muted-foreground text-center">
+                    No tags available.
+                  </p>
+                  {canManageTags && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowManagementDialog(true);
+                        setPopoverOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Create Tags
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="max-h-[300px] overflow-y-auto space-y-1">
+                    {tags.map((tag) => {
+                      const isSelected = selectedTagIds.includes(tag.id);
+                      return (
+                        <div
+                          key={tag.id}
+                          onClick={() => onTagToggle(tag.id)}
+                          className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center justify-center w-4 h-4">
+                            {isSelected && <Check className="h-4 w-4 text-primary" />}
+                          </div>
+                          <Badge
+                            variant="outline"
+                            style={{
+                              backgroundColor: tag.color || '#3b82f6',
+                              color: 'white',
+                              borderColor: tag.color || '#3b82f6',
+                            }}
+                            className="text-xs"
+                          >
+                            {tag.name}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {selectedTagIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground pt-2 border-t">
+                      {selectedTagIds.length} tag{selectedTagIds.length !== 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Show selected tags outside the popover */}
+        {selectedTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {selectedTags.map((tag) => (
               <Badge
                 key={tag.id}
-                variant={isSelected ? 'default' : 'outline'}
+                variant="default"
                 style={{
-                  backgroundColor: isSelected ? (tag.color || '#3b82f6') : undefined,
-                  color: isSelected ? 'white' : undefined,
-                  cursor: 'pointer',
+                  backgroundColor: tag.color || '#3b82f6',
+                  color: 'white',
                 }}
+                className="cursor-pointer hover:opacity-80"
                 onClick={() => onTagToggle(tag.id)}
-                className="cursor-pointer"
               >
                 {tag.name}
+                <X className="h-3 w-3 ml-1" />
               </Badge>
-            );
-          })}
-        </div>
-        {selectedTagIds.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {selectedTagIds.length} tag{selectedTagIds.length !== 1 ? 's' : ''} selected
-          </p>
+            ))}
+          </div>
         )}
       </div>
 
@@ -153,10 +191,9 @@ export function TagFilterList({
         isOpen={showManagementDialog}
         onClose={() => {
           setShowManagementDialog(false);
-          loadTags(); // Refresh tags after management
+          loadTags();
         }}
       />
     </>
   );
 }
-

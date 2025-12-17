@@ -1,11 +1,13 @@
 import { requestAdminAccess } from '@/lib/admin-utils';
 import { NextRequest, NextResponse } from 'next/server';
+import { emailSchema } from "@/lib/validators";
 
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
+    const validation = emailSchema.safeParse(email);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const result = await requestAdminAccess(email);

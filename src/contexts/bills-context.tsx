@@ -540,7 +540,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           console.log('User adopted bills set in context');
         } else {
           // All bills view
-          results = await getAllBills();
+          results = await getAllFoodRelatedBills();
           console.log('All food-related bills set in context');
         }
         
@@ -645,7 +645,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             results = await getUserAdoptedBills(user.id);
             console.log('User adopted bills set in context', results.length);
           } else {
-            results = await getAllBills();
+            results = await getAllFoodRelatedBills();
             console.log('All food-related bills set in context', results.length);
           }
           

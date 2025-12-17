@@ -1,25 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { validateSession } from '@/lib/auth';
+import { getSessionCookie } from '@/lib/cookies';
 import { db } from '../../../../db/kysely/client';
 import crypto from 'crypto';
-
+import { uuidSchema } from '@/lib/validators';
 export async function POST(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
 
     const user = await validateSession(session_token);
-    if (!user || user.role !== 'supervisor') {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Supervisor access only' }, { status: 403 });
-    }
 
     const { userId: internId } = await request.json();
-
-    if (!internId) {
-      return NextResponse.json({ success: false, error: 'Intern user ID is required' }, { status: 400 });
+    const validation = uuidSchema.safeParse(internId);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
 
     // Check if user exists and is a regular user

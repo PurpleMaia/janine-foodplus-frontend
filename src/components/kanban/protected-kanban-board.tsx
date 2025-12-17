@@ -7,13 +7,12 @@ import { KanbanSpreadsheet } from './kanban-spreadsheet';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 import { AdoptBillDialog } from './adopt-bill-dialog';
 import { useBills } from '@/contexts/bills-context';
+import { KanbanHeader } from './kanban-header';
+import { useKanbanBoard } from '@/contexts/kanban-board-context';
 
-interface ProtectedKanbanBoardProps {
-  view: string | 'kanban' | 'spreadsheet';
-}
-
-export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoardProps) {
+export function ProtectedKanbanBoardOrSpreadsheet() {
   const { user, loading } = useAuth();
+  const { view } = useKanbanBoard();
   const { bills, loadingBills, viewMode } = useBills();
   const { unadoptBill } = useAdoptedBills();
 
@@ -25,20 +24,10 @@ export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoard
   if (!user) {
     console.log('Rendering public view with', bills.length, 'bills');
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4 p-8">
-        <div className="text-center space-y-2">
-          <h2 className="text-1xl font-semibold">Public View</h2>
-          <p className="text-muted-foreground max-w-md">
-            This is a read-only view of the legislation tracker. 
-            Login to adopt and manage bills.
-          </p>
-        </div>
-        {view === 'kanban' ? (
-          <KanbanBoard readOnly={true} />
-        ) : (
-          <KanbanSpreadsheet />
-        )}
-      </div>
+      <>
+        <KanbanHeader />
+        { view === 'kanban' ? <KanbanBoard readOnly={true} /> : <KanbanSpreadsheet />}
+      </>
     );
   }
 
@@ -49,17 +38,20 @@ export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoard
     console.log('User has', bills.length, 'adopted bills, rendering empty state');
     
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
-          <p className="text-muted-foreground max-w-md">
-            You haven&apos;t adopted any bills yet. Use the button below to start tracking bills that interest you.
-          </p>
+      <>
+        <KanbanHeader />
+        <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
+            <p className="text-muted-foreground max-w-md">
+              You haven&apos;t adopted any bills yet. Use the button below to start tracking bills that interest you.
+            </p>
+          </div>
+          <div className="w-64">
+            <AdoptBillDialog />
+          </div>
         </div>
-        <div className="w-64">
-          <AdoptBillDialog />
-        </div>
-      </div>
+      </>
     );
   }
 
@@ -69,24 +61,25 @@ export function ProtectedKanbanBoardOrSpreadsheet({ view }: ProtectedKanbanBoard
   const shouldShowUnadoptButton = user && 
     (user.role === 'admin' || user.role === 'supervisor' || viewMode === 'my-bills');
 
+  if (view === 'spreadsheet') {
+    // Show adopted bills in spreadsheet view
+    return (
+      <div className="space-y-4">           
+        <KanbanHeader />
+        <KanbanSpreadsheet />      
+      </div>
+    );
+  }
+
   // Show adopted bills with full functionality
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2>{viewMode === 'my-bills' ? 'Your Adopted Bills' : 'All Bills'}</h2>
-        <AdoptBillDialog />
-      </div>
-
-      {/* <KanbanBoardOrSpreadsheet view={view} bills={adoptedBills} />  */}
-      {view === 'kanban' ? (
-        <KanbanBoard 
-          readOnly={isReadOnlyForIntern || false} 
-          onUnadopt={unadoptBill}
-          showUnadoptButton={shouldShowUnadoptButton}
-        />
-      ) : (
-        <KanbanSpreadsheet />
-      )}
+    <div className="space-y-4">           
+      <KanbanHeader />
+      <KanbanBoard 
+        readOnly={isReadOnlyForIntern || false} 
+        onUnadopt={unadoptBill}
+        showUnadoptButton={shouldShowUnadoptButton}
+      />      
     </div>
   );
 }

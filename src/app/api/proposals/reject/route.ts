@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie, validateSession } from '@/lib/simple-auth';
+import { validateSession } from '@/lib/auth';
+import { getSessionCookie } from '@/lib/cookies';
 import { db } from '../../../../db/kysely/client';
+import { uuidSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
   try {
     // Validate session
     const session_token = getSessionCookie(request);
-    if (!session_token) {
-      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
-    }
-
     const user = await validateSession(session_token);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-    }
 
     // Check if user is admin or supervisor
     if (user.role !== 'admin' && user.role !== 'supervisor') {
@@ -21,9 +16,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { proposalId } = await request.json();
-
-    if (!proposalId) {
-      return NextResponse.json({ success: false, error: 'Missing proposal ID' }, { status: 400 });
+    const validation = uuidSchema.safeParse(proposalId);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
 
     // Mark proposal as rejected (soft delete by changing status)

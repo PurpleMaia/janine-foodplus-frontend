@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 import type { Bills } from '../db/types';
 import type { Bill } from '../types/legislation';
+import { KANBAN_COLUMNS } from "./kanban-columns";
 
 // Helper to safely convert Kysely Timestamp/Generated<Timestamp|null> to Date|null
 function toDate(val: unknown): Date | null {
@@ -40,4 +41,9 @@ export function mapBillsToBill(raw: Bills): Bill {
     llm_suggested: undefined,
     llm_processing: undefined,
   };
+}
+
+export function formatBillStatusName(status: string | null): string {
+  if (!status) return 'No Assigned Status';
+  return KANBAN_COLUMNS.find(col => col.id === status)?.title || status;
 }

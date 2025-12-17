@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { adoptBill } from '@/services/legislation';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
+import { UserPlus } from 'lucide-react';
 
 export function AdoptBillDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +40,7 @@ export function AdoptBillDialog() {
 
     setIsLoading(true);
     try {
+
       const success = await adoptBill(billUrl.trim());
       
       if (success) {
@@ -76,13 +77,13 @@ export function AdoptBillDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
-          Adopt Bill
+        <Button>
+          <UserPlus /> Track New Bill
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adopt a Bill</DialogTitle>
+          <DialogTitle>Add a Bill to Track</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
