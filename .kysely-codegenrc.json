@@ -1,5 +1,5 @@
 {
   "dialect": "postgres",
   "connectionString": "${DATABASE_URL}",
-  "outFile": "./src/db/types.ts"
+  "outFile": "./db/types.ts"
 }
