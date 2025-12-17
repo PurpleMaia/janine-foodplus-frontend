@@ -12,7 +12,7 @@ const LOGIN_RATE_LIMIT = { limit: 5, windowMs: 5 * 60_000 };
  * Extract client IP address from request headers
  * Checks common proxy headers in order of reliability
  */
-function getClientIp(request: NextRequest): string {
+function getClientIp(request: NextRequest): string | null {
   // Cloudflare
   const cfConnectingIP = request.headers.get("cf-connecting-ip");
   if (cfConnectingIP) return cfConnectingIP;
@@ -21,15 +21,16 @@ function getClientIp(request: NextRequest): string {
   if (xForwardedFor) {
     // x-forwarded-for can contain multiple IPs: "client, proxy1, proxy2"
     // The first one is the original client (only one proxy on this infrastructure)
-    return xForwardedFor.split(",")[0]?.trim() || "unknown";
+    const ip = xForwardedFor.split(",")[0]?.trim();
+    if (ip) return ip;
   }
 
   // Standard proxy header
   const xRealIP = request.headers.get("x-real-ip");
   if (xRealIP) return xRealIP;
 
-  // Fallback (may not be available in serverless)
-  return "unknown";
+  // No reliable IP available
+  return null;
 }
 
 export async function POST(request: NextRequest) {
