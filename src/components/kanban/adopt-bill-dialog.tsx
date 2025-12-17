@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 import { UserPlus } from 'lucide-react';
+import { DialogDescription } from '@radix-ui/react-dialog';
 
 export function AdoptBillDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -78,12 +79,15 @@ export function AdoptBillDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
-          <UserPlus /> Track New Bill
+          <UserPlus /> Track Bill
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="">
         <DialogHeader>
-          <DialogTitle>Add a Bill to Track</DialogTitle>
+          <DialogTitle>Track a new Bill</DialogTitle>
+          <DialogDescription className='text-muted-foreground text-sm'>
+            <span className="font-semibold">Note: </span>Only track a new bill from the {new Date().getFullYear()} legislative session
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -96,9 +100,6 @@ export function AdoptBillDialog() {
               onKeyPress={handleKeyPress}
               disabled={isLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              Paste the full URL from the bill page (e.g., https://www.capitol.hawaii.gov/session/measure_indiv.aspx?billtype=HB&billnumber=1294&year=2025)
-            </p>
           </div>
           <div className="flex justify-end space-x-2">
             <Button

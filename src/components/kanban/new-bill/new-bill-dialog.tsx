@@ -84,6 +84,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         }
 
         const result = await findBill(url) // result is the full json
+        setBillPreview(result.individualBill)
 
         if (!result) {
             console.log('Error scraping url')
@@ -94,34 +95,11 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             });
             setError('Could not scrape url for bill info')
         } else {
-            setBillPreview(result)  
             setIsLoading(false)
+            setError('')
             return
         }         
     }
-
-    //--------- HAVE NOT TESTED FULLY -------------
-    const handleCreateBill = async () => {
-        if (!billPreview) return;
-
-        setIsLoading(true);
-        try {
-            const result = await insertNewBill(billPreview)           
-            if (result) {
-                const newBills = bills.push(result)                
-                console.log('made newBills', newBills)
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create bill card');
-        } finally {
-            onClose()
-            toast({
-                title: `Successfully updated bill: `,
-                description: `Bill ${billPreview?.bill_number} is now in our database`,
-            });
-            setIsLoading(false);
-        }
-    };
 
     const handleUpdateFoodRelated = async () => {
         setIsUpdating(true)
@@ -159,9 +137,9 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             <DialogHeader className="p-4 border-b sticky top-0 bg-background z-10">
                 <div className="flex justify-between items-start">
                     <div>
-                        <DialogTitle className="text-lg font-semibold">Create a New Bill Card</DialogTitle>
-                        <DialogDescription className="text-sm text-muted-foreground">
-                            Paste in the URL of the bill to get started
+                        <DialogTitle className="text-lg font-semibold">Manually Manage Bill Cards</DialogTitle>
+                        <DialogDescription className="text-sm text-muted-foreground max-w-md">
+                            If our AI scraper did not properly deem a bill as food-related or not, you can manually add or remove bills from the Food+ Tracked Bills here.
                         </DialogDescription>
                     </div>
                      {/* The 'X' close button is part of DialogContent by default */}
@@ -254,48 +232,74 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                         <div>
                             <Label className="text-sm font-medium text-muted-foreground">Food-related?</Label>
                             <p className="font-mono text-sm">{billPreview.food_related ? 'True' : 'False'}</p>
-                        </div>                                                        
-                    </div>
-                )}
+                        </div>      
 
-                 {isAlreadyInDB && (
-                    <Alert className="my-4">
-                        <CheckCircle className="h-4 w-4" />
-                        <AlertDescription>            
-                            <p className="my-4">This bill exists in our overall database.</p>
-                            
-                            { !billPreview?.food_related && (
-                                <>
-                                    <p className="my-4">However, it is not flagged as a food-related bill. Click &quot;Yes&quot; if you want this bill in our Kanban Board/Spreadsheet.</p>
-                                </>
-                                
-                            )}
-                            {isAlreadyInDB && (
-                                <div className="border-t pt-4 space-y-3">
-                                    {/* Already in Database Message */}
-                                    <Label className="text-sm font-medium">Is this bill food-related?</Label>
-                                    <div className="flex gap-3">
-                                        <Button
-                                            variant={foodRelatedSelection === true ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setFoodRelatedSelection(true)}
-                                            disabled={isUpdating}
-                                        >
-                                            Yes
-                                        </Button>
-                                        <Button
-                                            variant={foodRelatedSelection === false ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setFoodRelatedSelection(false)}
-                                            disabled={isUpdating}
-                                        >
-                                            No
-                                        </Button>
-                                    </div>                                            
-                                </div>
-                            )}
-                        </AlertDescription>
-                    </Alert>
+                        <Alert className="my-4">
+                            <AlertDescription>
+                                {isAlreadyInDB ? (
+                                    <>
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircle className="h-4 w-4 text-green-600" />
+                                            <p>This bill exists in our database.</p>
+                                        </div>
+
+                                        {billPreview?.food_related ? (
+                                            <>
+                                                <p className="my-4">
+                                                    This bill is currently tracked as food-related and appears in the Kanban Board/Spreadsheet.
+                                                </p>
+                                                <h2 className="font-semibold">Remove from Food+ Tracked Bills?</h2>
+                                                <div className="flex items-center gap-4 my-4">
+                                                    <Button variant="destructive" onClick={() => setFoodRelatedSelection(false)}>
+                                                        Yes, Remove
+                                                    </Button>
+                                                    <Button variant="outline" onClick={() => setFoodRelatedSelection(true)}>
+                                                        No, Keep Tracking
+                                                    </Button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="my-4">
+                                                    This bill is not currently flagged as food-related.
+                                                </p>
+                                                <h2 className="font-semibold">Add to Food+ Tracked Bills?</h2>
+                                                <div className="flex items-center gap-4 my-4">
+                                                    <Button onClick={() => setFoodRelatedSelection(true)}>
+                                                        Yes, Add to Tracking
+                                                    </Button>
+                                                    <Button variant="outline" onClick={() => setFoodRelatedSelection(false)}>
+                                                        No, Don&apos;t Track
+                                                    </Button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-2">
+                                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                            <p>This bill is not yet in our database.</p>
+                                        </div>
+
+                                        <p className="my-4">
+                                            Would you like to add this bill and track it as food-related?
+                                        </p>
+                                        <h2 className="font-semibold">Add to Food+ Tracked Bills?</h2>
+                                        <div className="flex items-center gap-4 my-4">
+                                            <Button onClick={() => setFoodRelatedSelection(true)}>
+                                                Yes, Add &amp; Track
+                                            </Button>
+                                            <Button variant="outline" onClick={() => setFoodRelatedSelection(false)}>
+                                                Add Without Tracking
+                                            </Button>
+                                        </div>
+                                    </>
+                                )}
+                            </AlertDescription>
+                        </Alert>                                               
+                    </div>
+
                 )}
 
                 {/* Error Message */}
@@ -311,21 +315,6 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
             <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
               <div className='flex gap-2'>
-                {billPreview && !isAlreadyInDB && (
-                    <Button 
-                        onClick={handleCreateBill}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                Creating...
-                            </>
-                        ) : (
-                            'Create Bill Card'
-                        )}
-                    </Button>
-                )}
                 {isAlreadyInDB && foodRelatedSelection !== null && (
                     <Button
                         onClick={handleUpdateFoodRelated}
