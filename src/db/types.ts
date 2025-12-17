@@ -37,16 +37,24 @@ export interface Bills {
   updated_at: Generated<Timestamp | null>;
 }
 
+export interface BillTags {
+  bill_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  tag_id: string;
+}
+
 export interface PendingProposals {
-  approval_status: Generated<string>;
+  approval_status: Generated<string | null>;
+  approved_at: Timestamp | null;
+  approved_by_user_id: string | null;
   bill_id: string;
   current_status: string;
   id: Generated<string>;
   note: string | null;
   proposed_at: Generated<Timestamp>;
   proposed_by_user_id: string;
-  suggested_status: string;
-  user_id: string;
+  proposed_status: string;
 }
 
 export interface SchemaMigrations {
@@ -86,6 +94,14 @@ export interface SupervisorUsers {
   user_id: string;
 }
 
+export interface Tags {
+  color: string | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface User {
   account_status: string;
   auth_provider: Generated<string | null>;
@@ -102,6 +118,15 @@ export interface User {
   verification_token: string | null;
 }
 
+export interface UserBillPreferences {
+  bill_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  nickname: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface UserBills {
   adopted_at: Generated<Timestamp | null>;
   bill_id: string | null;
@@ -109,25 +134,10 @@ export interface UserBills {
   user_id: string | null;
 }
 
-export interface Tags {
-  id: Generated<string>;
-  name: string;
-  color: string | null;
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
-}
-
-export interface BillTags {
-  id: Generated<string>;
-  bill_id: string;
-  tag_id: string;
-  created_at: Generated<Timestamp>;
-}
-
 export interface DB {
   auth_key: AuthKey;
-  bills: Bills;
   bill_tags: BillTags;
+  bills: Bills;
   pending_proposals: PendingProposals;
   schema_migrations: SchemaMigrations;
   scraping_stats: ScrapingStats;
@@ -136,5 +146,6 @@ export interface DB {
   supervisor_users: SupervisorUsers;
   tags: Tags;
   user: User;
+  user_bill_preferences: UserBillPreferences;
   user_bills: UserBills;
 }
