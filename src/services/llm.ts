@@ -1,5 +1,6 @@
 'use server'
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
+import { limitFixedWindow, retryAfterMs } from '@/lib/ratelimit-memory';
 import { OpenAI } from 'openai';
 import { db } from '../db/kysely/client';
 
@@ -98,6 +99,8 @@ const SYSTEM_PROMPT = [
   "Respond with exactly one line containing only the label",  
 ].join('\n');
 
+const LLM_RATE_LIMIT = { limit: 10, windowMs: 60_000 };
+
 async function getContext(billId: string) {
     console.log('getting context...')
     try {
@@ -120,6 +123,11 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
     console.log("MODEL:", process.env.VLLM || process.env.LLM);
     
     console.log("CLASSIFYING BILL:", billId);
+    const rl = limitFixedWindow(`llm:classify:${billId}`, LLM_RATE_LIMIT.limit, LLM_RATE_LIMIT.windowMs);
+    if (!rl.ok) {
+        console.warn('LLM classification rate limited', { billId, retryAfterMs: retryAfterMs(rl.resetAt) });
+        return null;
+    }
 
     const context = await getContext(billId);
     console.log("GOT CONTEXT FOR BILL:", billId);
