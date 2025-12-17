@@ -52,6 +52,7 @@ export function KanbanHeader() {
 
             {!isPublic && (
               <>
+                <NewBillButton />
                 <AdoptBillDialog />                
               </>
             )}
