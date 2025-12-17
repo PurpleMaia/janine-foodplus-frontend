@@ -35,26 +35,37 @@ function getClientIp(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-    const rl = limitFixedWindow(
-      `login:${clientIp}`,
-      LOGIN_RATE_LIMIT.limit,
-      LOGIN_RATE_LIMIT.windowMs
-    );
-    if (!rl.ok) {
-      const retryMs = retryAfterMs(rl.resetAt);
-      return NextResponse.json(
-        {
-          error: "Too many login attempts. Please try again later.",
-          retryAfterMs: retryMs,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": Math.ceil(retryMs / 1000).toString(),
-          },
-        }
+
+    if (!clientIp) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Could not determine client IP - skipping rate limit");        
+      }
+      // In production, this shouldn't happen if infrastructure is configured correctly
+      // Log an error and maybe use a very lenient global bucket
+      console.error("Missing client IP in production - check proxy configuration");
+    } else {
+      const rl = limitFixedWindow(
+        `login:${clientIp}`,
+        LOGIN_RATE_LIMIT.limit,
+        LOGIN_RATE_LIMIT.windowMs
       );
+      if (!rl.ok) {
+        const retryMs = retryAfterMs(rl.resetAt);
+        return NextResponse.json(
+          {
+            error: "Too many login attempts. Please try again later.",
+            retryAfterMs: retryMs,
+          },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": Math.ceil(retryMs / 1000).toString(),
+            },
+          }
+        );
+      }
     }
+
 
     // retrieve email/username and password from request body
     const { authString, password } = await request.json();
