@@ -12,7 +12,7 @@ const LOGIN_RATE_LIMIT = { limit: 5, windowMs: 5 * 60_000 };
  * Extract client IP address from request headers
  * Checks common proxy headers in order of reliability
  */
-function getClientIp(request: NextRequest): string | null {
+function getClientIp(request: NextRequest): string {
   // Cloudflare
   const cfConnectingIP = request.headers.get("cf-connecting-ip");
   if (cfConnectingIP) return cfConnectingIP;
@@ -21,50 +21,39 @@ function getClientIp(request: NextRequest): string | null {
   if (xForwardedFor) {
     // x-forwarded-for can contain multiple IPs: "client, proxy1, proxy2"
     // The first one is the original client (only one proxy on this infrastructure)
-    const ip = xForwardedFor.split(",")[0]?.trim();
-    if (ip) return ip;
+    return xForwardedFor.split(",")[0]?.trim() || "unknown";
   }
 
   // Standard proxy header
   const xRealIP = request.headers.get("x-real-ip");
   if (xRealIP) return xRealIP;
 
-  // No reliable IP available
-  return null;
+  // Fallback (may not be available in serverless)
+  return "unknown";
 }
 
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-
-    if (!clientIp) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn("Could not determine client IP - skipping rate limit");        
-      }
-      // In production, this shouldn't happen if infrastructure is configured correctly
-      // Log an error and maybe use a very lenient global bucket
-      console.error("Missing client IP in production - check proxy configuration");
-    } else {
-      const rl = limitFixedWindow(
-        `login:${clientIp}`,
-        LOGIN_RATE_LIMIT.limit,
-        LOGIN_RATE_LIMIT.windowMs
-      );
-      if (!rl.ok) {
-        const retryMs = retryAfterMs(rl.resetAt);
-        return NextResponse.json(
-          {
-            error: "Too many login attempts. Please try again later.",
-            retryAfterMs: retryMs,
+    const rl = limitFixedWindow(
+      `login:${clientIp}`,
+      LOGIN_RATE_LIMIT.limit,
+      LOGIN_RATE_LIMIT.windowMs
+    );
+    if (!rl.ok) {
+      const retryMs = retryAfterMs(rl.resetAt);
+      return NextResponse.json(
+        {
+          error: "Too many login attempts. Please try again later.",
+          retryAfterMs: retryMs,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil(retryMs / 1000).toString(),
           },
-          {
-            status: 429,
-            headers: {
-              "Retry-After": Math.ceil(retryMs / 1000).toString(),
-            },
-          }
-        );
-      }
+        }
+      );
     }
 
 
