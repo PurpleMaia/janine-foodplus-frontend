@@ -7,24 +7,8 @@ const isProduction = process.env.NODE_ENV === "production";
 const usernameSchema = z.string()
     .min(3, { message: "Username must be at least 3 characters long" })
     .regex(/^[a-zA-Z0-9_]+$/, { message: "Username can only contain letters, numbers, and underscores" });
-const identifierSchema = isProduction
-    ? z.string()
-        .min(1, { message: "Email or Username is required." })
-        .refine((value) => {
-            // Check if it's a valid email
-            const emailResult = emailSchema.safeParse(value);
-            if (emailResult.success) return true;
-            
-            // If not email, check if it's a valid username (3+ chars, alphanumeric + underscores)
-            const usernameResult = usernameSchema.safeParse(value);
-            if (usernameResult.success) return true;
-            
-            return false;
-        }, {
-            message: "Please enter a valid email address or username (3+ characters, letters, numbers, and underscores only)."
-        })
-    : z.string().min(1, { message: "Email or Username is required." });
-const passwordSchema = isProduction
+const identifierSchema = z.string().min(1, { message: "Email or Username is required." });
+const newPasswordSchema = isProduction
     ? z.string()
         .min(8, { message: "Password must be at least 8 characters long." })
     : z.string().min(1, { message: "Password is required." });
@@ -34,14 +18,14 @@ export const userIdSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  authString: identifierSchema,
-  password: passwordSchema,
+  authString: z.string().min(1, { message: "Email or Username is required." }),
+  password: z.string().min(1, { message: "Password is required." }),
 });
 
 export const registerSchema = z.object({
   username: usernameSchema,
   email: emailSchema,
-  password: passwordSchema,
+  password: newPasswordSchema,
 });
 
 export const tagsSchema = z.object({
