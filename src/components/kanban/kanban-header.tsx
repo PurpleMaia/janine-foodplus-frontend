@@ -19,8 +19,6 @@ export function KanbanHeader() {
 
   const isPublic = !user;
 
-  const [isNewBillDialogOpen, setIsNewBillDialogOpen] = useState(false);
-
   return (
     <div className='p-2 border-b bg-white flex items-center justify-between shadow-md'>
       
@@ -28,7 +26,7 @@ export function KanbanHeader() {
           {isPublic ? (
             <div className=''>
               <h2 className="text-md font-semibold">Public View</h2>
-              <p className="text-sm text-muted-foreground">Login to manage bills</p>
+              <p className="text-sm text-muted-foreground">All Food+ Tracked Bills</p>
             </div>
           ) : (
             <div className='flex items-center space-x-2'>
