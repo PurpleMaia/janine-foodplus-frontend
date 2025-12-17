@@ -26,8 +26,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Legislation Tracker', // Updated title
-  description: 'Track bills through the legislative process', // Updated description
+  title: 'Food+ Bill Tracker',
+  description: 'Track bills through the legislative process',    
 };
 
 export default function RootLayout({
