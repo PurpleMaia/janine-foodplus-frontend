@@ -7,7 +7,7 @@ import { Switch } from '../ui/switch';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { Label } from '../ui/label';
 import { useState } from 'react';
-import NewBillButton from '../new-bill/new-bill-button';
+import NewBillButton from './new-bill/new-bill-button';
 import { AdoptBillDialog } from './adopt-bill-dialog';
 import { useBills } from '@/contexts/bills-context';
 import { TagFilterList } from '../tags/tag-filter-list';
@@ -19,8 +19,6 @@ export function KanbanHeader() {
 
   const isPublic = !user;
 
-  const [isNewBillDialogOpen, setIsNewBillDialogOpen] = useState(false);
-
   return (
     <div className='p-2 border-b bg-white flex items-center justify-between shadow-md'>
       
@@ -28,12 +26,12 @@ export function KanbanHeader() {
           {isPublic ? (
             <div className=''>
               <h2 className="text-md font-semibold">Public View</h2>
-              <p className="text-sm text-muted-foreground">Login to manage bills</p>
+              <p className="text-sm text-muted-foreground">All Food+ Tracked Bills</p>
             </div>
           ) : (
             <div className='flex items-center space-x-2'>
-              <Switch id='my-bills' checked={viewMode === 'my-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
-              <Label htmlFor='my-bills' className='text-md'>My Bills</Label>
+              <Switch id='my-bills' checked={viewMode === 'all-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
+              <Label htmlFor='my-bills' className='text-md'>All Bills</Label>
             </div>
           )}
         </div>
@@ -54,28 +52,11 @@ export function KanbanHeader() {
 
             {!isPublic && (
               <>
-                <NewBillButton />
-                <AdoptBillDialog />
-                
+                <AdoptBillDialog />                
               </>
             )}
         </div>
 
     </div>
   );
-}
-
-function getIconForView(view: string) {
-  switch (view) {
-    case 'kanban':
-      return <KanbanSquareIcon className="h-5 w-5 mr-2" />;
-    case 'spreadsheet':
-      return <Table className="h-5 w-5 mr-2" />;
-    case 'admin':
-      return <UserCheck2Icon className="h-5 w-5 mr-2" />;
-      case 'supervisor':
-      return <Users2Icon className="h-5 w-5 mr-2" />;
-    default:
-      return null;
-  }
 }

@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { adoptBill } from '@/services/legislation';
 import { useAdoptedBills } from '@/hooks/use-adopted-bills';
 import { UserPlus } from 'lucide-react';
 
@@ -41,6 +40,7 @@ export function AdoptBillDialog() {
 
     setIsLoading(true);
     try {
+
       const success = await adoptBill(billUrl.trim());
       
       if (success) {

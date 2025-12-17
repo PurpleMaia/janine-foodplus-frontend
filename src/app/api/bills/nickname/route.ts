@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth';
 import { getSessionCookie } from '@/lib/cookies';
 import { db } from '../../../../db/kysely/client';
-import { ensureUserBillPreferencesTable } from '@/services/legislation';
 import crypto from 'crypto';
 import { nicknameSchema } from '@/lib/validators';
 
@@ -43,8 +42,6 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-
-    await ensureUserBillPreferencesTable();
 
     if (!trimmedNickname) {
       // Clear nickname
