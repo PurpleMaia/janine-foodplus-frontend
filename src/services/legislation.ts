@@ -98,6 +98,7 @@ export async function getAllBills(): Promise<Bill[]> {
             'su.chamber'
           ])
           .where('food_related', '=', true) // Only food-related bills
+          .where('b.archived', '=', false) // Exclude archived bills
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .orderBy('su.date', 'desc')       // Then most recently created
           .execute()
@@ -162,6 +163,7 @@ export async function getAllFoodRelatedBills(): Promise<Bill[]> {
             'su.chamber'
           ])
           .where('food_related', '=', true) // Only food-related bills
+          .where('b.archived', '=', false) // Exclude archived bills
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .orderBy('su.date', 'desc')       // Then most recently created
           .execute()
