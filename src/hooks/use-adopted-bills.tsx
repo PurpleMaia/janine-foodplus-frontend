@@ -8,13 +8,13 @@ import type { Bill } from '@/types/legislation';
 import { useBills } from '@/contexts/bills-context';
 
 export function useAdoptedBills() {
-  const { user } = useAuth();  
-  const { setBills, refreshBills } = useBills(); // Manipulates the global bills state
+  const { user } = useAuth();
+  const { setBills, addBill } = useBills(); // Manipulates the global bills state
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   /**
-   * Handles the adoption of a bill by the current user. Calls adoptBill service and refreshes the bills list on success.
+   * Handles the adoption of a bill by the current user. Calls adoptBill service and adds the bill to the list on success.
    * @param billUrl - The URL of the bill to adopt.
    * @returns A boolean indicating whether the adoption was successful.
    */
@@ -22,11 +22,15 @@ export function useAdoptedBills() {
     if (!user) return false;
     console.log('Adopting bill with URL:', billUrl);
     try {
-      const success = await adoptBill(user.id, billUrl);
-      if (success) {
-        // Refresh the bills list after successful adoption
-        console.log('Bill adopted successfully, refreshing bills...');
-        await refreshBills();
+      const adoptedBill = await adoptBill(user.id, billUrl);
+      if (adoptedBill) {
+        // Add the bill to the list without refreshing everything
+        console.log('Bill adopted successfully, adding to list...');
+        addBill(adoptedBill);
+        toast({
+          title: 'Bill adopted',
+          description: 'The bill was successfully added to your adopted list.',
+        });
         return true;
       }
       return false;

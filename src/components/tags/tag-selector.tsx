@@ -22,7 +22,7 @@ export function TagSelector({ billId, onTagsChange, readOnly = false }: TagSelec
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
-  const { refreshBills } = useBills();
+  const { updateBill } = useBills();
 
   // Determine if user can manage tags (admin/supervisor only, unless explicitly read-only)
   const canManageTags = !readOnly && (user?.role === 'admin' || user?.role === 'supervisor');
@@ -75,8 +75,8 @@ export function TagSelector({ billId, onTagsChange, readOnly = false }: TagSelec
         newSelectedTags.map(t => t.id)
       );
       setSelectedTags(updatedTags);
-      // Refresh bills to update tags across the app
-      await refreshBills();
+      // Update the bill's tags in the context without refreshing everything
+      updateBill(billId, { tags: updatedTags });
       if (onTagsChange) {
         onTagsChange(updatedTags);
       }

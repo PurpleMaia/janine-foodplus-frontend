@@ -7,7 +7,7 @@ import {
   getUserAdoptedBills,
   updateBillStatusServerAction,
 } from '@/services/legislation';
-import { getBillTags } from '@/services/tags';
+import { getBatchBillTags } from '@/services/tags';
 import React, {
   createContext,
   useContext,
@@ -53,6 +53,11 @@ interface BillsContextType {
   viewMode: 'my-bills' | 'all-bills';
   setViewMode: (mode: 'my-bills' | 'all-bills') => void;
   toggleViewMode: () => void;
+
+  // Partial update helpers
+  addBill: (bill: Bill) => void;
+  updateBill: (billId: string, updates: Partial<Bill>) => void;
+  removeBill: (billId: string) => void;
 
   resetBills: () => Promise<void>;
   refreshBills: () => Promise<void>;
@@ -521,16 +526,46 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  // ========= PARTIAL UPDATE HELPERS =========
+
+  /**
+   * Add a new bill to the bills array
+   */
+  const addBill = useCallback((bill: Bill) => {
+    setBills((prevBills) => {
+      // Check if bill already exists
+      const exists = prevBills.some(b => b.id === bill.id);
+      if (exists) {
+        console.warn(`Bill ${bill.id} already exists, updating instead`);
+        return prevBills.map(b => b.id === bill.id ? bill : b);
+      }
+      return [...prevBills, bill];
+    });
+  }, []);
+
+  /**
+   * Update specific fields of a bill without refreshing the entire list
+   */
+  const updateBill = useCallback((billId: string, updates: Partial<Bill>) => {
+    setBills((prevBills) =>
+      prevBills.map((bill) =>
+        bill.id === billId ? { ...bill, ...updates } : bill
+      )
+    );
+  }, []);
+
+  /**
+   * Remove a bill from the bills array
+   */
+  const removeBill = useCallback((billId: string) => {
+    setBills((prevBills) => prevBills.filter(bill => bill.id !== billId));
+  }, []);
+
   const refreshBills = async () => {
     console.log('Refreshing bills...');
-    // Clear bills first to show skeleton immediately
-    setBills([]);
     setLoadingBills(true);
     setError(null);
-    
-    // Small delay to ensure loading state is visible
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     try {
       if (user) {
         // LOGGED-IN PATH: respect view mode
@@ -543,40 +578,32 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           results = await getAllFoodRelatedBills();
           console.log('All food-related bills set in context');
         }
-        
-        // Fetch tags for all bills
-        const billsWithTags = await Promise.all(
-          results.map(async (bill) => {
-            try {
-              const tags = await getBillTags(bill.id);
-              return { ...bill, tags };
-            } catch (error) {
-              console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-              return { ...bill, tags: [] };
-            }
-          })
-        );
-        
+
+        // Fetch tags for all bills using batch API (single request)
+        const billIds = results.map(bill => bill.id);
+        const tagsByBillId = await getBatchBillTags(billIds);
+
+        const billsWithTags = results.map(bill => ({
+          ...bill,
+          tags: tagsByBillId[bill.id] || []
+        }));
+
         setBills(billsWithTags);
         console.log(billsWithTags);
         return;
       }
       // Public view: only all bills
       const results = await getAllBills();
-      
-      // Fetch tags for all bills
-      const billsWithTags = await Promise.all(
-        results.map(async (bill) => {
-          try {
-            const tags = await getBillTags(bill.id);
-            return { ...bill, tags };
-          } catch (error) {
-            console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-            return { ...bill, tags: [] };
-          }
-        })
-      );
-      
+
+      // Fetch tags for all bills using batch API (single request)
+      const billIds = results.map(bill => bill.id);
+      const tagsByBillId = await getBatchBillTags(billIds);
+
+      const billsWithTags = results.map(bill => ({
+        ...bill,
+        tags: tagsByBillId[bill.id] || []
+      }));
+
       setBills(billsWithTags);
       console.log('successful results set in context');
       console.log(billsWithTags);
@@ -590,10 +617,10 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
   const toggleViewMode = useCallback(() => {
     if (!user) return;
-    
+
     const newMode = viewMode === 'my-bills' ? 'all-bills' : 'my-bills';
     setViewMode(newMode);
-    
+
     // Refresh bills when toggling (moved outside state setter to avoid render issues)
     (async () => {
       setLoadingBills(true);
@@ -604,20 +631,16 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         } else {
           results = await getAllFoodRelatedBills();
         }
-        
-        // Fetch tags for all bills
-        const billsWithTags = await Promise.all(
-          results.map(async (bill) => {
-            try {
-              const tags = await getBillTags(bill.id);
-              return { ...bill, tags };
-            } catch (error) {
-              console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-              return { ...bill, tags: [] };
-            }
-          })
-        );
-        
+
+        // Fetch tags for all bills using batch API (single request)
+        const billIds = results.map(bill => bill.id);
+        const tagsByBillId = await getBatchBillTags(billIds);
+
+        const billsWithTags = results.map(bill => ({
+          ...bill,
+          tags: tagsByBillId[bill.id] || []
+        }));
+
         setBills(billsWithTags);
       } catch (err) {
         console.error('Error refreshing bills on toggle:', err);
@@ -648,20 +671,16 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             results = await getAllFoodRelatedBills();
             console.log('All food-related bills set in context', results.length);
           }
-          
-          // Fetch tags for all bills
-          const billsWithTags = await Promise.all(
-            results.map(async (bill) => {
-              try {
-                const tags = await getBillTags(bill.id);
-                return { ...bill, tags };
-              } catch (error) {
-                console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-                return { ...bill, tags: [] };
-              }
-            })
-          );
-          
+
+          // Fetch tags for all bills using batch API (single request)
+          const billIds = results.map(bill => bill.id);
+          const tagsByBillId = await getBatchBillTags(billIds);
+
+          const billsWithTags = results.map(bill => ({
+            ...bill,
+            tags: tagsByBillId[bill.id] || []
+          }));
+
           if (!cancelled) {
             setBills(billsWithTags);
 
@@ -687,20 +706,16 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         } else {
           // PUBLIC PATH
           const results = await getAllBills();
-          
-          // Fetch tags for all bills
-          const billsWithTags = await Promise.all(
-            results.map(async (bill) => {
-              try {
-                const tags = await getBillTags(bill.id);
-                return { ...bill, tags };
-              } catch (error) {
-                console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-                return { ...bill, tags: [] };
-              }
-            })
-          );
-          
+
+          // Fetch tags for all bills using batch API (single request)
+          const billIds = results.map(bill => bill.id);
+          const tagsByBillId = await getBatchBillTags(billIds);
+
+          const billsWithTags = results.map(bill => ({
+            ...bill,
+            tags: tagsByBillId[bill.id] || []
+          }));
+
           if (!cancelled) {
             setBills(billsWithTags);
             console.log('There are', billsWithTags.length, 'bills');
@@ -750,6 +765,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       setViewMode,
       toggleViewMode,
 
+      // Partial updates
+      addBill,
+      updateBill,
+      removeBill,
+
       resetBills,
       refreshBills,
     }),
@@ -770,6 +790,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       viewMode,
       setViewMode,
       toggleViewMode,
+      addBill,
+      updateBill,
+      removeBill,
       resetBills,
       refreshBills,
     ]

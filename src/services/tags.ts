@@ -100,6 +100,32 @@ export async function getBillTags(billId: string): Promise<Tag[]> {
 }
 
 /**
+ * Fetches tags for multiple bills in a single request
+ */
+export async function getBatchBillTags(billIds: string[]): Promise<Record<string, Tag[]>> {
+  try {
+    const response = await fetch('/api/bills/batch-tags', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ billIds }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch batch bill tags');
+    }
+
+    const data = await response.json();
+    return data.tags || {};
+  } catch (error) {
+    console.error('Error fetching batch bill tags:', error);
+    return {};
+  }
+}
+
+/**
  * Updates tags for a bill (admin/supervisor only)
  */
 export async function updateBillTags(billId: string, tagIds: string[]): Promise<Tag[]> {

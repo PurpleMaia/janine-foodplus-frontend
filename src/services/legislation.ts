@@ -351,7 +351,7 @@ export async function insertNewBill(bill: Bill): Promise<Bill | null> {
 }
 
 // Bill adoption functions
-export async function adoptBill(userId: string, billUrl: string): Promise<boolean> {
+export async function adoptBill(userId: string, billUrl: string): Promise<Bill | null> {
   try {
 
     // First find the bill by URL
@@ -359,7 +359,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
     const billResult = await findExistingBillByURL(billUrl);
     if (!billResult) {
       console.log('[ADOPT BILL] Bill not found with URL:', billUrl);
-      
+
       // scrape bill URL
       console.log('[ADOPT BILL] Scraping bill URL:', billUrl);
       const newBill = await findBill(billUrl);
@@ -380,7 +380,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
 
     if (alreadyAdopted && alreadyAdopted.length > 0) {
       console.log('Bill already adopted by user');
-      return false;
+      return null;
     }
 
     // Add the adoption record
@@ -391,10 +391,27 @@ export async function adoptBill(userId: string, billUrl: string): Promise<boolea
     }).executeTakeFirst();
 
     console.log(`Successfully adopted bill ${billId} for user ${userId}`);
-    return true;
+
+    // Fetch the full bill data with tags to return
+    const billData = await db
+      .selectFrom('bills')
+      .selectAll()
+      .where('id', '=', billId)
+      .executeTakeFirst();
+
+    if (!billData) {
+      console.error('Failed to fetch adopted bill data');
+      return null;
+    }
+
+    // Fetch tags for the bill
+    const { getBillTags } = await import('@/services/tags');
+    const tags = await getBillTags(billId);
+
+    return { ...billData, tags } as Bill;
   } catch (error) {
     console.error('Failed to adopt bill:', error);
-    return false;
+    return null;
   }
 }
 

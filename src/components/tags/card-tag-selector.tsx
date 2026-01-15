@@ -27,7 +27,7 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
-  const { refreshBills } = useBills();
+  const { updateBill } = useBills();
 
   const canManageTags = user?.role === 'admin' || user?.role === 'supervisor';
 
@@ -74,8 +74,8 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
         title: 'Success',
         description: 'Tags updated successfully',
       });
-      // Refresh bills to update tags across the app
-      await refreshBills();
+      // Update the bill's tags in the context without refreshing everything
+      updateBill(billId, { tags: updatedTags });
       // Call onTagsChange callback if provided (for optimistic updates)
       if (onTagsChange) {
         onTagsChange(updatedTags);
