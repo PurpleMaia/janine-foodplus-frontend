@@ -6,7 +6,7 @@ import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
 // import { KanbanColumn } from './kanban-column'; // we inline KanbanColumn below
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
-import { updateBillStatusServerAction, searchBills } from '@/services/data/legislation';
+import { updateBillStatus, searchBills } from '@/services/data/legislation';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { useToast } from '@/hooks/use-toast';
@@ -323,7 +323,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       }
 
       try {
-        const updatedBillFromServer = await updateBillStatusServerAction(
+        const updatedBillFromServer = await updateBillStatus(
           draggableId,
           destinationColumnId
         );

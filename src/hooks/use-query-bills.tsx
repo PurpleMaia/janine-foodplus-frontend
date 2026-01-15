@@ -17,7 +17,7 @@ export const QUERY_KEYS = {
 //   });
 // }
 
-export function useAdoptedBills(userID: string) {
+export function useTrackedBills(userID: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.bills, userID],
     queryFn: async () => {        

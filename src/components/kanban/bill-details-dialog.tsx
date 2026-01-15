@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { updateBillStatusServerAction } from '@/services/data/legislation';
+import { updateBillStatus } from '@/services/data/legislation';
 import { Input } from '@/components/ui/input';
 import { TagSelector } from '../tags/tag-selector';
 
@@ -154,7 +154,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
         }
 
         // Admins and supervisors can directly update
-        const updatedBillFromServer = await updateBillStatusServerAction(bill.id, selectedStatus);
+        const updatedBillFromServer = await updateBillStatus(bill.id, selectedStatus);
         if (!updatedBillFromServer) {
             throw new Error('Failed to update bill status on server.');
         }

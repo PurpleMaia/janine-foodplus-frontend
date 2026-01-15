@@ -8,7 +8,7 @@ import { useKanbanBoard } from '@/contexts/kanban-board-context';
 import { Label } from '../ui/label';
 import { useState } from 'react';
 import NewBillButton from './new-bill/new-bill-button';
-import { AdoptBillDialog } from './adopt-bill-dialog';
+import { TrackBillDialog } from './track-bill-dialog';
 import { useBills } from '@/contexts/bills-context';
 import { TagFilterList } from '../tags/tag-filter-list';
 
@@ -53,7 +53,7 @@ export function KanbanHeader() {
             {!isPublic && (
               <>
                 <NewBillButton />
-                <AdoptBillDialog />                
+                <TrackBillDialog />
               </>
             )}
         </div>

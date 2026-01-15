@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth';
 import { getSessionCookie } from '@/lib/cookies';
 import { db } from '../../../../db/kysely/client';
-import { updateBillStatusServerAction } from '@/services/data/legislation';
+import { updateBillStatus } from '@/services/data/legislation';
 import { uuidSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the bill status
-    await updateBillStatusServerAction(proposal.bill_id, proposal.suggested_status as any);
+    await updateBillStatus(proposal.bill_id, proposal.suggested_status as any);
 
     // Mark proposal as approved
     await db

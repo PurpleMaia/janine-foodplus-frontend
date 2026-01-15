@@ -7,24 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { useAdoptedBills } from '@/hooks/use-adopted-bills';
+import { useTrackedBills } from '@/hooks/use-tracked-bills';
 import { UserPlus } from 'lucide-react';
 import { DialogDescription } from '@radix-ui/react-dialog';
 
-export function AdoptBillDialog() {
+export function TrackBillDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [billUrl, setBillUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { adoptBill } = useAdoptedBills();
+  const { trackBill } = useTrackedBills();
 
-  // Calls the adoptBill service and provides feedback via toasts.
-  const handleAdoptBill = async () => {
+  // Calls the trackBill service and provides feedback via toasts.
+  const handleTrackBill = async () => {
     if (!user) {
       toast({
         title: "Authentication Error",
-        description: "You must be logged in to adopt bills.",
+        description: "You must be logged in to track bills.",
         variant: "destructive",
       });
       return;
@@ -42,19 +42,19 @@ export function AdoptBillDialog() {
     setIsLoading(true);
     try {
 
-      const success = await adoptBill(billUrl.trim());
-      
+      const success = await trackBill(billUrl.trim());
+
       if (success) {
         toast({
           title: "Success!",
-          description: `Bill has been adopted successfully.`,
+          description: `Bill has been tracked successfully.`,
         });
         setBillUrl('');
         setIsOpen(false);
       } else {
         toast({
-          title: "Adoption Failed",
-          description: "Bill URL not found or already adopted.",
+          title: "Tracking Failed",
+          description: "Bill URL not found or already tracked.",
           variant: "destructive",
         });
       }
@@ -71,7 +71,7 @@ export function AdoptBillDialog() {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isLoading) {
-      handleAdoptBill();
+      handleTrackBill();
     }
   };
 
@@ -110,10 +110,10 @@ export function AdoptBillDialog() {
               Cancel
             </Button>
             <Button
-              onClick={handleAdoptBill}
+              onClick={handleTrackBill}
               disabled={isLoading || !billUrl.trim()}
             >
-              {isLoading ? 'Adopting...' : 'Adopt Bill'}
+              {isLoading ? 'Tracking...' : 'Track Bill'}
             </Button>
           </div>
         </div>

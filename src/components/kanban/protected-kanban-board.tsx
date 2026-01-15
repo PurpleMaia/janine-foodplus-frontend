@@ -4,8 +4,8 @@ import React from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { KanbanBoard } from './kanban-board';
 import { KanbanSpreadsheet } from './kanban-spreadsheet';
-import { useAdoptedBills } from '@/hooks/use-adopted-bills';
-import { AdoptBillDialog } from './adopt-bill-dialog';
+import { useTrackedBills } from '@/hooks/use-tracked-bills';
+import { TrackBillDialog } from './track-bill-dialog';
 import { useBills } from '@/contexts/bills-context';
 import { KanbanHeader } from './kanban-header';
 import { useKanbanBoard } from '@/contexts/kanban-board-context';
@@ -14,7 +14,7 @@ export function ProtectedKanbanBoardOrSpreadsheet() {
   const { user, loading } = useAuth();
   const { view } = useKanbanBoard();
   const { bills, loadingBills, viewMode } = useBills();
-  const { unadoptBill } = useAdoptedBills();
+  const { untrackBill } = useTrackedBills();
 
   if (loading) {
     return null
@@ -48,7 +48,7 @@ export function ProtectedKanbanBoardOrSpreadsheet() {
             </p>
           </div>
           <div className="w-64">
-            <AdoptBillDialog />
+            <TrackBillDialog />
           </div>
         </div>
       </>
@@ -77,7 +77,7 @@ export function ProtectedKanbanBoardOrSpreadsheet() {
       <KanbanHeader />
       <KanbanBoard 
         readOnly={isReadOnlyForIntern || false} 
-        onUnadopt={unadoptBill}
+        onUnadopt={untrackBill}
         showUnadoptButton={shouldShowUnadoptButton}
       />      
     </div>

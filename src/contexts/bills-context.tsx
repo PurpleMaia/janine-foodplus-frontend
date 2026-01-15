@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  getAllBills,
+  getAllTrackedBills,
   getAllFoodRelatedBills,
-  getUserAdoptedBills,
-  updateBillStatusServerAction,
+  getUserTrackedBills,
+  updateBillStatus,
 } from '@/services/data/legislation';
 import { getBatchBillTags } from '@/services/data/tags';
 import React, {
@@ -118,14 +118,14 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     let results: Bill[] = [];
     if (user) {
       if (mode === 'my-bills') {
-        results = await getUserAdoptedBills(user.id);
-        console.log('User adopted bills fetched:', results.length);
+        results = await getUserTrackedBills(user.id);
+        console.log('User tracked bills fetched:', results.length);
       } else {
         results = await getAllFoodRelatedBills();
         console.log('All food-related bills fetched:', results.length);
       }
     } else {
-      results = await getAllBills();
+      results = await getAllTrackedBills();
       console.log('Public bills fetched:', results.length);
     }
 
@@ -151,7 +151,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     if (!bill || !bill.llm_suggested) return;
 
     try {
-      await updateBillStatusServerAction(billId, bill.current_status);
+      await updateBillStatus(billId, bill.current_status);
 
       setBills((prevBills) =>
         prevBills.map((b) =>
