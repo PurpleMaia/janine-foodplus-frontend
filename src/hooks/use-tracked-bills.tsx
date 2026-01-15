@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { trackBill, unadoptBill } from '@/services/data/legislation';
+import { trackBill, untrackBill } from '@/services/data/legislation';
 import { getBillTags } from '@/services/data/tags';
 import { useToast } from '@/hooks/use-toast';
 import { useBills } from '@/contexts/bills-context';
@@ -24,12 +24,12 @@ export function useTrackedBills() {
     try {
       const trackedBill = await trackBill(user.id, billUrl);
       if (trackedBill) {
-        // Add the bill to the list without refreshing everything
+        // Add the bill to the list
         console.log('Bill tracked successfully, adding to list...');
         addBill(trackedBill);
 
         // Fetch tags for the newly tracked bill
-        console.log('Fetching tags for tracked bill...');
+        console.log('Fetching tags for newly tracked bill...');
         const tags = await getBillTags(trackedBill.id);
         updateBill(trackedBill.id, { tags });
 
@@ -54,7 +54,7 @@ export function useTrackedBills() {
   const handleUntrackBill = useCallback(async (billId: string) => {
     if (!user) return false;
     try {
-      const success = await unadoptBill(user.id, billId);
+      const success = await untrackBill(user.id, billId);
       if (success) {
         // Remove the bill from the local state
         setBills(prev => prev.filter(bill => bill.id !== billId));

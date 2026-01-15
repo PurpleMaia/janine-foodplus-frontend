@@ -1,74 +1,11 @@
 'use server';
 
-import type { Bill, BillStatus, StatusUpdate, Tag } from '@/types/legislation';
+import type { Bill, BillStatus, Tag } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { db } from '@/db/kysely/client';
 import { Bills } from '@/db/types';
 import { Selectable } from 'kysely';
 import { getBatchBillTags } from '@/services/data/tags';
-
-interface BillData {
-  bills: Selectable<Bills>[];
-  statusUpdates: Selectable<BillStatus>[];
-  tags: Record<string, Tag[]>;
-}
-async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, Bill>> {
-  const { bills, statusUpdates, tags } = billData;
-  const billObjects = new Map<string, Bill>();
-
-  // Map bills data (data, updates, tags) to Bill client objects
-  await Promise.all(bills.map(async (row: Selectable<Bills>) => {
-
-    // Init map data to client data shape
-    if (!billObjects.has(row.id)) {
-      billObjects.set(row.id, await convertDataToBillShape(row));
-    }
-
-    // Add status updates & tags to the bill object
-    const bill = billObjects.get(row.id) as Bill;
-    if (bill) {
-        const updatesForBill = statusUpdates.filter(update => update.bill_id === row.id);
-        bill.updates = updatesForBill.map(update => ({
-            id: update.update_id as string,
-            statustext: (update.statustext || '') as string,
-            date: (update.date || '') as string,
-            chamber: (update.chamber || '') as string
-        }));
-
-        // Add tags to the bill object
-        bill.tags = tags[row.id] || [];
-    }
-  }));
-
-  return billObjects;
-}
-
-async function convertDataToBillShape(bill: Selectable<Bills>): Promise<Bill> {
-  const { toDate } = await import('@/lib/utils');
-  return {
-    // attributes from the database
-    bill_number: bill.bill_number ?? '',
-    bill_title: bill.bill_title ?? '',
-    bill_url: bill.bill_url,
-    committee_assignment: bill.committee_assignment ?? '',
-    created_at: toDate(bill.created_at),
-    current_status: typeof bill.current_status === 'string' ? bill.current_status : '',
-    current_status_string: bill.current_status_string ?? '',
-    description: bill.description ?? '',
-    food_related: typeof bill.food_related === 'boolean' ? bill.food_related : null,
-    id: typeof bill.id === 'string' ? bill.id : '',
-    introducer: bill.introducer ?? '',
-    nickname: bill.nickname ?? '',
-    updated_at: toDate(bill.updated_at),
-
-    // client-side attributes
-    updates: [],
-    tags: [],
-    previous_status: undefined,
-    llm_suggested: undefined,
-    llm_processing: undefined,
-  };
-}
 
 async function getStatusUpdatesForBills(billIds: string[]): Promise<Selectable<BillStatus>[]> {
     const updates = await db
@@ -388,97 +325,163 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
 // BILL TRACK & INSERT FUNCTIONS
 // ==============================================
 
-export async function trackBill(userId: string, billUrl: string): Promise<Bill | null> {
+/**
+ * Tracks a bill for a user by URL.
+ *
+ * @param userId The ID of the user tracking the bill.
+ * @param billUrl The URL of the bill to track.
+ * @returns The tracked Bill object or null if tracking failed.
+ */
+export async function trackBill(userId: string, billUrl: string): Promise<Bill> {
   try {
-    // Find bill by URL or scrape if not found
-    let bill: Bill;
+
+    // Find bill by URL
+    let billId = '';
     const billResult = await findExistingBillByURL(billUrl);
 
+    // If not found, scrape for this bill and add to database
     if (!billResult) {
-      // Bill not found - scrape and add to database
       console.log('[TRACK BILL] Bill not found with URL:', billUrl);
+
+      // scrape bill URL
       console.log('[TRACK BILL] Scraping bill URL:', billUrl, '...');
-
       const { findBill } = await import('@/services/scraper');
-      const scrapedData = await findBill(billUrl);
+      const newBill = await findBill(billUrl);
 
-      console.log('[TRACK BILL] Scraped new bill data:', scrapedData);
-      bill = scrapedData.individualBill;
-    } else {
-      // Bill found in database
+      // return new bill data
+      console.log('[TRACK BILL] Scraped new bill data:', newBill);
+      billId = newBill.individualBill.id;
+    }
+
+    // If found, use existing bill ID 
+    if (billResult) {
       console.log('[TRACK BILL] Bill found with URL:', billUrl);
-      bill = billResult;
+      billId = billResult.id;
     }
 
     // Check if already tracked by user
     const alreadyTracked = await db.selectFrom('user_bills').selectAll()
       .where('user_id', '=', userId)
-      .where('bill_id', '=', bill.id)
+      .where('bill_id', '=', billId)
       .execute();
-
     if (alreadyTracked && alreadyTracked.length > 0) {
-      console.log('Bill already tracked by user', userId.slice(0, 6), 'bill', bill.id.slice(0, 6));
+      console.log('Bill already tracked by user', userId.slice(0, 6), 'bill', billId.slice(0, 6));
       throw new Error('Bill already tracked by this user');
     }
 
-    // Create user_bills relation
+    // If not already tracked, add the relation
     await db.insertInto('user_bills').values({
       user_id: userId,
-      bill_id: bill.id,
+      bill_id: billId,
       adopted_at: new Date()
     }).executeTakeFirst();
 
-    console.log(`Successfully tracked bill ${bill.id} for user ${userId}`);
+    console.log(`Successfully tracked bill ${billId} for user ${userId}`);
 
-    // Return bill with empty tags - context will handle batch tag fetching
-    // This eliminates 2 unnecessary database queries
-    return { ...bill, tags: [] } as Bill;
+    return { ...billResult } as Bill;
   } catch (error) {
     console.error('Failed to adopt bill:', error);
-    return null;
+    throw error;
   }
 }
 
-export async function unadoptBill(userId: string, billId: string): Promise<boolean> {
+/** 
+ * Untracks a bill for a user.
+ * 
+ * @param userId The ID of the user untracking the bill
+ * @param billId The ID of the bill to untrack
+ * @returns A boolean indicating whether the untracking was successful
+ */
+export async function untrackBill(userId: string, billId: string): Promise<boolean> {
   try {
-    console.log('unadoptBill called with:', { userId, billId });
-    const result = await db.deleteFrom('user_bills')
+    console.log('untrackBill called with:', { userId, billId });
+    await db.deleteFrom('user_bills')
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
       .executeTakeFirstOrThrow();
 
-    console.log(`Successfully unadopted bill ${billId} for user ${userId}`);
+    console.log(`Successfully untracked bill ${billId} for user ${userId}`);
     return true;
   } catch (error) {
-    console.error('Failed to unadopt bill:', error);
+    console.error('Failed to untrack bill:', error);
     return false;
   }
 }
 
-export async function insertNewBill(bill: Bill): Promise<Bill | null> {
-  try {
-    // Convert Bill to database format (snake_case)
-    const dbBill = {
-      id: bill.id,
-      bill_number: bill.bill_number,
-      bill_title: bill.bill_title,
-      bill_url: bill.bill_url,
-      committee_assignment: bill.committee_assignment,
-      created_at: bill.created_at,
-      current_status: bill.current_status,
-      current_status_string: bill.current_status_string,
-      description: bill.description,
-      food_related: bill.food_related,
-      introducer: bill.introducer,
-      nickname: bill.nickname,
-      updated_at: bill.updated_at,
-    };
-    const result = await db.insertInto('bills').values(dbBill).returningAll().executeTakeFirst();
+// ==============================================
+// BILL HELPER DATA MAPPING FUNCTIONS
+// ===============================================
 
-    console.log(`Successfully inserted new bill ${bill.bill_number} into database`)
-    return mapBillsToBill(result as unknown as Bills);
-  } catch (error) {
-    console.error('Database insert failed', error)
-    return null
-  }
+interface BillData {
+  bills: Selectable<Bills>[];
+  statusUpdates: Selectable<BillStatus>[];
+  tags: Record<string, Tag[]>;
+}
+/**
+ * Converts the raw bill data (object bills[], statusUpdates[], tags[]) from the database to the client-side Bill objects and 
+ * maps status updates and tags to their corresponding bills.
+ * @param billData The raw bill data from the database.
+ * @returns A map of bill IDs to their corresponding Bill objects.
+ */
+async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, Bill>> {
+  const { bills, statusUpdates, tags } = billData;
+  const billObjects = new Map<string, Bill>();
+
+  // Map bills data (data, updates, tags) to Bill client objects
+  await Promise.all(bills.map(async (row: Selectable<Bills>) => {
+
+    // Init map data to client data shape
+    if (!billObjects.has(row.id)) {
+      billObjects.set(row.id, await convertDataToBillShape(row));
+    }
+
+    // Add status updates & tags to the bill object
+    const bill = billObjects.get(row.id) as Bill;
+    if (bill) {
+        const updatesForBill = statusUpdates.filter(update => update.bill_id === row.id);
+        bill.updates = updatesForBill.map(update => ({
+            id: update.update_id as string,
+            statustext: (update.statustext || '') as string,
+            date: (update.date || '') as string,
+            chamber: (update.chamber || '') as string
+        }));
+
+        // Add tags to the bill object
+        bill.tags = tags[row.id] || [];
+    }
+  }));
+
+  return billObjects;
+}
+
+/**
+ * Converts a singular bill from the database format to the client-side format.
+ * @param bill The bill to convert.
+ * @returns The converted bill.
+ */
+async function convertDataToBillShape(bill: Selectable<Bills>): Promise<Bill> {
+  const { toDate } = await import('@/lib/utils');
+  return {
+    // attributes from the database
+    bill_number: bill.bill_number ?? '',
+    bill_title: bill.bill_title ?? '',
+    bill_url: bill.bill_url,
+    committee_assignment: bill.committee_assignment ?? '',
+    created_at: toDate(bill.created_at),
+    current_status: typeof bill.current_status === 'string' ? bill.current_status : '',
+    current_status_string: bill.current_status_string ?? '',
+    description: bill.description ?? '',
+    food_related: typeof bill.food_related === 'boolean' ? bill.food_related : null,
+    id: typeof bill.id === 'string' ? bill.id : '',
+    introducer: bill.introducer ?? '',
+    nickname: bill.nickname ?? '',
+    updated_at: toDate(bill.updated_at),
+
+    // client-side attributes
+    updates: [],
+    tags: [],
+    previous_status: undefined,
+    llm_suggested: undefined,
+    llm_processing: undefined,
+  };
 }
