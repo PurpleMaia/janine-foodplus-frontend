@@ -364,11 +364,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               <div className="space-y-2">
                 <DetailItem label="Bill URL" value={bill.bill_url} />
 
-                {/* Comment Section */}
-                <div className="mt-4">
-                  <h4 className="font-semibold mb-2">Comments</h4>
-                  <CommentSection billId={bill.id} />
-                </div>
+                {/* Comment section removed */}
               </div>
             </div>
 
@@ -534,76 +530,3 @@ function checkURL(url: string){
     return url
   }
 }
-
-interface CommentSectionProps {
-  billId: string;
-}
-
-const CommentSection: React.FC<CommentSectionProps> = () => {
-  const [comment, setComment] = React.useState('');
-  const [comments, setComments] = React.useState<string[]>([]);
-  const { user } = useAuth(); // Add this line to get authentication state
-
-  const handlePost = () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to post comments.",
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (comment.trim()) {
-      setComments([...comments, comment.trim()]);
-      setComment('');
-    }
-  };
-
-  return (
-    <div>
-      {user ? (
-        // Authenticated user - can write comments
-        <>
-          <textarea
-            className="w-full border rounded p-2 text-sm mb-2"
-            rows={2}
-            placeholder="Write a comment..."
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-          />
-          <button
-            className="bg-primary text-white px-3 py1 rounded text-sm mb-2"
-            onClick={handlePost}
-            type="button"
-          >
-            Post
-          </button>
-        </>
-      ) : (
-        // Non-authenticated user - show disabled state
-        <div className="space-y-2 mb-2">
-          <textarea
-            className="w-full border rounded p-2 text-sm bg-muted/50 cursor-not-allowed"
-            rows={2}
-            placeholder="Login to write comments..."
-            disabled={true}
-          />
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Lock className="h-3 w-3" />
-            <span>Login required to post comments</span>
-          </div>
-        </div>
-      )}
-      
-      <div className="space-y-1 mt-2">
-        {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments yet.</div>}
-        {comments.map((c, i) => (
-          <div key={i} className="bg-secondary rounded p-2 text-sm">
-            {c}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
