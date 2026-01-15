@@ -2,71 +2,10 @@
 
 import type { Bill, BillStatus, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../db/kysely/client';
-import { Bills } from '../db/types';
+import { db } from '../../db/kysely/client';
+import { Bills } from '../../db/types';
 import { mapBillsToBill } from '@/lib/utils';
-import { sql } from 'kysely';
-import { findBill } from './scraper';
-
-// Helper function to create placeholder introducers
-// const createIntroducers = (names: string[]): Introducer[] =>
-//     names.map((name, index) => ({
-//         name,
-//         // Placeholder image URL using picsum.photos - requires next.config.js update if not already present
-//         imageUrl: `https://picsum.photos/seed/${name.replace(/\s+/g, '')}/40/40`,
-//     }));
-
-// Helper function to create placeholder bill drafts
-// const createBillDrafts = (billId: string, versions: string[]): BillDraft[] =>
-//     versions.map((version, index) => ({
-//         version,
-//         htmlUrl: `/bills/${billId}/drafts/${version}.html`, // Placeholder links
-//         pdfUrl: `/bills/${billId}/drafts/${version}.pdf`, // Placeholder links
-//         date: new Date(2024, 5, 25 - index * 5), // Stagger dates
-//     }));
-
-// Helper function to create placeholder news articles
-// const createNewsArticles = (count: number): NewsArticle[] =>
-//     Array.from({ length: count }, (_, index) => ({
-//         title: `Article Title ${index + 1} about the Bill`,
-//         url: `https://news.example.com/article${index + 1}`, // Placeholder links
-//         source: index % 2 === 0 ? 'Honolulu Star-Advertiser' : 'Civil Beat',
-//         date: new Date(2024, 5, 28 - index * 3),
-//     }));
-
-
-/**
- * Asynchronously retrieves bill information by ID.
- *
- * @param id The ID of the bill to retrieve.
- * @returns A promise that resolves to a Bill object or null if not found.
- */
-// export async function getBill(id: string): Promise<Bill | null> {
-//   // Simulate API call delay
-//   await new Promise(resolve => setTimeout(resolve, 100));
-//   const bill = mockBills.find(b => b.id === id);
-//   // Ensure dates are Date objects (if they were strings)
-//    if (bill) {
-//      bill.created_at = new Date(bill.created_at);
-//      bill.updated_at = new Date(bill.updated_at);
-//    }
-//   return bill ? { ...bill } : null; // Return a copy
-// }
-
-/**
- * Asynchronously retrieves all bills.
- *
- * @returns A promise that resolves to an array of all Bill objects.
- */
-
-// const FOOD_KEYWORDS = [
-//   'agriculture', 'food', 'farm', 'pesticides', 'eating', 'edible', 'meal',
-//   'crop', 'harvest', 'organic', 'nutrition', 'diet', 'restaurant', 'cafe',
-//   'kitchen', 'cooking', 'beverage', 'drink', 'produce', 'vegetable', 'fruit',
-//   'meat', 'dairy', 'grain', 'seed', 'fertilizer', 'irrigation', 'livestock',
-//   'poultry', 'fishery', 'aquaculture', 'grocery', 'market', 'vendor'
-// ];
+import { findBill } from '../scraper';
 
 /**
  * Gets all food-related bills that have been adopted (at least one adoption)
@@ -101,6 +40,8 @@ export async function getAllBills(): Promise<Bill[]> {
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .orderBy('su.date', 'desc')       // Then most recently created
           .execute()
+        
+          console.log(`Fetched ${rawData.length} rows of bill data from database for public view`);
         
         // Map rawData to Bill objects
         const billObject = new Map<string, Bill>();
@@ -405,7 +346,7 @@ export async function adoptBill(userId: string, billUrl: string): Promise<Bill |
     }
 
     // Fetch tags for the bill
-    const { getBillTags } = await import('@/services/tags');
+    const { getBillTags } = await import('@/services/data/tags');
     const tags = await getBillTags(billId);
 
     return { ...billData, tags } as Bill;
@@ -449,7 +390,6 @@ export async function getUserAdoptedBills(userId: string): Promise<Bill[]> {
       .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted (bills that have a bill id in the user_bills table)
       .leftJoin('status_updates as su', 'b.id', 'su.bill_id')
-      // @ts-expect-error - user_bill_preferences table is created dynamically and not in DB types
       .leftJoin('user_bill_preferences as ubp', (join: any) =>
         join
           .onRef('ubp.bill_id', '=', 'ub.bill_id')

@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { updateBillStatusServerAction } from '@/services/legislation';
+import { updateBillStatusServerAction } from '@/services/data/legislation';
 import { Input } from '@/components/ui/input';
 import { TagSelector } from '../tags/tag-selector';
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth';
 import { getSessionCookie } from '@/lib/cookies';
 import { db } from '../../../../db/kysely/client';
-import { updateBillStatusServerAction } from '@/services/legislation';
+import { updateBillStatusServerAction } from '@/services/data/legislation';
 import { uuidSchema } from '@/lib/validators';
 
 export async function POST(request: NextRequest) {

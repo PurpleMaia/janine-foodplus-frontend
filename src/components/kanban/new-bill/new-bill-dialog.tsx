@@ -15,7 +15,7 @@ import {
 import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
-import { findExistingBillByURL, insertNewBill, updateFoodRelatedFlagByURL } from "@/services/legislation";
+import { findExistingBillByURL, insertNewBill, updateFoodRelatedFlagByURL } from "@/services/data/legislation";
 import { useBills } from "@/contexts/bills-context";
 
 

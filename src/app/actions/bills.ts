@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import type { Bill, BillStatus, TempBill } from '@/types/legislation';
-import { getAllBills } from '@/services/legislation';
+import { getAllBills } from '@/services/data/legislation';
 
 interface ActionResult<T = void> {
   success: boolean;
