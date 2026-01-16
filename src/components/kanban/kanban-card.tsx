@@ -125,6 +125,11 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                              <CardTitle className="text-sm font-bold" title={bill.bill_title}>
                                 {bill.bill_number}
                              </CardTitle>
+                             {bill.year && (
+                               <Badge variant="outline" className="text-xs h-5 px-1.5 bg-slate-50">
+                                 {bill.year}
+                               </Badge>
+                             )}
                              {getStatusIcon(bill.current_status)}
                          </div>
                          {/* Unadopt button on the right */}
@@ -143,7 +148,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                                     <X className="h-3 w-3" />
                                 </Button>
                             )}
-                         </div>                              
+                         </div>
                      </div>
                 </CardHeader>
                 <CardContent className="p-0 mt-1 gap-2">

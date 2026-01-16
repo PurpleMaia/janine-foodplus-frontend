@@ -5,6 +5,8 @@
 
 import type { ColumnType } from "kysely";
 
+export type BillStatus = "conferenceAssigned" | "conferenceDeferred" | "conferencePassed" | "conferenceScheduled" | "crossoverDeferred1" | "crossoverDeferred2" | "crossoverDeferred3" | "crossoverScheduled1" | "crossoverScheduled2" | "crossoverScheduled3" | "crossoverWaiting1" | "crossoverWaiting2" | "crossoverWaiting3" | "deferred1" | "deferred2" | "deferred3" | "governorSigns" | "introduced" | "lawWithoutSignature" | "passedCommittees" | "scheduled1" | "scheduled2" | "scheduled3" | "transmittedGovernor" | "unassigned" | "vetoList" | "waiting2" | "waiting3";
+
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
@@ -24,11 +26,11 @@ export interface AuthKey {
 export interface Bills {
   archived: Generated<boolean>;
   bill_number: string | null;
+  bill_status: Generated<BillStatus | null>;
   bill_title: string | null;
   bill_url: string;
   committee_assignment: string | null;
   created_at: Generated<Timestamp | null>;
-  current_status: Generated<string | null>;
   current_status_string: string;
   description: string;
   food_related: Generated<boolean | null>;
@@ -36,6 +38,7 @@ export interface Bills {
   introducer: string | null;
   nickname: string | null;
   updated_at: Generated<Timestamp | null>;
+  year: number | null;
 }
 
 export interface BillTags {

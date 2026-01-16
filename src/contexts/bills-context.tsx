@@ -54,6 +54,11 @@ interface BillsContextType {
   setViewMode: (mode: 'my-bills' | 'all-bills') => void;
   toggleViewMode: () => void;
 
+  // Archived Toggle
+  showArchived: boolean;
+  setShowArchived: (show: boolean) => void;
+  toggleShowArchived: () => void;
+
   // Bill CRUD Operations
   addBill: (bill: Bill) => void;
   updateBill: (billId: string, updates: Partial<Bill>) => void;
@@ -76,6 +81,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   const [, setError] = useState<string | null>(null);
   const [loadingBills, setLoadingBills] = useState(false);
   const [viewMode, setViewMode] = useState<'my-bills' | 'all-bills'>('my-bills');
+  const [showArchived, setShowArchived] = useState(false);
   const { user, loading: userLoading } = useAuth();
 
   /**
@@ -117,15 +123,16 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
     let results: Bill[] = [];
     if (user) {
+      const includeTrackedBy = user.role === 'admin' || user.role === 'supervisor';
       if (mode === 'my-bills') {
-        results = await getUserTrackedBills(user.id);
+        results = await getUserTrackedBills(user.id, showArchived, includeTrackedBy);
         console.log('User tracked bills fetched:', results.length);
       } else {
-        results = await getAllFoodRelatedBills();
+        results = await getAllFoodRelatedBills(showArchived, includeTrackedBy);
         console.log('All food-related bills fetched:', results.length);
       }
     } else {
-      results = await getAllTrackedBills();
+      results = await getAllTrackedBills(showArchived);
       console.log('Public bills fetched:', results.length);
     }
 
@@ -137,7 +144,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       ...bill,
       tags: tagsByBillId[bill.id] || []
     }));
-  }, [user, viewMode]);
+  }, [user, viewMode, showArchived]);
 
   // ---------------------------------------------------------------------------
   // SECTION 1: LLM SUGGESTION OPERATIONS
@@ -644,6 +651,28 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     })();
   }, [user, viewMode, fetchBillsWithTags]);
 
+  /**
+   * Toggles between showing and hiding archived bills
+   * Automatically fetches the appropriate bills for the new state
+   */
+  const toggleShowArchived = useCallback(() => {
+    const newShowArchived = !showArchived;
+    setShowArchived(newShowArchived);
+
+    (async () => {
+      setLoadingBills(true);
+      try {
+        const billsWithTags = await fetchBillsWithTags();
+        setBills(billsWithTags);
+      } catch (err) {
+        console.error('Error refreshing bills on archived toggle:', err);
+        setError('Failed to refresh bills.');
+      } finally {
+        setLoadingBills(false);
+      }
+    })();
+  }, [showArchived, fetchBillsWithTags]);
+
   // ---------------------------------------------------------------------------
   // SECTION 5: INITIAL DATA LOAD
   // ---------------------------------------------------------------------------
@@ -732,6 +761,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       setViewMode,
       toggleViewMode,
 
+      // Archived Toggle
+      showArchived,
+      setShowArchived,
+      toggleShowArchived,
+
       // Bill CRUD
       addBill,
       updateBill,
@@ -758,6 +792,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       viewMode,
       setViewMode,
       toggleViewMode,
+      showArchived,
+      setShowArchived,
+      toggleShowArchived,
       addBill,
       updateBill,
       removeBill,

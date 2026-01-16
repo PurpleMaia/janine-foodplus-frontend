@@ -284,6 +284,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               <h3 className="text-md font-semibold border-b pb-1">Details</h3>
               <div className="space-y-2 text-sm">
                 <DetailItem label="Bill Number" value={bill.bill_number} />
+                <DetailItem label="Year Introduced" value={bill.year?.toString() ?? 'N/A'} />
                 <DetailItem label="Bill Title" value={bill.bill_title} />
                 <DetailItem label="Description" value={bill.description} />
                 <DetailItem label="Status" value={bill.current_status} badge />

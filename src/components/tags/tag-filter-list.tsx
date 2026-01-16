@@ -9,16 +9,21 @@ import { getAllTags } from '@/services/data/tags';
 import type { Tag } from '@/types/legislation';
 import { TagManagementDialog } from './tag-management-dialog';
 import { useAuth } from '@/contexts/auth-context';
+import { useBills } from '@/contexts/bills-context';
 
 interface TagFilterListProps {
   selectedTagIds: string[];
   onTagToggle: (tagId: string) => void;
+  selectedYears: number[];
+  onYearToggle: (year: number) => void;
   onClearFilters: () => void;
 }
 
 export function TagFilterList({
   selectedTagIds,
   onTagToggle,
+  selectedYears,
+  onYearToggle,
   onClearFilters,
 }: TagFilterListProps) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -26,8 +31,17 @@ export function TagFilterList({
   const [showManagementDialog, setShowManagementDialog] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const { user } = useAuth();
+  const { bills } = useBills();
 
   const canManageTags = user?.role === 'admin' || user?.role === 'supervisor';
+
+  // Extract unique years from bills
+  const availableYears = React.useMemo(() => {
+    const years = bills
+      .map(bill => bill.year)
+      .filter((year): year is number => year !== null && year !== undefined);
+    return Array.from(new Set(years)).sort((a, b) => b - a); // Sort descending (newest first)
+  }, [bills]);
 
   useEffect(() => {
     loadTags();
@@ -46,6 +60,7 @@ export function TagFilterList({
   };
 
   const selectedTags = tags.filter(tag => selectedTagIds.includes(tag.id));
+  const totalFiltersCount = selectedTagIds.length + selectedYears.length;
 
   return (
     <>
@@ -54,10 +69,10 @@ export function TagFilterList({
           <PopoverTrigger asChild>
             <Button variant="outline" >
               <Filter className="h-4 w-4 mr-2" />
-              Filter by Tags
-              {selectedTagIds.length > 0 && (
+              Filters
+              {totalFiltersCount > 0 && (
                 <Badge variant="secondary" className="ml-2 h-5 px-1.5">
-                  {selectedTagIds.length}
+                  {totalFiltersCount}
                 </Badge>
               )}
             </Button>
@@ -65,9 +80,9 @@ export function TagFilterList({
           <PopoverContent className="w-80 p-0" align="start">
             <div className="p-3 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Filter by Tags</h3>
+                <h3 className="text-sm font-semibold">Filters</h3>
                 <div className="flex gap-1">
-                  {selectedTagIds.length > 0 && (
+                  {totalFiltersCount > 0 && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -78,7 +93,7 @@ export function TagFilterList({
                       className="h-7 text-xs"
                     >
                       <X className="h-3 w-3 mr-1" />
-                      Clear
+                      Clear All
                     </Button>
                   )}
                   {canManageTags && (
@@ -103,63 +118,100 @@ export function TagFilterList({
                 <div className="text-sm text-muted-foreground py-4 text-center">
                   Loading filters...
                 </div>
-              ) : tags.length === 0 ? (
-                <div className="py-4 space-y-2">
-                  <p className="text-sm text-muted-foreground text-center">
-                    No tags available.
-                  </p>
-                  {canManageTags && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowManagementDialog(true);
-                        setPopoverOpen(false);
-                      }}
-                      className="w-full"
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Create Tags
-                    </Button>
-                  )}
-                </div>
               ) : (
-                <>
-                  <div className="max-h-[300px] overflow-y-auto space-y-1">
-                    {tags.map((tag) => {
-                      const isSelected = selectedTagIds.includes(tag.id);
-                      return (
-                        <div
-                          key={tag.id}
-                          onClick={() => onTagToggle(tag.id)}
-                          className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer transition-colors"
-                        >
-                          <div className="flex items-center justify-center w-4 h-4">
-                            {isSelected && <Check className="h-4 w-4 text-primary" />}
-                          </div>
-                          <Badge
-                            variant="outline"
-                            style={{
-                              backgroundColor: tag.color || '#3b82f6',
-                              color: 'white',
-                              borderColor: tag.color || '#3b82f6',
-                            }}
-                            className="text-xs"
-                          >
-                            {tag.name}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {selectedTagIds.length > 0 && (
-                    <p className="text-xs text-muted-foreground pt-2 border-t">
-                      {selectedTagIds.length} tag{selectedTagIds.length !== 1 ? 's' : ''} selected
-                    </p>
+                <div className="space-y-4">
+                  {/* Years Section */}
+                  {availableYears.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2">YEAR</h4>
+                      <div className="max-h-[150px] overflow-y-auto space-y-1">
+                        {availableYears.map((year) => {
+                          const isSelected = selectedYears.includes(year);
+                          return (
+                            <div
+                              key={year}
+                              onClick={() => onYearToggle(year)}
+                              className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer transition-colors"
+                            >
+                              <div className="flex items-center justify-center w-4 h-4">
+                                {isSelected && <Check className="h-4 w-4 text-primary" />}
+                              </div>
+                              <span className="text-sm">{year}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {selectedYears.length > 0 && (
+                        <p className="text-xs text-muted-foreground pt-2">
+                          {selectedYears.length} year{selectedYears.length !== 1 ? 's' : ''} selected
+                        </p>
+                      )}
+                    </div>
                   )}
-                </>
+
+                  {/* Tags Section */}
+                  <div className={availableYears.length > 0 ? 'pt-2 border-t' : ''}>
+                    <h4 className="text-xs font-medium text-muted-foreground mb-2">TAGS</h4>
+                    {tags.length === 0 ? (
+                      <div className="py-4 space-y-2">
+                        <p className="text-sm text-muted-foreground text-center">
+                          No tags available.
+                        </p>
+                        {canManageTags && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowManagementDialog(true);
+                              setPopoverOpen(false);
+                            }}
+                            className="w-full"
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Create Tags
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="max-h-[200px] overflow-y-auto space-y-1">
+                          {tags.map((tag) => {
+                            const isSelected = selectedTagIds.includes(tag.id);
+                            return (
+                              <div
+                                key={tag.id}
+                                onClick={() => onTagToggle(tag.id)}
+                                className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer transition-colors"
+                              >
+                                <div className="flex items-center justify-center w-4 h-4">
+                                  {isSelected && <Check className="h-4 w-4 text-primary" />}
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  style={{
+                                    backgroundColor: tag.color || '#3b82f6',
+                                    color: 'white',
+                                    borderColor: tag.color || '#3b82f6',
+                                  }}
+                                  className="text-xs"
+                                >
+                                  {tag.name}
+                                </Badge>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {selectedTagIds.length > 0 && (
+                          <p className="text-xs text-muted-foreground pt-2">
+                            {selectedTagIds.length} tag{selectedTagIds.length !== 1 ? 's' : ''} selected
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </PopoverContent>
