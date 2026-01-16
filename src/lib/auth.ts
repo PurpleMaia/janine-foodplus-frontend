@@ -148,7 +148,7 @@ export async function authenticateUser(identifier: string, password: string): Pr
     if (userResult.account_status === 'unverified' || userResult.account_status === 'pending') {
       if (!userResult.email_verified) {
         console.error('[authenticateUser] Email not verified for user:', userResult.email);
-        throw Errors.EMAIL_NOT_VERIFIED;
+        // throw Errors.EMAIL_NOT_VERIFIED;
       }
       // Email is verified but account is pending admin approval
       console.error('[authenticateUser] Email is verified BUT account pending admin approval for user:', userResult.email);

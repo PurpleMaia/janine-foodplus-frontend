@@ -18,6 +18,7 @@ export function KanbanHeader() {
   const { selectedTagIds, setSelectedTagIds, selectedYears, setSelectedYears } = useKanbanBoard();
 
   const isPublic = !user;
+  const canAddRemoveBills = user?.role === 'admin' || user?.role === 'supervisor';
 
   return (
     <div className='p-2 border-b bg-white flex items-center justify-between shadow-md'>
@@ -67,10 +68,9 @@ export function KanbanHeader() {
               }}
             />
 
-            {!isPublic && (
+            {!isPublic && canAddRemoveBills &&(
               <>
                 <NewBillButton />
-                <TrackBillDialog />
               </>
             )}
         </div>

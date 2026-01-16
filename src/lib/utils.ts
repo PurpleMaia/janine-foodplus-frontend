@@ -30,10 +30,10 @@ export function formatBillStatusName(status: string | null): string {
   if (lowerStatus.includes('scheduled')) return 'Scheduled';
   if (lowerStatus.includes('deferred')) return 'Deferred';
   if (lowerStatus.includes('passed')) return 'Passed';  
-  if (lowerStatus.includes('assigned')) return 'Assigned';  
+  if (lowerStatus.includes('unassigned')) return 'N/A';  
   if (lowerStatus.includes('transmitted')) return 'Transmitted';  
   if (lowerStatus.includes('veto')) return 'Vetoed';
-  if (lowerStatus.includes('sign')) return 'Became Law';
+  if (lowerStatus.includes('signs') || lowerStatus.includes('law')) return 'Became Law';
 
   // Fallback to column title if available, or the status itself
   return KANBAN_COLUMNS.find(col => col.id === status)?.title || status;
