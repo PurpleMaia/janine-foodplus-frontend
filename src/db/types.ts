@@ -22,6 +22,7 @@ export interface AuthKey {
 }
 
 export interface Bills {
+  archived: Generated<boolean>;
   bill_number: string | null;
   bill_title: string | null;
   bill_url: string;

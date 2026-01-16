@@ -20,7 +20,6 @@ export function useTrackedBills() {
    */
   const handleTrackBill = async (billUrl: string) => {
     if (!user) return false;
-    console.log('Tracking bill with URL:', billUrl);
     try {
       const trackedBill = await trackBill(user.id, billUrl);
       if (trackedBill) {

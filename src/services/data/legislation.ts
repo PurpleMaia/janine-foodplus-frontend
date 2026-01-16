@@ -42,6 +42,11 @@ export async function getAllTrackedBills(): Promise<Bill[]> {
           .where('food_related', '=', true) // Only food-related bills
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .execute();
+        
+        if (bills.length === 0) {
+          console.log('[BILLS FETCH (PUBLIC)] No bills found in database (check if archived)');
+          return [];
+        }
 
         const billIds = bills.map(bill => bill.id);
         
@@ -73,11 +78,17 @@ export async function getAllFoodRelatedBills(): Promise<Bill[]> {
           .selectFrom('bills as b')          
           .selectAll('b')
           .where('food_related', '=', true) // Only food-related bills
+          .where('b.archived', '=', false) // Exclude archived bills
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .execute()
         
+        if (bills.length === 0) {
+          console.log('[BILLS FETCH (ALL)] No food-related bills found in database (check if archived)');
+          return [];
+        }
+
         const billIds = bills.map(bill => bill.id);
-        
+
         console.log(`[BILLS FETCH (ALL)] Found ${billIds.length} food-related adopted bills, fetching status updates & tags...`);        
         const { statusUpdates, tags } = await getAdditionalBillData(billIds);
 
@@ -102,9 +113,7 @@ export async function getAllFoodRelatedBills(): Promise<Bill[]> {
  * @param userId User ID to get tracked bills for
  */
 export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
-  
-  let bills: Selectable<Bill>[] = []; // init empty array to hold combined bills (if supervisor, contains supervisor + intern bills)
-
+  console.log(`[BILLS FETCH (USER)] Fetching bills tracked by user: ${userId.slice(0, 6)}...`);
   try {
     // Check user role
     const user = await db
@@ -122,8 +131,9 @@ export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
     const userBills = await db
       .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted (bills that have a bill id in the user_bills table)
-      .where('ub.user_id', '=', userId)
       .selectAll('b')
+      .where('ub.user_id', '=', userId)
+      // .where('b.archived', '=', false) // Exclude archived bills
       .orderBy('b.updated_at', 'desc')
       .execute();
 
@@ -150,6 +160,7 @@ export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
           .selectFrom('bills as b')
           .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')          
           .where('ub.user_id', 'in', internIds)
+          .where('b.archived', '=', false) // Exclude archived bills
           .selectAll('b')
           .orderBy('b.updated_at', 'desc')
           .execute();
@@ -159,6 +170,11 @@ export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
         bills = [...userBills, ...internBills];
         console.log(`[BILLS FETCH (SUPERVISOR)] Total bills (direct + intern): ${bills.length}`);
       }
+    }
+
+    if (bills.length === 0) {
+      console.log('[BILLS FETCH (USER)] No food-related tracked bills found (check for archived)');
+      return [];
     }
 
     const billIds = bills.map(bill => bill.id);
@@ -341,7 +357,7 @@ export async function trackBill(userId: string, billUrl: string): Promise<Bill> 
 
     // If not found, scrape for this bill and add to database
     if (!billResult) {
-      console.log('[TRACK BILL] Bill not found with URL:', billUrl);
+      console.log('[TRACK BILL] Bill not found with URL, proceeding to scrape...');
 
       // scrape bill URL
       console.log('[TRACK BILL] Scraping bill URL:', billUrl, '...');
@@ -355,7 +371,7 @@ export async function trackBill(userId: string, billUrl: string): Promise<Bill> 
 
     // If found, use existing bill ID 
     if (billResult) {
-      console.log('[TRACK BILL] Bill found with URL:', billUrl);
+      console.log('[TRACK BILL] Bill found with URL...');
       billId = billResult.id;
     }
 
