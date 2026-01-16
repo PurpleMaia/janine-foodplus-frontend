@@ -1,9 +1,9 @@
 'use server';
 
-import type { Bill, BillStatus, Tag } from '@/types/legislation';
+import type { Bill, BillTracker, Tag } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { db } from '@/db/kysely/client';
-import { Bills } from '@/db/types';
+import { Bills, BillStatus } from '@/db/types';
 import { Selectable } from 'kysely';
 import { getBatchBillTags } from '@/services/data/tags';
 
@@ -23,6 +23,63 @@ async function getStatusUpdatesForBills(billIds: string[]): Promise<Selectable<B
     return updates;
 }
 
+async function getTrackedByForBills(billIds: string[]): Promise<Record<string, BillTracker[]>> {
+  if (billIds.length === 0) return {};
+
+  const rows = await db
+    .selectFrom('user_bills as ub')
+    .innerJoin('user as u', 'ub.user_id', 'u.id')
+    .select([
+      'ub.bill_id as bill_id',
+      'u.id as user_id',
+      'u.email as user_email',
+      'u.username as user_username',
+      'ub.adopted_at as adopted_at',
+    ])
+    .where('ub.bill_id', 'in', billIds)
+    .orderBy('ub.adopted_at', 'desc')
+    .execute();
+
+  const trackedBy: Record<string, BillTracker[]> = {};
+
+  rows.forEach((row) => {
+    if (!trackedBy[row.bill_id as string]) {
+      trackedBy[row.bill_id as string] = [];
+    }
+
+    trackedBy[row.bill_id as string].push({
+      id: row.user_id as string,
+      email: row.user_email ?? null,
+      username: row.user_username ?? null,
+      adopted_at: row.adopted_at ?? null,
+    });
+  });
+
+  return trackedBy;
+}
+
+async function getTrackedCountForBills(billIds: string[]): Promise<Record<string, number>> {
+  if (billIds.length === 0) return {};
+
+  const rows = await db
+    .selectFrom('user_bills as ub')
+    .select([
+      'ub.bill_id as bill_id',
+      db.fn.countAll().as('tracked_count'),
+    ])
+    .where('ub.bill_id', 'in', billIds)
+    .groupBy('ub.bill_id')
+    .execute();
+
+  const trackedCount: Record<string, number> = {};
+
+  rows.forEach((row) => {
+    trackedCount[row.bill_id as string] = Number(row.tracked_count ?? 0);
+  });
+
+  return trackedCount;
+}
+
 // ==============================================
 // FETCH BILL DATA FUNCTIONS
 // ===============================================
@@ -30,16 +87,24 @@ async function getStatusUpdatesForBills(billIds: string[]): Promise<Selectable<B
 /**
  * Gets all food-related bills that have been adopted (at least one adoption)
  * Used for public view
+ * @param showArchived Whether to include archived bills (default: false)
  */
-export async function getAllTrackedBills(): Promise<Bill[]> {
+export async function getAllTrackedBills(showArchived: boolean = false): Promise<Bill[]> {
     console.log('[BILLS FETCH (PUBLIC)] Fetching all food+ tracked bills for public view...');
     try {
         // Fetch all bills that have been adopted at least once
-        const bills = await db
+        let query = db
           .selectFrom('bills as b')
           .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted
           .selectAll('b')
-          .where('food_related', '=', true) // Only food-related bills
+          .where('food_related', '=', true); // Only food-related bills
+
+        // Conditionally exclude archived bills
+        if (!showArchived) {
+          query = query.where('b.archived', '=', false);
+        }
+
+        const bills = await query
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .execute();
         
@@ -51,12 +116,13 @@ export async function getAllTrackedBills(): Promise<Bill[]> {
         const billIds = bills.map(bill => bill.id);
         
         console.log(`[BILLS FETCH (PUBLIC)] Found ${billIds.length} food-related adopted bills, fetching status updates & tags...`);        
-        const { statusUpdates, tags } = await getAdditionalBillData(billIds);
+        const { statusUpdates, tags, trackedCount } = await getAdditionalBillData(billIds);
 
         const billObjects = await mapBillDataToBillClient({
           bills,
           statusUpdates,
-          tags
+          tags,
+          trackedCount
         });
 
         console.log(`[BILLS FETCH (PUBLIC)] Rendering ${billObjects.size} food-related adopted bills...`);
@@ -70,15 +136,22 @@ export async function getAllTrackedBills(): Promise<Bill[]> {
 /**
  * Gets ALL food-related bills from the database (regardless of adoption status)
  * Used for logged in Food+ members who want to see all bills
+ * @param showArchived Whether to include archived bills (default: false)
  */
-export async function getAllFoodRelatedBills(): Promise<Bill[]> {
+export async function getAllFoodRelatedBills(showArchived: boolean = false, includeTrackedBy: boolean = false): Promise<Bill[]> {
     console.log('[BILLS FETCH (ALL)] Fetching all food-related bills for member view...');
     try {
-        const bills = await db
-          .selectFrom('bills as b')          
+        let query = db
+          .selectFrom('bills as b')
           .selectAll('b')
-          .where('food_related', '=', true) // Only food-related bills
-          .where('b.archived', '=', false) // Exclude archived bills
+          .where('food_related', '=', true); // Only food-related bills
+
+        // Conditionally exclude archived bills
+        if (!showArchived) {
+          query = query.where('b.archived', '=', false);
+        }
+
+        const bills = await query
           .orderBy('b.updated_at', 'desc')  // Most recently updated first
           .execute()
         
@@ -90,12 +163,14 @@ export async function getAllFoodRelatedBills(): Promise<Bill[]> {
         const billIds = bills.map(bill => bill.id);
 
         console.log(`[BILLS FETCH (ALL)] Found ${billIds.length} food-related adopted bills, fetching status updates & tags...`);        
-        const { statusUpdates, tags } = await getAdditionalBillData(billIds);
+        const { statusUpdates, tags, trackedBy, trackedCount } = await getAdditionalBillData(billIds, includeTrackedBy);
 
         const billObjects = await mapBillDataToBillClient({
           bills,
           statusUpdates,
-          tags
+          tags,
+          trackedBy,
+          trackedCount
         });
 
         console.log(`[BILLS FETCH (ALL)] Rendering ${billObjects.size} food-related adopted bills...`);
@@ -108,11 +183,12 @@ export async function getAllFoodRelatedBills(): Promise<Bill[]> {
 }
 
 /**
- * Gets all bills tracked by a specific user 
+ * Gets all bills tracked by a specific user
  * If user is a supervisor, also includes bills adopted by their interns
  * @param userId User ID to get tracked bills for
+ * @param showArchived Whether to include archived bills (default: false)
  */
-export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
+export async function getUserTrackedBills(userId: string, showArchived: boolean = false, includeTrackedBy: boolean = false): Promise<Bill[]> {
   console.log(`[BILLS FETCH (USER)] Fetching bills tracked by user: ${userId.slice(0, 6)}...`);
   try {
     // Check user role
@@ -128,12 +204,18 @@ export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
     }
 
     // Get bills directly adopted by the user
-    const userBills = await db
+    let userBillsQuery = db
       .selectFrom('bills as b')
       .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id') // Only bills that have been adopted (bills that have a bill id in the user_bills table)
       .selectAll('b')
-      .where('ub.user_id', '=', userId)
-      // .where('b.archived', '=', false) // Exclude archived bills
+      .where('ub.user_id', '=', userId);
+
+    // Conditionally exclude archived bills
+    if (!showArchived) {
+      userBillsQuery = userBillsQuery.where('b.archived', '=', false);
+    }
+
+    const userBills = await userBillsQuery
       .orderBy('b.updated_at', 'desc')
       .execute();
 
@@ -156,11 +238,17 @@ export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
 
       // Get bills adopted by these interns
       if (internIds.length > 0) {
-        const internBills = await db
+        let internBillsQuery = db
           .selectFrom('bills as b')
-          .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')          
-          .where('ub.user_id', 'in', internIds)
-          .where('b.archived', '=', false) // Exclude archived bills
+          .innerJoin('user_bills as ub', 'b.id', 'ub.bill_id')
+          .where('ub.user_id', 'in', internIds);
+
+        // Conditionally exclude archived bills
+        if (!showArchived) {
+          internBillsQuery = internBillsQuery.where('b.archived', '=', false);
+        }
+
+        const internBills = await internBillsQuery
           .selectAll('b')
           .orderBy('b.updated_at', 'desc')
           .execute();
@@ -179,12 +267,14 @@ export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
 
     const billIds = bills.map(bill => bill.id);
     console.log(`[BILLS FETCH (USER)] Fetching status updates & tags for ${billIds.length} bills...`);    
-    const { statusUpdates, tags } = await getAdditionalBillData(billIds);
+    const { statusUpdates, tags, trackedBy, trackedCount } = await getAdditionalBillData(billIds, includeTrackedBy);
 
     const billObjects = await mapBillDataToBillClient({
       bills,
       statusUpdates,
-      tags
+      tags,
+      trackedBy,
+      trackedCount
     });
 
     console.log(`[BILLS FETCH (USER)] Rendering ${billObjects.size} tracked bills...`);
@@ -198,14 +288,18 @@ export async function getUserTrackedBills(userId: string): Promise<Bill[]> {
 /**
  * Helper to fetch status updates and tags for fetched bills
  */
-async function getAdditionalBillData(billIds: string[]) {
+async function getAdditionalBillData(billIds: string[], includeTrackedBy: boolean = false) {
   // Batch fetch status updates for these bills
   const statusUpdates = await getStatusUpdatesForBills(billIds);
   
   // Batch fetch tags for these bills
   const tags = await getBatchBillTags(billIds);
 
-  return { statusUpdates, tags };
+  const trackedBy = includeTrackedBy ? await getTrackedByForBills(billIds) : {};
+
+  const trackedCount = await getTrackedCountForBills(billIds);
+
+  return { statusUpdates, tags, trackedBy, trackedCount };
 }
 
 // ==============================================
@@ -220,7 +314,7 @@ async function getAdditionalBillData(billIds: string[]) {
  * @param newStatus The new status (Kanban column ID) for the bill.
  * @returns The updated Bill object.
  */
-export async function updateBillStatus(billId: string, newStatus: BillStatus): Promise<Bill> {
+export async function updateBillStatus(billId: string, newStatus: string): Promise<Bill> {
     console.log(`[UPDATE STATUS] Updating bill ${billId.slice(0, 6)} to new status: ${newStatus}`);
 
     // Validate if newStatus is a valid column ID
@@ -232,7 +326,7 @@ export async function updateBillStatus(billId: string, newStatus: BillStatus): P
     try {
         const updatedBill = await db.updateTable('bills')
         .set({
-            current_status: newStatus,
+            bill_status: newStatus as any,
             updated_at: new Date()
         })
         .where('id', '=', billId)
@@ -257,27 +351,62 @@ export async function updateBillStatus(billId: string, newStatus: BillStatus): P
 /**
  * Updates the food-related flag for a bill using its URL.
  *
- * @param billURL The URL of the bill to update.
+ * @param billURL The URL of the bill to update (if it exists in the database).
  * @param state The new state of the food-related flag.
  * @returns The updated Bill object
  */
-export async function updateFoodRelatedFlagByURL(billURL: string, state: boolean | null): Promise<Bill> {
+export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState: boolean | null): Promise<Bill> {
   try {
+
+    if (!bill) {
+      throw new Error('Bill data is required to update food-related flag');
+    }
+
+    // Check if bill exists
+    const existingBill = await findExistingBillByURL(bill.bill_url);
+
+    if (!existingBill) {
+      console.log('Bill not found in database, creating new bill with food-related flag...');
+      // Insert new bill with food-related flag
+      const insertedBill = await db
+        .insertInto('bills')
+        .values({
+          id: bill.id,
+          bill_number: bill.bill_number,
+          bill_title: bill.bill_title,
+          bill_url: bill.bill_url,
+          description: bill.description,
+          current_status_string: bill.current_status_string ?? '',
+          updated_at: new Date(),
+          food_related: foodState
+        })
+        .returningAll()
+        .executeTakeFirst();
+
+      if (insertedBill) {
+        console.log(`Successfully created new bill ${insertedBill.bill_number} with food_related set to ${foodState} in database`);
+        return await convertDataToBillShape(insertedBill);
+      } else {
+        console.log('Failed to create new bill in database');
+        throw new Error('Failed to create new bill');
+      }
+    }
+
+    // If bill exists, update its food-related flag
     const result = await db.updateTable('bills')
-      .set({ food_related: state })
-      .where('bill_url', '=', billURL)
+      .set({ food_related: foodState })
+      .where('id', '=', existingBill.id)
       .returningAll()
       .executeTakeFirst();
 
-    if (result) {
-      console.log(`Successfully updated bill ${result.bill_number} food_related statet to ${state} in database`)
-      const bill = await convertDataToBillShape(result);
-
-      return bill;
-    } else {
-      console.log('Could not find bill in database based on: ', billURL)
-      throw new Error('Bill not found');
+    if (!result) {
+      throw new Error('Failed to update food-related flag');
     }
+    
+    console.log(`Successfully updated bill ${result.bill_number} food_related state to ${foodState} in database`);  
+    const convertedBill = await convertDataToBillShape(result);
+
+    return convertedBill;
   } catch (error) {
     console.error('Database update failed', error)
     throw new Error('Failed to update food-related flag');
@@ -432,6 +561,8 @@ interface BillData {
   bills: Selectable<Bills>[];
   statusUpdates: Selectable<BillStatus>[];
   tags: Record<string, Tag[]>;
+  trackedBy?: Record<string, BillTracker[]>;
+  trackedCount?: Record<string, number>;
 }
 /**
  * Converts the raw bill data (object bills[], statusUpdates[], tags[]) from the database to the client-side Bill objects and 
@@ -440,7 +571,7 @@ interface BillData {
  * @returns A map of bill IDs to their corresponding Bill objects.
  */
 async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, Bill>> {
-  const { bills, statusUpdates, tags } = billData;
+  const { bills, statusUpdates, tags, trackedBy, trackedCount } = billData;
   const billObjects = new Map<string, Bill>();
 
   // Map bills data (data, updates, tags) to Bill client objects
@@ -464,6 +595,14 @@ async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, 
 
         // Add tags to the bill object
         bill.tags = tags[row.id] || [];
+
+        if (trackedBy) {
+          bill.tracked_by = trackedBy[row.id] || [];
+        }
+
+        if (trackedCount) {
+          bill.tracked_count = trackedCount[row.id] ?? 0;
+        }
     }
   }));
 
@@ -484,7 +623,7 @@ async function convertDataToBillShape(bill: Selectable<Bills>): Promise<Bill> {
     bill_url: bill.bill_url,
     committee_assignment: bill.committee_assignment ?? '',
     created_at: toDate(bill.created_at),
-    current_status: typeof bill.current_status === 'string' ? bill.current_status : '',
+    current_status: typeof bill.bill_status === 'string' ? bill.bill_status : '',
     current_status_string: bill.current_status_string ?? '',
     description: bill.description ?? '',
     food_related: typeof bill.food_related === 'boolean' ? bill.food_related : null,
@@ -492,10 +631,14 @@ async function convertDataToBillShape(bill: Selectable<Bills>): Promise<Bill> {
     introducer: bill.introducer ?? '',
     nickname: bill.nickname ?? '',
     updated_at: toDate(bill.updated_at),
+    year: bill.year ?? null,
+    archived: bill.archived ?? false,
 
     // client-side attributes
     updates: [],
     tags: [],
+    tracked_by: [],
+    tracked_count: 0,
     previous_status: undefined,
     llm_suggested: undefined,
     llm_processing: undefined,

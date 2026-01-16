@@ -63,6 +63,7 @@ export interface Bill {
   llm_processing?: boolean;
   tags?: Tag[];
   tracked_by?: BillTracker[];
+  tracked_count?: number;
 }
 
 export interface BillTracker {

@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
-import { findExistingBillByURL, updateFoodRelatedFlagByURL } from "@/services/data/legislation";
+import { findExistingBillByURL, updateFoodStatusOrCreateBill } from "@/services/data/legislation";
 import { useBills } from "@/hooks/contexts/bills-context";
 
 
@@ -82,7 +82,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             setIsLoading(false)
             return
         } else {
-            setError('Could not find bill in database, inserting now...')
+            setError('Could not find bill in database, scraping for preview now...')
         }
 
         const result = await findBill(url) // result is the full json
@@ -103,10 +103,10 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         }         
     }
 
-    const handleUpdateFoodRelated = async () => {
+    const handleConfirm = async () => {
         setIsUpdating(true)
 
-        const result = await updateFoodRelatedFlagByURL(url, foodRelatedSelection)
+        const result = await updateFoodStatusOrCreateBill(billPreview, foodRelatedSelection)
 
         // Update local state - remove LLM flags
         setBills(prevBills =>
@@ -317,9 +317,9 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
             <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
               <div className='flex gap-2'>
-                {isAlreadyInDB && foodRelatedSelection !== null && (
+                {foodRelatedSelection !== null && (
                     <Button
-                        onClick={handleUpdateFoodRelated}
+                        onClick={handleConfirm}
                         disabled={isUpdating}
                         size="sm"
                         className="w-full"

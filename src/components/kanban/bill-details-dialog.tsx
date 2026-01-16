@@ -19,8 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useMemo, useState } from 'react';
 import AIUpdateSingleButton from '../llm/llm-update-single-button';
 import RefreshStatusesButton from '../scraper/scrape-updates-button';
-import { useBills } from '@/contexts/bills-context';
-import { useAuth } from '@/contexts/auth-context';
+import { useBills } from '@/hooks/contexts/bills-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { COLUMN_TITLES, KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import {
   Select,
@@ -33,6 +33,7 @@ import { toast } from '@/hooks/use-toast';
 import { updateBillStatus } from '@/services/data/legislation';
 import { Input } from '@/components/ui/input';
 import { TagSelector } from '../tags/tag-selector';
+import { useTrackedBills } from '@/hooks/use-tracked-bills';
 
 interface BillDetailsDialogProps {
   billID: string | null;
@@ -69,18 +70,18 @@ const getCurrentStageName = (status: BillStatus): string => {
     const currentStage = PROGRESS_STAGES.find(stage => stage.statuses.includes(status));
     if (currentStage) return currentStage.name;
     if (status === 'introduced') return 'Introduced';
-    return 'Unknown'; // Fallback
+    return 'Not Assigned'; // Fallback
 }
 
-// --- Component ---
-
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange, viewMode } = useBills()
+  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange, viewMode, updateBill } = useBills()
   const { user } = useAuth() // Add this line to get authentication state
+  const { trackBill } = useTrackedBills();
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
   const [nickname, setNickname] = useState<string>('');
   const [isSavingNickname, setIsSavingNickname] = useState<boolean>(false);
+  const [isClaiming, setIsClaiming] = useState<boolean>(false);
 
   // Find the bill based on billID
   const bill = useMemo(() => {
@@ -123,6 +124,9 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   
   // Interns can only edit bills in "My Bills" view (not in "All Bills" view)
   const canEditBill = !isInternInAllBillsView;
+  const canSeeTracking = user?.role === 'admin' || user?.role === 'supervisor';
+  const canClaimBill = canSeeTracking && viewMode === 'all-bills';
+  const isAlreadyTracking = !!(user && bill.tracked_by?.some((tracker) => tracker.id === user.id));
 
   const handleSave = async () => {
     try {
@@ -236,6 +240,27 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     await handleSaveNickname('');
   };
 
+  const handleClaimBill = async () => {
+    if (!user) return;
+    if (isAlreadyTracking) return;
+
+    try {
+      setIsClaiming(true);
+      await trackBill(bill.bill_url);
+      const nextTrackedBy = bill.tracked_by ? [...bill.tracked_by] : [];
+      nextTrackedBy.unshift({
+        id: user.id,
+        email: user.email ?? null,
+        username: user.username ?? null,
+      });
+      updateBill(bill.id, { tracked_by: nextTrackedBy });
+    } catch (error) {
+      console.error('Failed to claim bill', error);
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0"> {/* Larger, full height, flex-col ensures footer is at bottom */}
@@ -276,122 +301,94 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
         {/* Main Content Area (Scrollable) */}
         <ScrollArea className="flex-1 overflow-y-auto"> {/* flex-1 allows this area to grow and push footer down */}
-          {/* Grid layout: Use grid-cols-2 for simpler layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+          <div className="space-y-6 p-4">
+            {/* Top Section */}
+            <div className="mt-3 grid gap-4 grid-cols-4">
 
-            {/* Left Column: Details */}
-            <div className="space-y-4">
-              <h3 className="text-md font-semibold border-b pb-1">Details</h3>
-              <div className="space-y-2 text-sm">
-                <DetailItem label="Bill Number" value={bill.bill_number} />
-                <DetailItem label="Year Introduced" value={bill.year?.toString() ?? 'N/A'} />
-                <DetailItem label="Bill Title" value={bill.bill_title} />
-                <DetailItem label="Description" value={bill.description} />
-                <DetailItem label="Status" value={bill.current_status} badge />
-                <DetailItem label="Committee Assignment" value={bill.committee_assignment} />
-                <DetailItem label="Introducers" value={bill.introducer} />
-                <DetailItem label="Created" value={bill.created_at ? bill.created_at.toLocaleDateString() : ''} />
-                <DetailItem label="Last Updated" value={bill.updated_at ? bill.updated_at.toLocaleDateString() : ''} />
-              </div>                
-
-              {user?.role === 'user' && canEditBill && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">My Nickname</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Set a personal nickname only you can see.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                      value={nickname}
-                      placeholder="Add a nickname"
-                      onChange={(e) => setNickname(e.target.value)}
-                      maxLength={80}
-                      disabled={!canEditBill}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleSaveNickname()}
-                        disabled={isSavingNickname || !canEditBill}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleClearNickname}
-                        disabled={isSavingNickname || (!nickname && !bill.user_nickname) || !canEditBill}
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {user?.role === 'user' && !canEditBill && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">My Nickname</h4>
-                  <p className="text-xs text-muted-foreground">
-                    You can only edit nicknames for bills in your "My Bills" view. Adopt this bill first to edit it.
-                  </p>
-                </div>
-              )}
-
-              {/* Tags section - only for admin and supervisor */}
-              <div className="space-y-2">
+              {/* Tags */}
+              <div className="rounded-md border bg-muted/40 p-3 space-y-2 col-span-2">
                 <h4 className="font-semibold text-sm">Tags</h4>
-                {(user?.role === 'admin' || user?.role === 'supervisor') ? (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      Add tags to categorize this bill. Tags can be used to filter bills.
-                    </p>
-                    <TagSelector billId={bill.id} />
-                  </>
-                ) : (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      Tags assigned to this bill. Tags can be used to filter bills.
-                    </p>
-                    <TagSelector billId={bill.id} readOnly={true} />
-                  </>
+                <p className="text-xs text-muted-foreground">
+                  Add tags to categorize this bill.
+                </p>
+                <TagSelector billId={bill.id} />
+              </div>              
+
+              {/* View Original Url */}
+              <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+                <h4 className="text-sm font-semibold">Bill URL</h4>
+                <p className='text-xs text-muted-foreground'>Hawaii State Legislature: </p>
+                <a href={bill.bill_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  <FileText className="h-4 w-4" />
+                  View Original Bill
+                </a>
+              </div>
+
+              {/* Who is Tracking */}
+              <div className="rounded-md border bg-muted/40 p-3 space-y-3">
+                {canSeeTracking && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold">Tracking</h4>
+                      {canClaimBill && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={handleClaimBill}
+                          disabled={isClaiming || isAlreadyTracking}
+                        >
+                          {isAlreadyTracking ? 'Already claimed' : 'Claim this bill'}
+                        </Button>
+                      )}
+                    </div>
+                    {bill.tracked_by && bill.tracked_by.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {bill.tracked_by.map((tracker) => (
+                          <Badge key={tracker.id} variant="outline" className="text-xs">
+                            {tracker.username || tracker.email || 'Unknown'}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No one is tracking this bill.</p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Right Column: Bill URL & Additional Info */}
-            <div className="space-y-4">
-              <h3 className="text-md font-semibold border-b pb-1">Bill Information</h3>
-              
-              <div className="space-y-2">
-                <DetailItem label="Bill URL" value={bill.bill_url} />
-
-                {/* Comment section removed */}
+            <section className="rounded-lg border bg-card p-4 shadow-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Bill Information
+              </h3>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <DetailItem label="Bill Number" value={bill.bill_number} />
+                <DetailItem label="Year Introduced" value={bill.year?.toString() ?? 'N/A'} />
+                <DetailItem label="Bill Title" value={bill.bill_title} />
+                <DetailItem label="Committee Assignment" value={bill.committee_assignment ? bill.committee_assignment : 'Not Assigned'} />
+                <div className="sm:col-span-2 space-y-4">
+                  <DetailItem label="Introducers" value={bill.introducer} />
+                  <DetailItem label="Description" value={bill.description || 'No description available.'} />
+                </div>
               </div>
-            </div>
+            </section>
 
-
-            <div className="space-y-4">
-              <h3 className="text-md font-semibold border-b pb-1">Status Updates</h3>
-              
-              <div className="space-y-3">
+            <section className="rounded-lg border bg-card p-4 shadow-sm">
+              <h3 className="text-sm font-semibold">Status Updates</h3>
+              <div className="mt-3 space-y-3">
                 {bill.updates && bill.updates.length > 0 ? (
-                  <div className="relative max-h-80 overflow-y-auto pr-2">
-                    {/* Timeline line */}
+                  <div className="relative max-h-96 overflow-y-auto pr-2">
                     <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
                     
                     {bill.updates.map((update, index) => (
                       <div key={`${bill.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
-                        {/* Timeline dot */}
                         <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
                           {index === 0 ? (
-                            // Active (latest) update: solid green
                             <div className="w-5 h-5 bg-green-500 border-4 border-green-200 rounded-full shadow-lg"></div>
                           ) : (
-                            // Inactive: gray, less prominent
                             <div className="w-4 h-4 bg-gray-300 border-2 border-gray-200 rounded-full opacity-60"></div>
                           )}
                         </div>
-                        {/* Content */}
                         <div className="flex-1 bg-muted/50 rounded-lg p-3 border min-w-0">
                           <div className="flex items-start justify-between mb-2">
                             <Badge variant="outline" className="text-xs">
@@ -421,9 +418,8 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                   </div>
                 )}
               </div>
-            </div>
+            </section>
           </div>
-
         </ScrollArea>
         {/* Status Change Section - Now conditionally editable */}
         <div className="z-10 border-t justify-center align-middle space-y-4 p-4">

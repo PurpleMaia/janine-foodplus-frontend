@@ -152,29 +152,7 @@ export function TagSelector({ billId, onTagsChange, readOnly = false }: TagSelec
             </Badge>
           );
         })}
-      </div>
-      {selectedTags.length > 0 && (
-        <div className="mt-2">
-          <p className="text-xs text-muted-foreground mb-1">Selected tags:</p>
-          <div className="flex flex-wrap gap-2">
-            {selectedTags.map((tag) => (
-              <Badge
-                key={tag.id}
-                style={{
-                  backgroundColor: tag.color || '#3b82f6',
-                  color: 'white',
-                }}
-              >
-                {tag.name}
-                <X
-                  className="h-3 w-3 ml-1 cursor-pointer"
-                  onClick={() => !saving && handleToggleTag(tag)}
-                />
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>      
     </div>
   );
 }

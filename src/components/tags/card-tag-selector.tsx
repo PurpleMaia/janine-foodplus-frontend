@@ -153,7 +153,7 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
         <PopoverTrigger asChild>
           <Button            
             variant="ghost"
-            className="h-5 border rounded-full px-2 py-0.5 text-xs"
+            className="h-5 border px-2 py-0.5 text-xs rounded-md"
             onClick={(e) => e.stopPropagation()}
           >
             <Plus className="h-1 w-1" />
