@@ -7,8 +7,8 @@ import { X } from 'lucide-react';
 import { getAllTags, getBillTags, updateBillTags } from '@/services/data/tags';
 import type { Tag } from '@/types/legislation';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
-import { useBills } from '@/contexts/bills-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 
 interface TagSelectorProps {
   billId: string;

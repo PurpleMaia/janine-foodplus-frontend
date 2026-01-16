@@ -12,8 +12,8 @@ import { Plus, X } from 'lucide-react';
 import { getAllTags, getBillTags, updateBillTags } from '@/services/data/tags';
 import type { Tag } from '@/types/legislation';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
-import { useBills } from '@/contexts/bills-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 
 interface CardTagSelectorProps {
   billId: string;
@@ -97,7 +97,7 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
       return null;
     }
     return (
-      <div className="flex flex-wrap gap-1 mt-2">
+      <div className="flex flex-wrap gap-1">
         {displayTags.map((tag) => (
           <Badge
             key={tag.id}
@@ -108,7 +108,7 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
               fontSize: '10px',
               padding: '2px 6px',
             }}
-            className="text-[10px]"
+            className="text-[10px] rounded-md"
           >
             {tag.name}
           </Badge>
@@ -119,10 +119,10 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
 
   // Admin/supervisor can manage tags
   return (
-    <div className="mt-2">
+    <div className="flex align-middle items-center gap-1">
       {/* Display existing tags */}
       {displayTags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
+        <div className="flex flex-wrap gap-1">
           {displayTags.map((tag) => (
             <Badge
               key={tag.id}
@@ -133,7 +133,7 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
                 fontSize: '10px',
                 padding: '2px 6px',
               }}
-              className="text-[10px]"
+              className="text-[10px] rounded-md"
             >
               {tag.name}
               <X
@@ -151,14 +151,13 @@ export function CardTagSelector({ billId, billTags = [], onTagsChange }: CardTag
       {/* Add tag button */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            size="sm"
+          <Button            
             variant="ghost"
-            className="h-6 text-[10px] px-2"
+            className="h-5 border rounded-full px-2 py-0.5 text-xs"
             onClick={(e) => e.stopPropagation()}
           >
-            <Plus className="h-3 w-3 mr-1" />
-            {displayTags.length === 0 ? 'Add Tag' : 'Add'}
+            <Plus className="h-1 w-1" />
+            { displayTags.length === 0 ? 'Add Tag' : '' }
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>

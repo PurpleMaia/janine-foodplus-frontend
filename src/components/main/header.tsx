@@ -2,8 +2,8 @@
 
 import { Input } from '@/components/ui/input';
 import { KanbanSquareIcon, ListCheck, Search, Table, Users2Icon } from 'lucide-react';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
-import { useAuth } from '@/contexts/auth-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { AuthHeader } from '../auth/auth-header';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 

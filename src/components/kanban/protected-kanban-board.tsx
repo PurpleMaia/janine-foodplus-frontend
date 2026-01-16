@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { KanbanBoard } from './kanban-board';
 import { KanbanSpreadsheet } from './kanban-spreadsheet';
 import { useTrackedBills } from '@/hooks/use-tracked-bills';
 import { TrackBillDialog } from './track-bill-dialog';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { KanbanHeader } from './kanban-header';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 
 export function ProtectedKanbanBoardOrSpreadsheet() {
   const { user, loading } = useAuth();

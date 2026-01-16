@@ -9,8 +9,8 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { useBills } from '@/contexts/bills-context';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useBills } from '@/hooks/contexts/bills-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 import { searchBills } from '@/services/data/legislation';
 
 

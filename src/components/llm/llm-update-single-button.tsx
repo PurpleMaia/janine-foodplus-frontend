@@ -5,9 +5,9 @@ import { Button } from '../ui/button';
 import { RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 interface Props {
     bill: Bill

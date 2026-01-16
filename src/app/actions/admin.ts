@@ -33,6 +33,7 @@ async function verifyAdminAccess(): Promise<{ userId: string }> {
 
 export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
     const admin = await verifyAdminAccess();    
 
     console.log('📋 [PENDING REQUESTS] Loading pending user account requests');
@@ -54,6 +55,8 @@ export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>>
 // NOTE will be available to all not just admin
 export async function getPendingProposals(): Promise<ActionResult<PendingProposal[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
+
     await verifyAdminAccess();
 
     console.log('📋 [PENDING PROPOSALS] Admin loading all pending proposals...');
@@ -98,6 +101,8 @@ export async function getPendingProposals(): Promise<ActionResult<PendingProposa
 
 export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
+
     await verifyAdminAccess();    
 
     // Get all interns (users with role 'user')
@@ -121,7 +126,7 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
         'bills.id as bill_id',
         'bills.bill_number',
         'bills.bill_title',
-        'bills.current_status',
+        'bills.bill_status',
         'user_bills.adopted_at'
       ])
       .where('user.role', '=', 'user')
@@ -153,7 +158,7 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
           bill_id: row.bill_id,
           bill_number: row.bill_number,
           bill_title: row.bill_title,
-          current_status: row.current_status,
+          current_status: row.bill_status,
           adopted_at: row.adopted_at
         });
       }
@@ -172,6 +177,8 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
 
 export async function getAllSupervisors(): Promise<ActionResult<SupervisorWithInterns[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
+
     await verifyAdminAccess();
 
     console.log('📋 [ALL SUPERVISORS] Loading all supervisors with interns...');
@@ -241,7 +248,7 @@ export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[
         'bills.id as bill_id',
         'bills.bill_number',
         'bills.bill_title',
-        'bills.current_status',
+        'bills.bill_status',
         'user.id as intern_id',
         'user.email as intern_email',
         'user.username as intern_username',
@@ -259,7 +266,7 @@ export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[
           bill_id: row.bill_id,
           bill_number: row.bill_number,
           bill_title: row.bill_title,
-          current_status: row.current_status,
+          current_status: row.bill_status,
           tracked_by: []
         });
       }

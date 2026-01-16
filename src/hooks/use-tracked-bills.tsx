@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { trackBill, untrackBill } from '@/services/data/legislation';
 import { getBillTags } from '@/services/data/tags';
 import { useToast } from '@/hooks/use-toast';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 
 export function useTrackedBills() {
   const { user } = useAuth();

@@ -15,7 +15,7 @@ import { X, Plus, Edit2, Trash2 } from 'lucide-react';
 import { getAllTags, createTag, updateTag, deleteTag } from '@/services/data/tags';
 import type { Tag } from '@/types/legislation';
 import { toast } from '@/hooks/use-toast';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 
 interface TagManagementDialogProps {
   isOpen: boolean;

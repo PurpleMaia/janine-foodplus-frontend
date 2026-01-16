@@ -2,14 +2,14 @@
 
 import { Button } from '@/components/ui/button';
 import { KanbanSquareIcon, Search, Table, Tag, UserCheck2Icon, Users2Icon } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { Switch } from '../ui/switch';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 import { Label } from '../ui/label';
 import { useState } from 'react';
 import NewBillButton from './new-bill/new-bill-button';
 import { TrackBillDialog } from './track-bill-dialog';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { TagFilterList } from '../tags/tag-filter-list';
 
 export function KanbanHeader() {

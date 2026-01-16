@@ -5,7 +5,7 @@ import { ListRestart, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Bill } from "@/types/legislation";
 import { scrapeForUpdates } from "@/services/scraper";
-import { useBills } from "@/contexts/bills-context";
+import { useBills } from "@/hooks/contexts/bills-context";
 
 interface Props {
     bill: Bill

@@ -16,7 +16,7 @@ import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
 import { findExistingBillByURL, updateFoodRelatedFlagByURL } from "@/services/data/legislation";
-import { useBills } from "@/contexts/bills-context";
+import { useBills } from "@/hooks/contexts/bills-context";
 
 
 interface NewBillDialogProps {

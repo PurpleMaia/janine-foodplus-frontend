@@ -30,9 +30,9 @@ Food+ is a Kanban-style bill tracker focused on food- and agriculture-related le
 
 - Frontend: Next.js (app router) + React + TypeScript + Tailwind CSS. UI primitives come from custom components in `src/components/ui` and Radix.
 - Server-side database access: Kysely (Postgres) via `db/kysely/client.ts`.
-- Authentication: lightweight custom session handling plus Lucia-related patterns (see `src/lib/simple-auth.ts` and `src/contexts/auth-context.tsx`).
+- Authentication: lightweight custom session handling plus Lucia-related patterns (see `src/lib/simple-auth.ts` and `src/hooks/contexts/auth-context.tsx`).
 - Server actions / services: `src/services/*` contain server-side functions (database operations, LLM calls, scraping triggers).
-- State & caching: TanStack Query (React Query) + React Context providers in `src/contexts/*`.
+- State & caching: TanStack Query (React Query) + React Context providers in `src/hooks/contexts/*`.
 - AI & scraping: OpenAI (for LLM classification); an external scraping service is used to ingest bill data.
 
 Project layout (important folders):

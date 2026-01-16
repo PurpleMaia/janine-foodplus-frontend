@@ -19,8 +19,8 @@ import React, {
   useCallback,
 } from 'react';
 import type { Bill, BillStatus, TempBill } from '@/types/legislation';
-import { toast } from '../hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 interface BillsContextType {
   // State
