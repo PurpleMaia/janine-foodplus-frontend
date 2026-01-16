@@ -76,12 +76,13 @@ const getCurrentStageName = (status: BillStatus): string => {
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
   const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange, viewMode, updateBill } = useBills()
   const { user } = useAuth() // Add this line to get authentication state
-  const { trackBill } = useTrackedBills();
+  const { trackBill, untrackBill } = useTrackedBills();
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
   const [nickname, setNickname] = useState<string>('');
   const [isSavingNickname, setIsSavingNickname] = useState<boolean>(false);
   const [isClaiming, setIsClaiming] = useState<boolean>(false);
+  const [isUntracking, setIsUntracking] = useState<boolean>(false);
 
   // Find the bill based on billID
   const bill = useMemo(() => {
@@ -125,7 +126,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   // Interns can only edit bills in "My Bills" view (not in "All Bills" view)
   const canEditBill = !isInternInAllBillsView;
   const canSeeTracking = user?.role === 'admin' || user?.role === 'supervisor';
-  const canClaimBill = canSeeTracking && viewMode === 'all-bills';
+  const canClaimBill = canSeeTracking;
   const isAlreadyTracking = !!(user && bill.tracked_by?.some((tracker) => tracker.id === user.id));
 
   const handleSave = async () => {
@@ -253,11 +254,37 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
         email: user.email ?? null,
         username: user.username ?? null,
       });
-      updateBill(bill.id, { tracked_by: nextTrackedBy });
+      updateBill(bill.id, {
+        tracked_by: nextTrackedBy,
+        tracked_count: (bill.tracked_count ?? nextTrackedBy.length) + 1,
+      });
     } catch (error) {
       console.error('Failed to claim bill', error);
     } finally {
       setIsClaiming(false);
+    }
+  };
+
+  const handleUntrackBill = async () => {
+    if (!user) return;
+    if (!isAlreadyTracking) return;
+
+    try {
+      setIsUntracking(true);
+      const success = await untrackBill(bill.id, {
+        keepInList: viewMode === 'all-bills',
+        suppressToast: true,
+      });
+      if (!success) return;
+
+      toast({
+        title: 'Bill untracked',
+        description: 'You are no longer tracking this bill.',
+      });
+    } catch (error) {
+      console.error('Failed to untrack bill', error);
+    } finally {
+      setIsUntracking(false);
     }
   };
 
@@ -330,16 +357,16 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <h4 className="text-sm font-semibold">Tracking</h4>
-                      {canClaimBill && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={handleClaimBill}
-                          disabled={isClaiming || isAlreadyTracking}
-                        >
-                          {isAlreadyTracking ? 'Already claimed' : 'Claim this bill'}
-                        </Button>
-                      )}
+                        {canClaimBill && (
+                          <Button
+                            size="sm"
+                            variant={isAlreadyTracking ? "destructive" : "default"}
+                            onClick={isAlreadyTracking ? handleUntrackBill : handleClaimBill}
+                            disabled={isClaiming || isUntracking}
+                          >
+                            {isAlreadyTracking ? 'Untrack Bill' : 'Track Bill'}
+                          </Button>
+                        )}
                     </div>
                     {bill.tracked_by && bill.tracked_by.length > 0 ? (
                       <div className="flex flex-wrap gap-2">

@@ -50,17 +50,34 @@ export function useTrackedBills() {
    * @param billId - The ID of the bill to untrack.
    * @returns A boolean indicating whether the untracking was successful.
    */
-  const handleUntrackBill = useCallback(async (billId: string) => {
+  const handleUntrackBill = useCallback(async (billId: string, options?: { suppressToast?: boolean; keepInList?: boolean }) => {
     if (!user) return false;
     try {
       const success = await untrackBill(user.id, billId);
       if (success) {
-        // Remove the bill from the local state
-        setBills(prev => prev.filter(bill => bill.id !== billId));
-        toast({
-          title: 'Bill removed',
-          description: 'The bill was successfully removed from your tracked list.',
-        });
+        if (options?.keepInList) {
+          setBills((prev) =>
+            prev.map((bill) => {
+              if (bill.id !== billId) return bill;
+              const trackedBy = bill.tracked_by?.filter((tracker) => tracker.id !== user.id) ?? [];
+              const trackedCount = Math.max(0, (bill.tracked_count ?? trackedBy.length + 1) - 1);
+              return {
+                ...bill,
+                tracked_by: trackedBy,
+                tracked_count: trackedCount,
+              };
+            })
+          );
+        } else {
+          // Remove the bill from the local state
+          setBills(prev => prev.filter(bill => bill.id !== billId));
+        }
+        if (!options?.suppressToast) {
+          toast({
+            title: 'Bill removed',
+            description: 'The bill was successfully removed from your tracked list.',
+          });
+        }
         return true;
       }
       return false;
@@ -68,7 +85,7 @@ export function useTrackedBills() {
       console.error('Error untracking bill:', err);
       return false;
     }
-  }, [user]);
+  }, [setBills, toast, user]);
 
   return {
     error,

@@ -22,5 +22,19 @@ export function toDate(val: unknown): Date | null {
 
 export function formatBillStatusName(status: string | null): string {
   if (!status) return 'No Assigned Status';
+  const lowerStatus = status.toLowerCase();
+
+  // Check for keywords and return formatted strings  
+  if (lowerStatus.includes('introduced')) return 'Introduced';
+  if (lowerStatus.includes('waiting')) return 'Waiting';
+  if (lowerStatus.includes('scheduled')) return 'Scheduled';
+  if (lowerStatus.includes('deferred')) return 'Deferred';
+  if (lowerStatus.includes('passed')) return 'Passed';  
+  if (lowerStatus.includes('assigned')) return 'Assigned';  
+  if (lowerStatus.includes('transmitted')) return 'Transmitted';  
+  if (lowerStatus.includes('veto')) return 'Vetoed';
+  if (lowerStatus.includes('sign')) return 'Became Law';
+
+  // Fallback to column title if available, or the status itself
   return KANBAN_COLUMNS.find(col => col.id === status)?.title || status;
 }

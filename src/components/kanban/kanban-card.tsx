@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatBillStatusName } from '@/lib/utils';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Removed unused imports
 import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkles, X, Check } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -178,7 +178,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                     <div className='flex justify-between items-center mt-2 px-3 mb-2'>
 
                       <Badge variant='outline' className='text-muted-foreground'>
-                        {bill.current_status}                        
+                        {formatBillStatusName(bill.current_status)}
                       </Badge>
 
                       {canSeeTracking ? (
