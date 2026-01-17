@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,30 +11,29 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/contexts/auth-context';
 import { useTrackedBills } from '@/hooks/use-tracked-bills';
 import { UserPlus } from 'lucide-react';
-import { UserSelector } from './user-selector';
 import { getAssignableUsers } from '@/services/data/legislation';
 import { User } from '@/db/types';
 import { Selectable } from 'kysely';
+import { Bill } from '@/types/legislation';
 
 interface AssignBillDialogProps {
-  billUrl: string;
-  billNumber?: string;
+  bill: Bill
   trigger?: React.ReactNode;
 }
 
-export function AssignBillDialog({ billUrl, billNumber, trigger }: AssignBillDialogProps) {
+export function AssignBillDialog({ bill, trigger }: AssignBillDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [assignableUsers, setAssignableUsers] = useState<Selectable<User>[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
+  const [pendingUserIds, setPendingUserIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { user } = useAuth();
-  const { assignBill } = useTrackedBills();
+  const { assignBill, unassignBill } = useTrackedBills();
 
   // Fetch assignable users when dialog opens
   useEffect(() => {
@@ -59,7 +58,11 @@ export function AssignBillDialog({ billUrl, billNumber, trigger }: AssignBillDia
     fetchUsers();
   }, [isOpen, user, toast]);
 
-  const handleAssign = async () => {
+  const assignedUserIds = useMemo(() => {
+    return new Set(bill.tracked_by?.map((tracker) => tracker.id));
+  }, [bill.tracked_by]);
+
+  const handleToggleAssignment = async (userId: string, nextChecked: boolean) => {
     if (!user) {
       toast({
         title: 'Authentication Error',
@@ -69,28 +72,22 @@ export function AssignBillDialog({ billUrl, billNumber, trigger }: AssignBillDia
       return;
     }
 
-    if (!selectedUserId) {
-      toast({
-        title: 'Invalid Selection',
-        description: 'Please select a user to assign the bill to.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      const success = await assignBill(selectedUserId, billUrl);
-
-      if (success) {
-        setSelectedUserId(null);
-        setIsOpen(false);
+      setPendingUserIds((prev) => new Set(prev).add(userId));
+      if (nextChecked) {
+        await assignBill(userId, bill);
+      } else {
+        await unassignBill(userId, bill);
       }
     } catch (error) {
       // Error toast is handled in the hook
       console.error('Error assigning bill:', error);
     } finally {
-      setIsLoading(false);
+      setPendingUserIds((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
     }
   };
 
@@ -108,14 +105,14 @@ export function AssignBillDialog({ billUrl, billNumber, trigger }: AssignBillDia
         <DialogHeader>
           <DialogTitle>Assign Bill to User</DialogTitle>
           <DialogDescription className="text-muted-foreground text-sm">
-            {billNumber
-              ? `Assign ${billNumber} to an intern or supervisor.`
+            {bill.bill_number
+              ? `Assign ${bill.bill_number} to an intern or supervisor.`
               : 'Assign this bill to an intern or supervisor.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="user-select">Select User</Label>
+            <Label htmlFor="user-select">Select Users</Label>
             {isFetchingUsers ? (
               <div className="text-sm text-muted-foreground">Loading users...</div>
             ) : assignableUsers.length === 0 ? (
@@ -123,13 +120,37 @@ export function AssignBillDialog({ billUrl, billNumber, trigger }: AssignBillDia
                 No users available to assign bills to.
               </div>
             ) : (
-              <UserSelector
-                users={assignableUsers}
-                selectedUserId={selectedUserId}
-                onSelect={setSelectedUserId}
-                placeholder="Select a user to assign..."
-                disabled={isLoading}
-              />
+              <div className="space-y-2 max-h-72 overflow-y-auto border rounded-md p-2">
+                {assignableUsers.map((assignableUser) => {
+                  const isChecked = assignedUserIds.has(assignableUser.id);
+                  const isPending = pendingUserIds.has(assignableUser.id);
+                  return (
+                    <label
+                      key={assignableUser.id}
+                      className="flex items-center gap-3 rounded-md border px-3 py-2 text-sm hover:bg-muted/30"
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={(checked) => handleToggleAssignment(assignableUser.id, Boolean(checked))}
+                        disabled={isPending || isFetchingUsers}
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {assignableUser.username || assignableUser.email || 'Unknown user'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {assignableUser.role === 'user' ? 'Intern' : assignableUser.role === 'supervisor' ? 'Supervisor' : 'Admin'}
+                        </span>
+                      </div>
+                      {isPending && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          Updating...
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
             )}
           </div>
           <div className="flex justify-end space-x-2">
@@ -137,17 +158,9 @@ export function AssignBillDialog({ billUrl, billNumber, trigger }: AssignBillDia
               variant="outline"
               onClick={() => {
                 setIsOpen(false);
-                setSelectedUserId(null);
               }}
-              disabled={isLoading}
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAssign}
-              disabled={isLoading || !selectedUserId || isFetchingUsers}
-            >
-              {isLoading ? 'Assigning...' : 'Assign Bill'}
+              Close
             </Button>
           </div>
         </div>

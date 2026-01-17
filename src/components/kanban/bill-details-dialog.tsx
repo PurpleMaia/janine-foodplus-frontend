@@ -126,8 +126,6 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   // Interns can only edit bills in "My Bills" view (not in "All Bills" view)
   const canEditBill = !isInternInAllBillsView;
   const canSeeTracking = user?.role === 'admin' || user?.role === 'supervisor';
-  const canClaimBill = canSeeTracking;
-  const isAlreadyTracking = !!(user && bill.tracked_by?.some((tracker) => tracker.id === user.id));
 
   const handleSave = async () => {
     try {
@@ -270,7 +268,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 {canSeeTracking && (
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="text-sm font-semibold">Tracking</h4>                        
+                      <h4 className="text-sm font-semibold">Tracked By</h4>                        
                     </div>
                     {bill.tracked_by && bill.tracked_by.length > 0 ? (
                       <div className="flex flex-wrap gap-2">

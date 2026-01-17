@@ -44,15 +44,18 @@ const getStatusVariant = (status: Bill['current_status']): "default" | "secondar
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, isHighlighted = false, className, style, ...props }, ref) => {
 
+    // All hooks must be called before any conditional logic
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
-    const { acceptLLMChange, rejectLLMChange, setBills } = useBills()
-    const { user } = useAuth();
+    const { acceptLLMChange, rejectLLMChange } = useBills();
+    const { user } = useAuth();    
+
     const canSeeTracking = user?.role === 'admin' || user?.role === 'supervisor';
     const trackedBy = bill.tracked_by ?? [];
     const trackedCount = bill.tracked_count ?? trackedBy.length;
     const visibleTrackers = trackedBy.slice(0, 2);
     const extraTrackerCount = trackedBy.length - visibleTrackers.length;
+
 
     // Format date only on client-side after mount to prevent hydration mismatch
     useEffect(() => {
@@ -188,7 +191,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                           {trackedBy.length > 0 ? (
                             <div className="gap-1 flex items-center">
                               {visibleTrackers.map((tracker) => (
-                                <Badge key={tracker.id} variant="outline" className="text-[10px] h-5 px-1.5">
+                                <Badge key={tracker.id} variant="default" className="text-[10px] h-5 px-1.5">
                                   {tracker.username || tracker.email || 'Unknown'}
                                 </Badge>
                               ))}
@@ -262,8 +265,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
             {canAssignBills(user) && (
               <div className="p-3 border-t border-gray-100">
                 <AssignBillDialog
-                  billUrl={bill.bill_url}
-                  billNumber={bill.bill_number}
+                  bill={bill}
                   trigger={
                     <Button
                       size="sm"

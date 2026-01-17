@@ -564,98 +564,114 @@ export async function untrackBill(userId: string, billId: string): Promise<boole
  * @param billUrl The URL of the bill to assign
  * @returns The assigned Bill object
  */
-export async function assignBill(
-  assignerId: string,
-  targetUserId: string,
-  billUrl: string
-): Promise<Bill> {
+async function validateAssignmentScope(assignerId: string, targetUserId: string) {
+  const assigner = await db
+    .selectFrom('user')
+    .select(['id', 'role'])
+    .where('id', '=', assignerId)
+    .executeTakeFirst();
+
+  if (!assigner) {
+    throw new Error('Assigner not found');
+  }
+
+  if (assigner.role !== 'admin' && assigner.role !== 'supervisor') {
+    throw new Error('Only admins and supervisors can assign bills');
+  }
+
+  const targetUser = await db
+    .selectFrom('user')
+    .select(['id', 'role'])
+    .where('id', '=', targetUserId)
+    .executeTakeFirst();
+
+  if (!targetUser) {
+    throw new Error('Target user not found');
+  }
+
+  if (assigner.role === 'supervisor') {
+    const adoptionRelation = await db
+      .selectFrom('supervisor_users')
+      .selectAll()
+      .where('supervisor_id', '=', assignerId)
+      .where('user_id', '=', targetUserId)
+      .executeTakeFirst();
+
+    if (!adoptionRelation) {
+      throw new Error('Supervisors can only assign bills to their adopted interns');
+    }
+  }
+
+  return { assigner, targetUser };
+}
+
+export async function assignBill(assignerId: string, targetUserId: string, bill: Bill) {
   try {
-    // 1. Verify assigner permissions
-    const assigner = await db
-      .selectFrom('user')
-      .select(['id', 'role'])
-      .where('id', '=', assignerId)
-      .executeTakeFirst();
-
-    if (!assigner) {
-      throw new Error('Assigner not found');
-    }
-
-    if (assigner.role !== 'admin' && assigner.role !== 'supervisor') {
-      throw new Error('Only admins and supervisors can assign bills');
-    }
-
-    // 2. Verify target user exists and get their role
-    const targetUser = await db
-      .selectFrom('user')
-      .select(['id', 'role'])
-      .where('id', '=', targetUserId)
-      .executeTakeFirst();
-
-    if (!targetUser) {
-      throw new Error('Target user not found');
-    }
-
-    // 3. Validate assignment permissions based on assigner role
-    if (assigner.role === 'supervisor') {
-      // Supervisors can only assign to their adopted interns
-      const adoptionRelation = await db
-        .selectFrom('supervisor_users')
-        .selectAll()
-        .where('supervisor_id', '=', assignerId)
-        .where('user_id', '=', targetUserId)
-        .executeTakeFirst();
-
-      if (!adoptionRelation) {
-        throw new Error('Supervisors can only assign bills to their adopted interns');
-      }
-    } else if (assigner.role === 'admin') {
-      // Admins can assign to interns or supervisors only
-      if (targetUser.role !== 'intern' && targetUser.role !== 'supervisor') {
-        throw new Error('Admins can only assign bills to interns or supervisors');
-      }
-    }
-
-    // 4. Track the bill for the target user (reuse existing logic)
-    // Find bill by URL
-    let billId = '';
-    const billResult = await findExistingBillByURL(billUrl);
-
-    // If not found, scrape for this bill and add to database
-    if (!billResult) {
-      console.log('[ASSIGN BILL] Bill not found with URL, proceeding to scrape...');
-      const { findBill } = await import('@/services/scraper');
-      const newBill = await findBill(billUrl);
-      billId = newBill.individualBill.id;
-    } else {
-      console.log('[ASSIGN BILL] Bill found with URL...');
-      billId = billResult.id;
-    }
+    await validateAssignmentScope(assignerId, targetUserId);
 
     // Check if already tracked by target user
     const alreadyTracked = await db
       .selectFrom('user_bills')
       .selectAll()
       .where('user_id', '=', targetUserId)
-      .where('bill_id', '=', billId)
+      .where('bill_id', '=', bill.id)
       .execute();
 
     if (alreadyTracked && alreadyTracked.length > 0) {
-      console.log('Bill already tracked by user', targetUserId.slice(0, 6), 'bill', billId.slice(0, 6));
+      console.log('Bill already tracked by user', targetUserId.slice(0, 6), 'bill', bill.id.slice(0, 6));
       throw new Error('Bill already tracked by this user');
     }
 
     // Add the relation
-    await db.insertInto('user_bills').values({
+    const relation = await db.insertInto('user_bills').values({
       user_id: targetUserId,
-      bill_id: billId,
+      bill_id: bill.id,
       adopted_at: new Date()
-    }).executeTakeFirst();
+    })
+    .returningAll()
+    .executeTakeFirst();
 
-    console.log(`Successfully assigned bill ${billId} to user ${targetUserId} by ${assignerId}`);
-    return { ...billResult } as Bill;
+    if (!relation) {
+      throw new Error('Failed to assign bill to user');
+    }
+    
+    // Get user info for tracker object
+    const trackerUser = await db
+      .selectFrom('user')
+      .innerJoin('user_bills', 'user.id', 'user_bills.user_id')
+      .select(['user.id', 'email', 'username', 'user_bills.adopted_at'])
+      .where('user.id', '=', targetUserId)
+      .executeTakeFirst();
+
+    if (!trackerUser) {
+      throw new Error('Failed to find user for tracker object');
+    }
+
+    return {
+      id: trackerUser.id,
+      email: trackerUser.email,
+      username: trackerUser.username,
+      adopted_at: trackerUser.adopted_at,
+    };
   } catch (error) {
     console.error('Failed to assign bill:', error);
+    throw error;
+  }
+}
+
+export async function unassignBillFromUser(assignerId: string, targetUserId: string, billId: string) {
+  try {
+    await validateAssignmentScope(assignerId, targetUserId);
+
+    const deleted = await db
+      .deleteFrom('user_bills')
+      .where('user_id', '=', targetUserId)
+      .where('bill_id', '=', billId)
+      .executeTakeFirst();
+
+    return !!deleted;
+  } catch (error) {
+    console.error('Failed to unassign bill:', error);
     throw error;
   }
 }
@@ -682,11 +698,10 @@ export async function getAssignableUsers(userId: string): Promise<Selectable<Use
     }
 
     if (user.role === 'admin') {
-      // Admins can assign to all interns and supervisors
+      // Admins can assign to everyone
       const users = await db
         .selectFrom('user')
         .selectAll()
-        .where('role', '!=', 'admin')
         .where('account_status', '=', 'active')
         .orderBy('username', 'asc')
         .execute();

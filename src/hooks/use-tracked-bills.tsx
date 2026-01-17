@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/contexts/auth-context';
-import { trackBill, untrackBill, assignBill } from '@/services/data/legislation';
+import { trackBill, untrackBill, assignBill, unassignBillFromUser } from '@/services/data/legislation';
 import { getBillTags } from '@/services/data/tags';
 import { useToast } from '@/hooks/use-toast';
 import { useBills } from '@/hooks/contexts/bills-context';
+import { Bill } from '@/types/legislation';
 
 export function useTrackedBills() {
   const { user } = useAuth();
@@ -93,18 +94,30 @@ export function useTrackedBills() {
    * @param billUrl - The URL of the bill to assign.
    * @returns A boolean indicating whether the assignment was successful.
    */
-  const handleAssignBill = async (targetUserId: string, billUrl: string) => {
-    if (!user) return false;
+  const handleAssignBill = async (targetUserId: string, bill: Bill) => {
+    if (!user) return null;
     try {
-      const assignedBill = await assignBill(user.id, targetUserId, billUrl);
-      if (assignedBill) {
+      const tracker = await assignBill(user.id, targetUserId, bill);
+      if (tracker) {
         console.log('Bill assigned successfully');
         toast({
           title: 'Bill assigned',
           description: 'The bill was successfully assigned to the user.',
         });
+        setBills((prev) =>
+          prev.map((existing) => {
+            if (existing.id !== bill.id) return existing;
+            const trackedBy = existing.tracked_by ? [...existing.tracked_by] : [];
+            if (!trackedBy.find((item) => item.id === tracker.id)) {
+              trackedBy.unshift(tracker);
+            }
+            const trackedCount = (existing.tracked_count ?? trackedBy.length) + 1;
+            return { ...existing, tracked_by: trackedBy, tracked_count: trackedCount };
+          })
+        );
         return true;
       }
+
       return false;
     } catch (err: any) {
       console.error('Error assigning bill:', err);
@@ -117,10 +130,42 @@ export function useTrackedBills() {
     }
   };
 
+  const handleUnassignBill = async (targetUserId: string, bill: Bill) => {
+    if (!user) return null;
+    try {
+      const success = await unassignBillFromUser(user.id, targetUserId, bill.id);
+      if (success) {
+        toast({
+          title: 'Bill unassigned',
+          description: 'The bill was successfully unassigned.',
+        });
+        setBills((prev) =>
+          prev.map((existing) => {
+            if (existing.id !== bill.id) return existing;
+            const trackedBy = existing.tracked_by?.filter((item) => item.id !== targetUserId) ?? [];
+            const trackedCount = Math.max(0, (existing.tracked_count ?? trackedBy.length + 1) - 1);
+            return { ...existing, tracked_by: trackedBy, tracked_count: trackedCount };
+          })
+        );
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error('Error unassigning bill:', err);
+      toast({
+        title: 'Unassign failed',
+        description: err?.message || 'Failed to unassign the bill. Please try again.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   return {
     error,
     trackBill: handleTrackBill,
     untrackBill: handleUntrackBill,
     assignBill: handleAssignBill,
+    unassignBill: handleUnassignBill,
   };
 }
