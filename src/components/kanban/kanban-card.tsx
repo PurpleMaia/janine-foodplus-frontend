@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { cn, formatBillStatusName } from '@/lib/utils';
+import { cn, formatBillStatusName, canAssignBills } from '@/lib/utils';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Removed unused imports
 import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkles, X, Check } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CardTagSelector } from '../tags/card-tag-selector';
 import { useBills } from '@/hooks/contexts/bills-context';
 import { useAuth } from '@/hooks/contexts/auth-context';
+import { AssignBillDialog } from './assign-bill-dialog';
 import type { Bill } from '@/types/legislation';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -125,7 +126,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 tabIndex={0}
                 aria-label={`View details for bill ${bill.id}: ${bill.bill_title}`}
             >
-                <CardHeader className="px-3 py-2 space-y-1 justify-between">        
+                <CardHeader className="px-3 py-2 space-y-2 justify-between">        
 
                       <CardTagSelector
                         billId={bill.id}
@@ -254,6 +255,26 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                   </div>
                   <span className="animate-pulse">AI Processing...</span>
                 </div>
+              </div>
+            )}
+
+            {/* Assign Bill Button - Only for admins and supervisors */}
+            {canAssignBills(user) && (
+              <div className="p-3 border-t border-gray-100">
+                <AssignBillDialog
+                  billUrl={bill.bill_url}
+                  billNumber={bill.bill_number}
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs h-8"
+                      onClick={(e) => e.stopPropagation()} // Prevent card click
+                    >
+                      Assign to User
+                    </Button>
+                  }
+                />
               </div>
             )}
       </div>

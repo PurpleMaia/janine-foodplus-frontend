@@ -11,6 +11,7 @@ import NewBillButton from './new-bill/new-bill-button';
 import { TrackBillDialog } from './track-bill-dialog';
 import { useBills } from '@/hooks/contexts/bills-context';
 import { TagFilterList } from '../tags/tag-filter-list';
+import { canTrackOwnBills } from '@/lib/utils';
 
 export function KanbanHeader() {
   const { user } = useAuth();
@@ -68,9 +69,10 @@ export function KanbanHeader() {
               }}
             />
 
-            {!isPublic && canAddRemoveBills &&(
+            {!isPublic && (
               <>
-                <NewBillButton />
+                {canTrackOwnBills(user) && <TrackBillDialog />}
+                {canAddRemoveBills && <NewBillButton />}
               </>
             )}
         </div>

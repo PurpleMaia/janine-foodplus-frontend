@@ -200,93 +200,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     } finally {
         setSaving(false)
     }         
-  } 
-
-  const handleSaveNickname = async (value?: string) => {
-    if (!bill) return;
-    if (!user || user.role !== 'user') return;
-
-    const currentNickname = value !== undefined ? value : nickname;
-    const trimmed = currentNickname.trim();
-    if (trimmed === (bill.user_nickname ?? '')) {
-      toast({
-        title: 'No changes',
-        description: 'Nickname is unchanged.',
-      });
-      return;
-    }
-
-    try {
-      setIsSavingNickname(true);
-      await updateBillNickname(bill.id, trimmed);
-      toast({
-        title: 'Nickname saved',
-        description: trimmed ? `Saved "${trimmed}"` : 'Nickname cleared.',
-      });
-    } catch (error) {
-      console.error('Failed to save nickname', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save nickname. Please try again.',
-        variant: 'destructive',
-      });
-      setNickname(bill.user_nickname ?? '');
-    } finally {
-      setIsSavingNickname(false);
-    }
-  };
-
-  const handleClearNickname = async () => {
-    setNickname('');
-    await handleSaveNickname('');
-  };
-
-  const handleClaimBill = async () => {
-    if (!user) return;
-    if (isAlreadyTracking) return;
-
-    try {
-      setIsClaiming(true);
-      await trackBill(bill.bill_url);
-      const nextTrackedBy = bill.tracked_by ? [...bill.tracked_by] : [];
-      nextTrackedBy.unshift({
-        id: user.id,
-        email: user.email ?? null,
-        username: user.username ?? null,
-      });
-      updateBill(bill.id, {
-        tracked_by: nextTrackedBy,
-        tracked_count: (bill.tracked_count ?? nextTrackedBy.length) + 1,
-      });
-    } catch (error) {
-      console.error('Failed to claim bill', error);
-    } finally {
-      setIsClaiming(false);
-    }
-  };
-
-  const handleUntrackBill = async () => {
-    if (!user) return;
-    if (!isAlreadyTracking) return;
-
-    try {
-      setIsUntracking(true);
-      const success = await untrackBill(bill.id, {
-        keepInList: viewMode === 'all-bills',
-        suppressToast: true,
-      });
-      if (!success) return;
-
-      toast({
-        title: 'Bill untracked',
-        description: 'You are no longer tracking this bill.',
-      });
-    } catch (error) {
-      console.error('Failed to untrack bill', error);
-    } finally {
-      setIsUntracking(false);
-    }
-  };
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -356,17 +270,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 {canSeeTracking && (
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="text-sm font-semibold">Tracking</h4>
-                        {canClaimBill && (
-                          <Button
-                            size="sm"
-                            variant={isAlreadyTracking ? "destructive" : "default"}
-                            onClick={isAlreadyTracking ? handleUntrackBill : handleClaimBill}
-                            disabled={isClaiming || isUntracking}
-                          >
-                            {isAlreadyTracking ? 'Untrack Bill' : 'Track Bill'}
-                          </Button>
-                        )}
+                      <h4 className="text-sm font-semibold">Tracking</h4>                        
                     </div>
                     {bill.tracked_by && bill.tracked_by.length > 0 ? (
                       <div className="flex flex-wrap gap-2">

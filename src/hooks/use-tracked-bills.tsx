@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/contexts/auth-context';
-import { trackBill, untrackBill } from '@/services/data/legislation';
+import { trackBill, untrackBill, assignBill } from '@/services/data/legislation';
 import { getBillTags } from '@/services/data/tags';
 import { useToast } from '@/hooks/use-toast';
 import { useBills } from '@/hooks/contexts/bills-context';
@@ -87,9 +87,40 @@ export function useTrackedBills() {
     }
   }, [setBills, toast, user]);
 
+  /**
+   * Handles assigning a bill to another user. Only admins and supervisors can use this.
+   * @param targetUserId - The ID of the user to assign the bill to.
+   * @param billUrl - The URL of the bill to assign.
+   * @returns A boolean indicating whether the assignment was successful.
+   */
+  const handleAssignBill = async (targetUserId: string, billUrl: string) => {
+    if (!user) return false;
+    try {
+      const assignedBill = await assignBill(user.id, targetUserId, billUrl);
+      if (assignedBill) {
+        console.log('Bill assigned successfully');
+        toast({
+          title: 'Bill assigned',
+          description: 'The bill was successfully assigned to the user.',
+        });
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error('Error assigning bill:', err);
+      toast({
+        title: 'Assignment failed',
+        description: err?.message || 'Failed to assign the bill. Please try again.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   return {
     error,
     trackBill: handleTrackBill,
     untrackBill: handleUntrackBill,
+    assignBill: handleAssignBill,
   };
 }

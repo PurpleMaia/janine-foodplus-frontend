@@ -3,7 +3,7 @@
 import type { Bill, BillTracker, Tag } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { db } from '@/db/kysely/client';
-import { Bills, BillStatus } from '@/db/types';
+import { Bills, BillStatus, User } from '@/db/types';
 import { Selectable } from 'kysely';
 import { getBatchBillTags } from '@/services/data/tags';
 
@@ -550,6 +550,177 @@ export async function untrackBill(userId: string, billId: string): Promise<boole
   } catch (error) {
     console.error('Failed to untrack bill:', error);
     return false;
+  }
+}
+
+/**
+ * Assigns a bill to a target user.
+ * Only admins and supervisors can assign bills.
+ * Supervisors can only assign to their adopted interns.
+ * Admins can assign to interns and supervisors.
+ *
+ * @param assignerId The ID of the user assigning the bill (must be admin or supervisor)
+ * @param targetUserId The ID of the user to assign the bill to
+ * @param billUrl The URL of the bill to assign
+ * @returns The assigned Bill object
+ */
+export async function assignBill(
+  assignerId: string,
+  targetUserId: string,
+  billUrl: string
+): Promise<Bill> {
+  try {
+    // 1. Verify assigner permissions
+    const assigner = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', '=', assignerId)
+      .executeTakeFirst();
+
+    if (!assigner) {
+      throw new Error('Assigner not found');
+    }
+
+    if (assigner.role !== 'admin' && assigner.role !== 'supervisor') {
+      throw new Error('Only admins and supervisors can assign bills');
+    }
+
+    // 2. Verify target user exists and get their role
+    const targetUser = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', '=', targetUserId)
+      .executeTakeFirst();
+
+    if (!targetUser) {
+      throw new Error('Target user not found');
+    }
+
+    // 3. Validate assignment permissions based on assigner role
+    if (assigner.role === 'supervisor') {
+      // Supervisors can only assign to their adopted interns
+      const adoptionRelation = await db
+        .selectFrom('supervisor_users')
+        .selectAll()
+        .where('supervisor_id', '=', assignerId)
+        .where('user_id', '=', targetUserId)
+        .executeTakeFirst();
+
+      if (!adoptionRelation) {
+        throw new Error('Supervisors can only assign bills to their adopted interns');
+      }
+    } else if (assigner.role === 'admin') {
+      // Admins can assign to interns or supervisors only
+      if (targetUser.role !== 'intern' && targetUser.role !== 'supervisor') {
+        throw new Error('Admins can only assign bills to interns or supervisors');
+      }
+    }
+
+    // 4. Track the bill for the target user (reuse existing logic)
+    // Find bill by URL
+    let billId = '';
+    const billResult = await findExistingBillByURL(billUrl);
+
+    // If not found, scrape for this bill and add to database
+    if (!billResult) {
+      console.log('[ASSIGN BILL] Bill not found with URL, proceeding to scrape...');
+      const { findBill } = await import('@/services/scraper');
+      const newBill = await findBill(billUrl);
+      billId = newBill.individualBill.id;
+    } else {
+      console.log('[ASSIGN BILL] Bill found with URL...');
+      billId = billResult.id;
+    }
+
+    // Check if already tracked by target user
+    const alreadyTracked = await db
+      .selectFrom('user_bills')
+      .selectAll()
+      .where('user_id', '=', targetUserId)
+      .where('bill_id', '=', billId)
+      .execute();
+
+    if (alreadyTracked && alreadyTracked.length > 0) {
+      console.log('Bill already tracked by user', targetUserId.slice(0, 6), 'bill', billId.slice(0, 6));
+      throw new Error('Bill already tracked by this user');
+    }
+
+    // Add the relation
+    await db.insertInto('user_bills').values({
+      user_id: targetUserId,
+      bill_id: billId,
+      adopted_at: new Date()
+    }).executeTakeFirst();
+
+    console.log(`Successfully assigned bill ${billId} to user ${targetUserId} by ${assignerId}`);
+    return { ...billResult } as Bill;
+  } catch (error) {
+    console.error('Failed to assign bill:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gets the list of users that the current user can assign bills to.
+ * Admins can assign to all interns and supervisors.
+ * Supervisors can only assign to their adopted interns.
+ *
+ * @param userId The ID of the user requesting assignable users
+ * @returns Array of users that can be assigned bills
+ */
+export async function getAssignableUsers(userId: string): Promise<Selectable<User>[]> {
+  try {
+    // Get user role
+    const user = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', '=', userId)
+      .executeTakeFirst();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.role === 'admin') {
+      // Admins can assign to all interns and supervisors
+      const users = await db
+        .selectFrom('user')
+        .selectAll()
+        .where('role', '!=', 'admin')
+        .where('account_status', '=', 'active')
+        .orderBy('username', 'asc')
+        .execute();
+
+      return users;
+    } else if (user.role === 'supervisor') {
+      // Supervisors can only assign to their adopted interns
+      const supervisorRelations = await db
+        .selectFrom('supervisor_users')
+        .select(['user_id'])
+        .where('supervisor_id', '=', userId)
+        .execute();
+
+      const internIds = supervisorRelations.map((rel) => rel.user_id);
+
+      if (internIds.length === 0) {
+        return [];
+      }
+
+      const users = await db
+        .selectFrom('user')
+        .selectAll()
+        .where('id', 'in', internIds)
+        .where('account_status', '=', 'active')
+        .orderBy('username', 'asc')
+        .execute();
+
+      return users;
+    } else {
+      throw new Error('Only admins and supervisors can assign bills');
+    }
+  } catch (error) {
+    console.error('Failed to get assignable users:', error);
+    throw error;
   }
 }
 
