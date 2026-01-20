@@ -6,17 +6,17 @@ import {
     DialogDescription,
     DialogFooter,
   } from "@/components/ui/dialog";
-  import { Button } from "@/components/ui/button";
-  import { Input } from "@/components/ui/input";
-  import { Label } from "@/components/ui/label";
-  import { Alert, AlertDescription } from "@/components/ui/alert";
-  import { Loader2, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
-  import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
-import { findExistingBillByURL, insertNewBill, updateFoodRelatedFlagByURL } from "@/services/legislation";
-import { useBills } from "@/contexts/bills-context";
+import { findExistingBillByURL, updateFoodStatusOrCreateBill } from "@/services/data/legislation";
+import { useBills } from "@/hooks/contexts/bills-context";
 
 
 interface NewBillDialogProps {
@@ -24,13 +24,14 @@ interface NewBillDialogProps {
     onClose: () => void;
   }
 export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
-    const { bills, setBills } = useBills()
+    const { setBills } = useBills()    
     const [isAlreadyInDB, setIsAlreadyInDB] = useState<boolean>(false)
     const [url, setUrl] = useState<string>('')
     const [error, setError] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [billPreview, setBillPreview] = useState<Bill | null>(null)
     const [isUpdating, setIsUpdating] = useState<boolean>(false);
+    const [isAdopting, setIsAdopting] = useState<boolean>(false);
     const [foodRelatedSelection, setFoodRelatedSelection] = useState<boolean | null>(null);
 
     // Reset state when dialog opens/closes
@@ -42,6 +43,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             setIsAlreadyInDB(false);
             setIsLoading(false);
             setIsUpdating(false);
+            setIsAdopting(false);
             setFoodRelatedSelection(null);
         }
     }, [isOpen]);    
@@ -80,7 +82,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             setIsLoading(false)
             return
         } else {
-            setError('Could not find bill in database, inserting now...')
+            setError('Could not find bill in database, scraping for preview now...')
         }
 
         const result = await findBill(url) // result is the full json
@@ -101,18 +103,18 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         }         
     }
 
-    const handleUpdateFoodRelated = async () => {
+    const handleConfirm = async () => {
         setIsUpdating(true)
-        
-        const result = await updateFoodRelatedFlagByURL(url, foodRelatedSelection)
+
+        const result = await updateFoodStatusOrCreateBill(billPreview, foodRelatedSelection)
 
         // Update local state - remove LLM flags
-        setBills(prevBills => 
-            prevBills.map(b => 
-              b.id === billPreview?.id 
-                ? { 
-                    ...b, 
-                    food_related: foodRelatedSelection 
+        setBills(prevBills =>
+            prevBills.map(b =>
+              b.id === billPreview?.id
+                ? {
+                    ...b,
+                    food_related: foodRelatedSelection
                   }
                 : b
               )
@@ -125,9 +127,9 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             toast({
                 title: `Successfully updated bill: `,
                 description: `${billPreview?.bill_number} is now set as ${!foodRelatedSelection ? 'not' : ''} food-related`,
-            });            
+            });
             setIsUpdating(false)
-        }      
+        }
     }
 
     return (
@@ -246,9 +248,9 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                                         {billPreview?.food_related ? (
                                             <>
                                                 <p className="my-4">
-                                                    This bill is currently tracked as food-related and appears in the Kanban Board/Spreadsheet.
+                                                    This bill is currently flagged as food-related and appears in the All Bills View.
                                                 </p>
-                                                <h2 className="font-semibold">Remove from Food+ Tracked Bills?</h2>
+                                                <h2 className="font-semibold">Would you like to unflag this bill to be non-food-related?</h2>
                                                 <div className="flex items-center gap-4 my-4">
                                                     <Button variant="destructive" onClick={() => setFoodRelatedSelection(false)}>
                                                         Yes, Remove
@@ -261,14 +263,14 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                                         ) : (
                                             <>
                                                 <p className="my-4">
-                                                    This bill is not currently flagged as food-related.
+                                                    This bill is not currently flagged as food-related and does not appear in the All Bills View.
                                                 </p>
-                                                <h2 className="font-semibold">Add to Food+ Tracked Bills?</h2>
+                                                <h2 className="font-semibold">Set this bill as food-related?</h2>
                                                 <div className="flex items-center gap-4 my-4">
-                                                    <Button onClick={() => setFoodRelatedSelection(true)}>
-                                                        Yes, Add to Tracking
+                                                    <Button onClick={() => setFoodRelatedSelection(true)} disabled={isAdopting}>
+                                                        Yes, Set as Food-related
                                                     </Button>
-                                                    <Button variant="outline" onClick={() => setFoodRelatedSelection(false)}>
+                                                    <Button variant="outline" onClick={onClose} disabled={isAdopting}>
                                                         No, Don&apos;t Track
                                                     </Button>
                                                 </div>
@@ -315,9 +317,9 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
             <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
               <div className='flex gap-2'>
-                {isAlreadyInDB && foodRelatedSelection !== null && (
+                {foodRelatedSelection !== null && (
                     <Button
-                        onClick={handleUpdateFoodRelated}
+                        onClick={handleConfirm}
                         disabled={isUpdating}
                         size="sm"
                         className="w-full"
@@ -325,10 +327,10 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                         {isUpdating ? (
                             <>
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                Updating...
+                                Saving...
                             </>
                         ) : (
-                            'Update Bill'
+                            'Confirm Changes'
                         )}
                     </Button>
                 )}

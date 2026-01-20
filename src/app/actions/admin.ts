@@ -33,6 +33,7 @@ async function verifyAdminAccess(): Promise<{ userId: string }> {
 
 export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
     const admin = await verifyAdminAccess();    
 
     console.log('📋 [PENDING REQUESTS] Loading pending user account requests');
@@ -54,6 +55,8 @@ export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>>
 // NOTE will be available to all not just admin
 export async function getPendingProposals(): Promise<ActionResult<PendingProposal[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
+
     await verifyAdminAccess();
 
     console.log('📋 [PENDING PROPOSALS] Admin loading all pending proposals...');
@@ -98,6 +101,8 @@ export async function getPendingProposals(): Promise<ActionResult<PendingProposa
 
 export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
+
     await verifyAdminAccess();    
 
     // Get all interns (users with role 'user')
@@ -121,7 +126,7 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
         'bills.id as bill_id',
         'bills.bill_number',
         'bills.bill_title',
-        'bills.current_status',
+        'bills.bill_status',
         'user_bills.adopted_at'
       ])
       .where('user.role', '=', 'user')
@@ -153,7 +158,7 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
           bill_id: row.bill_id,
           bill_number: row.bill_number,
           bill_title: row.bill_title,
-          current_status: row.current_status,
+          current_status: row.bill_status,
           adopted_at: row.adopted_at
         });
       }
@@ -172,6 +177,8 @@ export async function getAllInterns(): Promise<ActionResult<InternWithBills[]>> 
 
 export async function getAllSupervisors(): Promise<ActionResult<SupervisorWithInterns[]>> {
   try {
+    console.log('🔍 [PENDING REQUESTS] Verifying admin access...');
+
     await verifyAdminAccess();
 
     console.log('📋 [ALL SUPERVISORS] Loading all supervisors with interns...');
@@ -241,7 +248,7 @@ export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[
         'bills.id as bill_id',
         'bills.bill_number',
         'bills.bill_title',
-        'bills.current_status',
+        'bills.bill_status',
         'user.id as intern_id',
         'user.email as intern_email',
         'user.username as intern_username',
@@ -259,7 +266,7 @@ export async function getAllInternBills(): Promise<ActionResult<BillWithInterns[
           bill_id: row.bill_id,
           bill_number: row.bill_number,
           bill_title: row.bill_title,
-          current_status: row.current_status,
+          current_status: row.bill_status,
           tracked_by: []
         });
       }
@@ -348,11 +355,120 @@ export async function denyUser(userId: string): Promise<ActionResult> {
       .executeTakeFirst();
 
     revalidatePath('/admin');
-    
+
     console.log(`✅ [DENYING ACCOUNT REQUEST] Denied user ${userId}`);
     return { success: true };
   } catch (error) {
     console.error('❌ [DENYING ACCOUNT REQUEST] Error denying user:', error);
     return { success: false, error: 'Failed to deny user' };
+  }
+}
+
+export async function assignSupervisorToIntern(
+  supervisorId: string,
+  internIds: string[]
+): Promise<ActionResult> {
+  try {
+    await verifyAdminAccess();
+
+    if (!supervisorId) {
+      return { success: false, error: 'Supervisor ID is required' };
+    }
+
+    if (!internIds || internIds.length === 0) {
+      return { success: false, error: 'At least one intern ID is required' };
+    }
+
+    console.log(`📋 [ASSIGN SUPERVISOR] Assigning ${internIds.length} intern(s) to supervisor ${supervisorId}...`);
+
+    // Verify supervisor exists and has role 'supervisor'
+    const supervisor = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', '=', supervisorId)
+      .where('role', '=', 'supervisor')
+      .where('account_status', '=', 'active')
+      .executeTakeFirst();
+
+    if (!supervisor) {
+      return { success: false, error: 'Invalid supervisor or supervisor not active' };
+    }
+
+    // Verify all interns exist and have role 'user'
+    const interns = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', 'in', internIds)
+      .where('role', '=', 'user')
+      .where('account_status', '=', 'active')
+      .execute();
+
+    if (interns.length !== internIds.length) {
+      return { success: false, error: 'One or more invalid intern IDs or interns not active' };
+    }
+
+    // For each intern, remove existing supervisor relationship (if any) and create new one
+    for (const internId of internIds) {
+      // Delete existing relationship
+      await db
+        .deleteFrom('supervisor_users')
+        .where('user_id', '=', internId)
+        .execute();
+
+      // Create new relationship
+      await db
+        .insertInto('supervisor_users')
+        .values({
+          supervisor_id: supervisorId,
+          user_id: internId,
+        })
+        .execute();
+    }
+
+    console.log(`✅ [ASSIGN SUPERVISOR] Successfully assigned ${internIds.length} intern(s) to supervisor ${supervisorId}`);
+
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [ASSIGN SUPERVISOR] Error assigning supervisor to intern:', error);
+    return { success: false, error: 'Failed to assign supervisor to intern' };
+  }
+}
+
+export async function unassignInternFromSupervisor(internId: string): Promise<ActionResult> {
+  try {
+    await verifyAdminAccess();
+
+    if (!internId) {
+      return { success: false, error: 'Intern ID is required' };
+    }
+
+    console.log(`📋 [UNASSIGN SUPERVISOR] Removing supervisor assignment for intern ${internId}...`);
+
+    // Verify intern exists
+    const intern = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', '=', internId)
+      .where('role', '=', 'user')
+      .executeTakeFirst();
+
+    if (!intern) {
+      return { success: false, error: 'Invalid intern ID' };
+    }
+
+    // Delete supervisor relationship
+    const result = await db
+      .deleteFrom('supervisor_users')
+      .where('user_id', '=', internId)
+      .executeTakeFirst();
+
+    console.log(`✅ [UNASSIGN SUPERVISOR] Successfully removed supervisor assignment for intern ${internId}`);
+
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [UNASSIGN SUPERVISOR] Error unassigning supervisor from intern:', error);
+    return { success: false, error: 'Failed to unassign supervisor from intern' };
   }
 }

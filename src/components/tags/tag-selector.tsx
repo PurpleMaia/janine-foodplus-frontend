@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { getAllTags, getBillTags, updateBillTags } from '@/services/tags';
+import { getAllTags, getBillTags, updateBillTags } from '@/services/data/tags';
 import type { Tag } from '@/types/legislation';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
-import { useBills } from '@/contexts/bills-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 
 interface TagSelectorProps {
   billId: string;
@@ -22,7 +22,7 @@ export function TagSelector({ billId, onTagsChange, readOnly = false }: TagSelec
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
-  const { refreshBills } = useBills();
+  const { updateBill } = useBills();
 
   // Determine if user can manage tags (admin/supervisor only, unless explicitly read-only)
   const canManageTags = !readOnly && (user?.role === 'admin' || user?.role === 'supervisor');
@@ -75,8 +75,8 @@ export function TagSelector({ billId, onTagsChange, readOnly = false }: TagSelec
         newSelectedTags.map(t => t.id)
       );
       setSelectedTags(updatedTags);
-      // Refresh bills to update tags across the app
-      await refreshBills();
+      // Update the bill's tags in the context without refreshing everything
+      updateBill(billId, { tags: updatedTags });
       if (onTagsChange) {
         onTagsChange(updatedTags);
       }
@@ -152,29 +152,7 @@ export function TagSelector({ billId, onTagsChange, readOnly = false }: TagSelec
             </Badge>
           );
         })}
-      </div>
-      {selectedTags.length > 0 && (
-        <div className="mt-2">
-          <p className="text-xs text-muted-foreground mb-1">Selected tags:</p>
-          <div className="flex flex-wrap gap-2">
-            {selectedTags.map((tag) => (
-              <Badge
-                key={tag.id}
-                style={{
-                  backgroundColor: tag.color || '#3b82f6',
-                  color: 'white',
-                }}
-              >
-                {tag.name}
-                <X
-                  className="h-3 w-3 ml-1 cursor-pointer"
-                  onClick={() => !saving && handleToggleTag(tag)}
-                />
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>      
     </div>
   );
 }

@@ -2,8 +2,8 @@
 
 import { Input } from '@/components/ui/input';
 import { KanbanSquareIcon, ListCheck, Search, Table, Users2Icon } from 'lucide-react';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
-import { useAuth } from '@/contexts/auth-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { AuthHeader } from '../auth/auth-header';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
@@ -17,7 +17,7 @@ export function Header() {
     ? role === 'admin'
       ? ['kanban', 'spreadsheet', 'approvals', 'admin']
       : role === 'supervisor'
-        ? ['kanban', 'spreadsheet', 'approvals', 'supervisor']
+        ? ['kanban', 'spreadsheet', 'approvals']
         : ['kanban', 'spreadsheet']
     : publicViews;
 
@@ -82,8 +82,7 @@ function getIconForView(view: string) {
       return <Table className="h-5 w-5 mr-2" />;
     case 'approvals':
       return <ListCheck className="h-5 w-5 mr-2" />;
-      case 'admin':
-    case 'supervisor':
+    case 'admin':    
       return <Users2Icon className="h-5 w-5 mr-2" />;
     default:
       return null;

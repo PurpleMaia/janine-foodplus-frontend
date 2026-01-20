@@ -6,16 +6,16 @@ import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
 // import { KanbanColumn } from './kanban-column'; // we inline KanbanColumn below
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
-import { updateBillStatusServerAction, searchBills } from '@/services/legislation';
+import { updateBillStatus, searchBills } from '@/services/data/legislation';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 import { useToast } from '@/hooks/use-toast';
 import { BillDetailsDialog } from './bill-details-dialog';
 import { Button } from '@/components/ui/button';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { KanbanColumn } from './kanban-column';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { KanbanCard } from './kanban-card';
 import { TempBillCard } from './temp-card';
 import LLMUpdateColumnButton from '../llm/llm-update-column-button';
@@ -28,7 +28,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
-  const { searchQuery, selectedTagIds } = useKanbanBoard();
+  const { searchQuery, selectedTagIds, selectedYears } = useKanbanBoard();
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -164,29 +164,50 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     if (selectedTagIds && selectedTagIds.length > 0) {
       console.log('🔍 [TAG FILTER] Filtering bills with selected tag IDs:', selectedTagIds);
       console.log('🔍 [TAG FILTER] Total bills before filtering:', items.length);
-      
+
       // Debug: check a few bills to see their tags
       const billsWithTags = items.filter(b => b.tags && b.tags.length > 0);
       console.log('🔍 [TAG FILTER] Bills with tags:', billsWithTags.length);
       if (billsWithTags.length > 0) {
         console.log('🔍 [TAG FILTER] Sample bill tags:', billsWithTags[0].tags?.map(t => ({ id: t.id, name: t.name })));
       }
-      
+
       items = items.filter((bill) => {
         // Check if bill has tags
         const billTagIds = bill.tags?.map(tag => tag.id) || [];
         const hasMatchingTag = billTagIds.some(tagId => selectedTagIds.includes(tagId));
-        
+
         if (hasMatchingTag) {
           console.log(`✅ [TAG FILTER] Bill ${bill.bill_number} matches - has tags:`, billTagIds);
         } else if (billTagIds.length > 0) {
           console.log(`❌ [TAG FILTER] Bill ${bill.bill_number} doesn't match - has tags:`, billTagIds, 'selected:', selectedTagIds);
         }
-        
+
         return hasMatchingTag;
       });
-      
+
       console.log('🔍 [TAG FILTER] Bills after filtering:', items.length);
+    }
+
+    // Filter by selected years if any are selected
+    if (selectedYears && selectedYears.length > 0) {
+      console.log('🔍 [YEAR FILTER] Filtering bills with selected years:', selectedYears);
+      console.log('🔍 [YEAR FILTER] Total bills before filtering:', items.length);
+
+      items = items.filter((bill) => {
+        const billYear = bill.year;
+        const hasMatchingYear = billYear !== null && billYear !== undefined && selectedYears.includes(billYear);
+
+        if (hasMatchingYear) {
+          console.log(`✅ [YEAR FILTER] Bill ${bill.bill_number} matches - year: ${billYear}`);
+        } else {
+          console.log(`❌ [YEAR FILTER] Bill ${bill.bill_number} doesn't match - year: ${billYear}, selected:`, selectedYears);
+        }
+
+        return hasMatchingYear;
+      });
+
+      console.log('🔍 [YEAR FILTER] Bills after filtering:', items.length);
     }
   
     const fallbackId = (KANBAN_COLUMNS.find(c => c.id === 'unassigned')?.id
@@ -323,7 +344,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       }
 
       try {
-        const updatedBillFromServer = await updateBillStatusServerAction(
+        const updatedBillFromServer = await updateBillStatus(
           draggableId,
           destinationColumnId
         );

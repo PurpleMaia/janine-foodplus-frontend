@@ -9,11 +9,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs,TabsContent } from '@/components/ui/tabs';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown, X } from 'lucide-react';
 import AdminHeader from './admin-header';
 import { useAdminDashboard } from '@/hooks/use-query-admin';
 import { formatBillStatusName } from '@/lib/utils';
 import { BillWithInterns, InternWithBills, PendingUser, SupervisorWithInterns } from '@/types/admin';
+import { InternSelector } from './intern-selector';
 // import { ManageInternDialog } from './manage-intern-dialog';
 
 export function AdminDashboard() {
@@ -306,8 +307,18 @@ function AllSupervisorsTab(
     supervisors: SupervisorWithInterns[];
   }
 ) {
-  const { isLoadingRelationships } = useAdminDashboard();
-  
+  const {
+    isLoadingRelationships,
+    allInterns,
+    handleAssignSupervisor,
+    handleUnassignIntern,
+    isAssigningSupervisor,
+    isUnassigningIntern
+  } = useAdminDashboard();
+
+  // State to manage selected interns for each supervisor
+  const [selectedInternsBySupervisor, setSelectedInternsBySupervisor] = useState<Record<string, string[]>>({});
+
   if (isLoadingRelationships) {
     return (
       <TabsContent value="all-supervisors" className="mx-8 space-y-8 mt-6">
@@ -319,11 +330,30 @@ function AllSupervisorsTab(
     );
   }
 
+  const handleSelectionChange = (supervisorId: string, selectedIds: string[]) => {
+    setSelectedInternsBySupervisor(prev => ({
+      ...prev,
+      [supervisorId]: selectedIds
+    }));
+  };
+
+  const handleAssign = (supervisorId: string) => {
+    const selectedIds = selectedInternsBySupervisor[supervisorId] || [];
+    if (selectedIds.length > 0) {
+      handleAssignSupervisor(supervisorId, selectedIds);
+      // Clear selection after assignment
+      setSelectedInternsBySupervisor(prev => ({
+        ...prev,
+        [supervisorId]: []
+      }));
+    }
+  };
+
   return (
     <TabsContent value="all-supervisors" className="mx-8 space-y-8 mt-6">
       <div>
         <h1 className="text-2xl font-bold mb-1 ">All Supervisors</h1>
-        <h2 className="text-sm mb-6 text-muted-foreground">View all supervisor accounts and their interns</h2>          
+        <h2 className="text-sm mb-6 text-muted-foreground">View all supervisor accounts and their interns</h2>
 
       <ScrollArea className="h-[800px] w-full">
         <div className='bg-white rounded-lg shadow-sm border'>
@@ -336,25 +366,73 @@ function AllSupervisorsTab(
                 </Card>
               ) : (
                 supervisors.map((supervisor) => (
-                  <div key={supervisor.supervisor_id} className="border-b pb-4 last:border-0">
-                    <h3 className="font-semibold text-lg">
-                      {supervisor.supervisor_username}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {supervisor.supervisor_email}
-                    </p>
-                    
-                    {supervisor.interns.length === 0 ? (
-                      <p className="text-sm text-foreground">No interns assigned</p>
-                    ) : (
-                      <ul className="flex items-center gap-2 flex-wrap">
-                        {supervisor.interns.map((intern) => (
-                          <li key={intern.id} className="text-foreground">
-                            <Badge variant="outline" className="mr-2">{intern.username}</Badge> ({intern.email})
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                  <div key={supervisor.supervisor_id} className="border rounded-lg p-4 space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {supervisor.supervisor_username}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {supervisor.supervisor_email}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Assigned Interns ({supervisor.interns.length})
+                      </p>
+                      {supervisor.interns.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No interns assigned</p>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {supervisor.interns.map((intern) => (
+                            <Badge
+                              key={intern.id}
+                              variant="secondary"
+                              className="pl-2 pr-1 py-1 flex items-center gap-1"
+                            >
+                              <span className="text-xs">{intern.username}</span>
+                              <button
+                                onClick={() => handleUnassignIntern(intern.id)}
+                                disabled={isUnassigningIntern}
+                                className="ml-1 hover:bg-muted rounded-sm p-0.5 transition-colors disabled:opacity-50"
+                                aria-label={`Unassign ${intern.username}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-sm font-medium text-foreground">
+                        Assign New Interns
+                      </p>
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <InternSelector
+                            interns={allInterns}
+                            selectedInternIds={selectedInternsBySupervisor[supervisor.supervisor_id] || []}
+                            onSelectionChange={(selectedIds) => handleSelectionChange(supervisor.supervisor_id, selectedIds)}
+                            currentSupervisorId={supervisor.supervisor_id}
+                            disabled={isAssigningSupervisor}
+                          />
+                        </div>
+                        <Button
+                          onClick={() => handleAssign(supervisor.supervisor_id)}
+                          disabled={
+                            isAssigningSupervisor ||
+                            !selectedInternsBySupervisor[supervisor.supervisor_id] ||
+                            selectedInternsBySupervisor[supervisor.supervisor_id]?.length === 0
+                          }
+                          size="default"
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" />
+                          Assign
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}

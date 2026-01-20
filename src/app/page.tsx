@@ -6,8 +6,8 @@ import { ProtectedKanbanBoardOrSpreadsheet } from '@/components/kanban/protected
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
 import { ApprovalsDashboard } from '@/components/approvals/approvals-dashboard';
 import { SupervisorDashboard } from '@/components/supervisor/supervisor-dashboard';
-import { useAuth } from '@/contexts/auth-context';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 
 
 

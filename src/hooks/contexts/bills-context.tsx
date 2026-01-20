@@ -1,13 +1,12 @@
-
 'use client';
 
 import {
-  getAllBills,
+  getAllTrackedBills,
   getAllFoodRelatedBills,
-  getUserAdoptedBills,
-  updateBillStatusServerAction,
-} from '@/services/legislation';
-import { getBillTags } from '@/services/tags';
+  getUserTrackedBills,
+  updateBillStatus,
+} from '@/services/data/legislation';
+import { getBatchBillTags } from '@/services/data/tags';
 import React, {
   createContext,
   useContext,
@@ -20,10 +19,11 @@ import React, {
   useCallback,
 } from 'react';
 import type { Bill, BillStatus, TempBill } from '@/types/legislation';
-import { toast } from '../hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 interface BillsContextType {
+  // State
   loadingBills: boolean;
   setLoadingBills: Dispatch<SetStateAction<boolean>>;
   bills: Bill[];
@@ -31,13 +31,13 @@ interface BillsContextType {
   tempBills: TempBill[];
   setTempBills: Dispatch<SetStateAction<TempBill[]>>;
 
-  // LLM suggestion controls (existing)
+  // LLM Suggestion Controls
   acceptLLMChange: (billId: string) => Promise<void>;
   rejectLLMChange: (billId: string) => Promise<void>;
   rejectAllLLMChanges: () => Promise<void>;
   acceptAllLLMChanges: () => Promise<void>;
 
-  // NEW: human proposal controls
+  // Human Proposal Controls
   proposeStatusChange: (
     bill: Bill,
     suggested_status: BillStatus,
@@ -49,11 +49,22 @@ interface BillsContextType {
   rejectAllTempChanges: () => Promise<void>;
   updateBillNickname: (billId: string, nickname: string) => Promise<void>;
 
-  // View mode toggle
+  // View Mode
   viewMode: 'my-bills' | 'all-bills';
   setViewMode: (mode: 'my-bills' | 'all-bills') => void;
   toggleViewMode: () => void;
 
+  // Archived Toggle
+  showArchived: boolean;
+  setShowArchived: (show: boolean) => void;
+  toggleShowArchived: () => void;
+
+  // Bill CRUD Operations
+  addBill: (bill: Bill) => void;
+  updateBill: (billId: string, updates: Partial<Bill>) => void;
+  removeBill: (billId: string) => void;
+
+  // Data Operations
   resetBills: () => Promise<void>;
   refreshBills: () => Promise<void>;
 }
@@ -63,21 +74,24 @@ const BillsContext = createContext<BillsContextType | undefined>(undefined);
 const canCommitStatus = (role?: string) =>
   role === 'supervisor' || role === 'admin';
 
-const canViewAllBills = (role?: string) =>
-  role === 'admin' || role === 'supervisor';
-
 export function BillsProvider({ children }: { children: ReactNode }) {
+
   const [bills, setBills] = useState<Bill[]>([]);
   const [tempBills, setTempBills] = useState<TempBill[]>([]);
   const [, setError] = useState<string | null>(null);
   const [loadingBills, setLoadingBills] = useState(false);
   const [viewMode, setViewMode] = useState<'my-bills' | 'all-bills'>('my-bills');
+  const [showArchived, setShowArchived] = useState(false);
   const { user, loading: userLoading } = useAuth();
 
+  /**
+   * Reloads proposals from the server and updates local state
+   * @returns Array of proposals or null if failed
+   */
   const reloadProposalsFromServer = useCallback(async () => {
     try {
       console.log('🔄 [SYNC] Fetching proposals from API...');
-      
+
       const response = await fetch('/api/proposals/load');
       if (!response.ok) {
         console.error('❌ [SYNC] API response not OK:', response.status);
@@ -100,17 +114,52 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ========= LLM SUGGESTIONS (existing) =========
+  /**
+   * Fetches bills and their tags based on view mode
+   * @param viewModeOverride Optional view mode to use instead of current state
+   */
+  const fetchBillsWithTags = useCallback(async (viewModeOverride?: 'my-bills' | 'all-bills') => {
+    const mode = viewModeOverride ?? viewMode;
 
+    let results: Bill[] = [];
+    if (user) {
+      const includeTrackedBy = user.role === 'admin' || user.role === 'supervisor';
+      if (mode === 'my-bills') {
+        results = await getUserTrackedBills(user.id, showArchived, includeTrackedBy);
+        console.log('User tracked bills fetched:', results.length);
+      } else {
+        results = await getAllFoodRelatedBills(showArchived, includeTrackedBy);
+        console.log('All food-related bills fetched:', results.length);
+      }
+    } else {
+      results = await getAllTrackedBills(showArchived);
+      console.log('Public bills fetched:', results.length);
+    }
+
+    // Fetch tags using batch API
+    const billIds = results.map(bill => bill.id);
+    const tagsByBillId = await getBatchBillTags(billIds);
+
+    return results.map(bill => ({
+      ...bill,
+      tags: tagsByBillId[bill.id] || []
+    }));
+  }, [user, viewMode, showArchived]);
+
+  // ---------------------------------------------------------------------------
+  // SECTION 1: LLM SUGGESTION OPERATIONS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Accepts an LLM suggestion and commits the status change to the database
+   */
   const acceptLLMChange = async (billId: string) => {
     const bill = bills.find((b) => b.id === billId);
     if (!bill || !bill.llm_suggested) return;
 
     try {
-      // Commit current_status that LLM suggested
-      await updateBillStatusServerAction(billId, bill.current_status);
+      await updateBillStatus(billId, bill.current_status);
 
-      // Clear LLM flags locally
       setBills((prevBills) =>
         prevBills.map((b) =>
           b.id === billId
@@ -119,7 +168,6 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         )
       );
 
-      // Remove corresponding temp bill (if any)
       setTempBills((prev) => prev.filter((tb) => tb.id !== billId));
 
       toast({
@@ -136,11 +184,13 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Rejects an LLM suggestion and reverts to the previous status
+   */
   const rejectLLMChange = async (billId: string) => {
     const bill = bills.find((b) => b.id === billId);
     if (!bill || !bill.llm_suggested) return;
 
-    // Revert locally
     setBills((prevBills) =>
       prevBills.map((b) =>
         b.id === billId
@@ -154,7 +204,6 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       )
     );
 
-    // Remove temp record
     setTempBills((prev) => prev.filter((tb) => tb.id !== billId));
 
     toast({
@@ -164,6 +213,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  /**
+   * Rejects all pending LLM suggestions
+   */
   const rejectAllLLMChanges = async () => {
     const suggestedBills = bills.filter((b) => b.llm_suggested);
     for (const bill of suggestedBills) {
@@ -176,6 +228,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  /**
+   * Accepts all pending LLM suggestions
+   */
   const acceptAllLLMChanges = async () => {
     const suggestedBills = bills.filter((b) => b.llm_suggested);
     for (const bill of suggestedBills) {
@@ -188,43 +243,41 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ========= HUMAN PROPOSALS (new) =========
+  // ---------------------------------------------------------------------------
+  // SECTION 2: HUMAN PROPOSAL OPERATIONS
+  // ---------------------------------------------------------------------------
 
-  // Create/replace a pending proposal (for interns or supervisors who want review)
+  /**
+   * Creates or updates a pending proposal for a bill status change
+   * Used by interns or supervisors who want review before committing
+   */
   const proposeStatusChange: BillsContextType['proposeStatusChange'] = async (
     bill,
     suggested_status,
     meta
   ) => {
     console.log('🟣 proposeStatusChange called:', bill.id, '→', suggested_status);
-    console.log('🟣 Bill data:', {
-      id: bill.id,
-      current_status: bill.current_status,
-      suggested_status,
-    });
 
-    // Validate required fields before sending
+    // Validate required fields
     if (!bill.id) {
       throw new Error('Bill ID is missing');
     }
-    
-    // Handle missing or empty current_status with fallback
+
     const currentStatus = bill.current_status?.trim() || 'unassigned';
     if (!currentStatus || currentStatus === '') {
       console.warn(`⚠️ Bill ${bill.id} has missing current_status, using 'unassigned' as fallback`);
     }
-    
+
     if (!suggested_status || suggested_status.trim() === '') {
       throw new Error(`Suggested status is missing or empty. Bill ID: ${bill.id}`);
     }
-    
-    const target_idx = 0; // optional: compute from KANBAN_COLUMNS if you want to scroll later
+
     const proposal: TempBill = {
       id: bill.id,
       bill_title: bill.bill_title || null,
       current_status: currentStatus as BillStatus,
       suggested_status,
-      target_idx,
+      target_idx: 0,
       source: 'human',
       approval_status: 'pending',
       proposed_by: {
@@ -238,7 +291,6 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     };
 
     try {
-      // Prepare request body
       const requestBody = {
         billId: bill.id,
         currentStatus: currentStatus,
@@ -248,12 +300,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
       console.log('🟣 Sending proposal request:', requestBody);
 
-      // Save to database
       const response = await fetch('/api/proposals/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
 
@@ -288,10 +337,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Supervisor/Admin approves a single proposal
-  const acceptTempChange: BillsContextType['acceptTempChange'] = async (
-    billId
-  ) => {
+  /**
+   * Supervisor/Admin approves a single proposal
+   * Commits the change to the database and updates local state
+   */
+  const acceptTempChange: BillsContextType['acceptTempChange'] = async (billId) => {
     const tb = tempBills.find((t) => t.id === billId);
     if (!tb) return;
 
@@ -304,24 +354,20 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Check if this is an LLM suggestion (no proposalId means it's LLM-generated)
+    // Check if this is an LLM suggestion
     const proposalId = (tb as any).proposalId;
     const bill = bills.find((b) => b.id === billId);
     const isLLMSuggestion = !proposalId || tb.source === 'llm' || bill?.llm_suggested;
 
     if (isLLMSuggestion) {
-      // Use LLM accept function for LLM suggestions
       await acceptLLMChange(billId);
       return;
     }
 
     try {
-      // Call API to approve proposal (which updates bill status and marks proposal as approved)
       const response = await fetch('/api/proposals/approve', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proposalId }),
       });
 
@@ -329,7 +375,6 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         throw new Error('Failed to approve proposal');
       }
 
-      // Update bills list to reflect the new status
       setBills((prev) =>
         prev.map((b) =>
           b.id === billId
@@ -344,12 +389,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         )
       );
 
-      // Remove proposal from local state
       setTempBills((prev) => prev.filter((t) => t.id !== billId));
 
       const proposals = await reloadProposalsFromServer();
       if (proposals === null) {
-        console.warn('⚠️ [SYNC] Unable to reload proposals after approval; keeping local state');
+        console.warn('⚠️ [SYNC] Unable to reload proposals after approval');
       }
 
       toast({
@@ -366,10 +410,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Supervisor/Admin rejects a single proposal
-  const rejectTempChange: BillsContextType['rejectTempChange'] = async (
-    billId
-  ) => {
+  /**
+   * Supervisor/Admin rejects a single proposal
+   * Removes the proposal from pending state
+   */
+  const rejectTempChange: BillsContextType['rejectTempChange'] = async (billId) => {
     const tb = tempBills.find((t) => t.id === billId);
     if (!tb) return;
 
@@ -382,24 +427,20 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Check if this is an LLM suggestion (no proposalId means it's LLM-generated)
+    // Check if this is an LLM suggestion
     const proposalId = (tb as any).proposalId;
     const bill = bills.find((b) => b.id === billId);
     const isLLMSuggestion = !proposalId || tb.source === 'llm' || bill?.llm_suggested;
 
     if (isLLMSuggestion) {
-      // Use LLM reject function for LLM suggestions
       await rejectLLMChange(billId);
       return;
     }
 
     try {
-      // Call API to reject proposal
       const response = await fetch('/api/proposals/reject', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proposalId }),
       });
 
@@ -407,17 +448,16 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         throw new Error('Failed to reject proposal');
       }
 
-      // Remove from local state
       setTempBills((prev) => prev.filter((t) => t.id !== billId));
 
       const proposals = await reloadProposalsFromServer();
       if (proposals === null) {
-        console.warn('⚠️ [SYNC] Unable to reload proposals after rejection; keeping local state');
+        console.warn('⚠️ [SYNC] Unable to reload proposals after rejection');
       }
 
       toast({
         title: 'Proposal Rejected',
-        description: `Pending change discarded.`,
+        description: 'Pending change discarded.',
         variant: 'default',
       });
     } catch (e) {
@@ -429,13 +469,47 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Approves all pending human proposals
+   */
+  const acceptAllTempChanges: BillsContextType['acceptAllTempChanges'] = async () => {
+    if (!canCommitStatus(user?.role)) {
+      toast({
+        title: 'Forbidden',
+        description: 'You do not have permission to approve changes.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const humanProposals = tempBills.filter((t) => t.source === 'human');
+    const ops = humanProposals.map((t) => acceptTempChange(t.id));
+    await Promise.allSettled(ops);
+    await reloadProposalsFromServer();
+  };
+
+  /**
+   * Rejects all pending human proposals
+   */
+  const rejectAllTempChanges: BillsContextType['rejectAllTempChanges'] = async () => {
+    const humanProposals = tempBills.filter((t) => t.source === 'human');
+    if (humanProposals.length === 0) return;
+    setTempBills((prev) => prev.filter((t) => t.source !== 'human'));
+    toast({
+      title: 'All Proposals Rejected',
+      description: `Discarded ${humanProposals.length} pending changes.`,
+      variant: 'default',
+    });
+  };
+
+  /**
+   * Updates the user's custom nickname for a bill
+   */
   const updateBillNickname: BillsContextType['updateBillNickname'] = async (
     billId,
     nickname
   ) => {
     const trimmed = nickname.trim();
-    const previous =
-      bills.find((b) => b.id === billId)?.user_nickname ?? null;
+    const previous = bills.find((b) => b.id === billId)?.user_nickname ?? null;
 
     setBills((prev) =>
       prev.map((b) =>
@@ -446,9 +520,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/bills/nickname', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ billId, nickname: trimmed }),
       });
 
@@ -474,42 +546,54 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const acceptAllTempChanges: BillsContextType['acceptAllTempChanges'] =
-    async () => {
-      if (!canCommitStatus(user?.role)) {
-        toast({
-          title: 'Forbidden',
-          description: 'You do not have permission to approve changes.',
-          variant: 'destructive',
-        });
-        return;
+  // ---------------------------------------------------------------------------
+  // SECTION 3: BILL CRUD OPERATIONS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Adds a new bill to the bills array
+   * If bill already exists, updates it instead
+   */
+  const addBill = useCallback((bill: Bill) => {
+    setBills((prevBills) => {
+      const exists = prevBills.some(b => b.id === bill.id);
+      if (exists) {
+        console.warn(`Bill ${bill.id} already exists, updating instead`);
+        return prevBills.map(b => b.id === bill.id ? bill : b);
       }
-      const humanProposals = tempBills.filter((t) => t.source === 'human');
-      const ops = humanProposals.map((t) => acceptTempChange(t.id));
-      await Promise.allSettled(ops);
-      await reloadProposalsFromServer();
-      // acceptTempChange already toasts per item; you can also add a summary here if you want.
-    };
+      return [...prevBills, bill];
+    });
+  }, []);
 
-  const rejectAllTempChanges: BillsContextType['rejectAllTempChanges'] =
-    async () => {
-      const humanProposals = tempBills.filter((t) => t.source === 'human');
-      if (humanProposals.length === 0) return;
-      setTempBills((prev) => prev.filter((t) => t.source !== 'human'));
-      toast({
-        title: 'All Proposals Rejected',
-        description: `Discarded ${humanProposals.length} pending changes.`,
-        variant: 'default',
-      });
-    };
+  /**
+   * Updates specific fields of a bill without refreshing the entire list
+   * Preserves Kanban board state (scroll position, drag state, etc.)
+   */
+  const updateBill = useCallback((billId: string, updates: Partial<Bill>) => {
+    setBills((prevBills) =>
+      prevBills.map((bill) =>
+        bill.id === billId ? { ...bill, ...updates } : bill
+      )
+    );
+  }, []);
 
-  // ========= RESET / REFRESH (existing) =========
+  /**
+   * Removes a bill from the bills array
+   */
+  const removeBill = useCallback((billId: string) => {
+    setBills((prevBills) => prevBills.filter(bill => bill.id !== billId));
+  }, []);
 
+  // ---------------------------------------------------------------------------
+  // SECTION 4: DATA OPERATIONS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Resets all bill states and clears proposals
+   * Reverts any pending LLM suggestions
+   */
   const resetBills = async () => {
-    // Clear temp bills (both LLM and human proposals)
     setTempBills([]);
-
-    // Reset all bill states
     setBills((prevBills) =>
       prevBills.map((bill) => ({
         ...bill,
@@ -521,103 +605,42 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  /**
+   * Refreshes the bills list from the server
+   * Uses batch API for efficient tag fetching
+   * Does NOT clear bills during refresh to preserve Kanban board state
+   */
   const refreshBills = async () => {
     console.log('Refreshing bills...');
-    // Clear bills first to show skeleton immediately
-    setBills([]);
     setLoadingBills(true);
     setError(null);
-    
-    // Small delay to ensure loading state is visible
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     try {
-      if (user) {
-        // LOGGED-IN PATH: respect view mode
-        let results;
-        if (viewMode === 'my-bills') {
-          results = await getUserAdoptedBills(user.id);
-          console.log('User adopted bills set in context');
-        } else {
-          // All bills view
-          results = await getAllFoodRelatedBills();
-          console.log('All food-related bills set in context');
-        }
-        
-        // Fetch tags for all bills
-        const billsWithTags = await Promise.all(
-          results.map(async (bill) => {
-            try {
-              const tags = await getBillTags(bill.id);
-              return { ...bill, tags };
-            } catch (error) {
-              console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-              return { ...bill, tags: [] };
-            }
-          })
-        );
-        
-        setBills(billsWithTags);
-        console.log(billsWithTags);
-        return;
-      }
-      // Public view: only all bills
-      const results = await getAllBills();
-      
-      // Fetch tags for all bills
-      const billsWithTags = await Promise.all(
-        results.map(async (bill) => {
-          try {
-            const tags = await getBillTags(bill.id);
-            return { ...bill, tags };
-          } catch (error) {
-            console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-            return { ...bill, tags: [] };
-          }
-        })
-      );
-      
+      const billsWithTags = await fetchBillsWithTags();
       setBills(billsWithTags);
-      console.log('successful results set in context');
-      console.log(billsWithTags);
+      console.log('Bills refreshed successfully:', billsWithTags.length);
     } catch (err) {
-      console.error('Error searching bills:', err);
-      setError('Failed to search bills.');
+      console.error('Error refreshing bills:', err);
+      setError('Failed to refresh bills.');
     } finally {
       setLoadingBills(false);
     }
   };
 
+  /**
+   * Toggles between 'my-bills' and 'all-bills' view modes
+   * Automatically fetches the appropriate bills for the new mode
+   */
   const toggleViewMode = useCallback(() => {
     if (!user) return;
-    
+
     const newMode = viewMode === 'my-bills' ? 'all-bills' : 'my-bills';
     setViewMode(newMode);
-    
-    // Refresh bills when toggling (moved outside state setter to avoid render issues)
+
     (async () => {
       setLoadingBills(true);
       try {
-        let results;
-        if (newMode === 'my-bills') {
-          results = await getUserAdoptedBills(user.id);
-        } else {
-          results = await getAllFoodRelatedBills();
-        }
-        
-        // Fetch tags for all bills
-        const billsWithTags = await Promise.all(
-          results.map(async (bill) => {
-            try {
-              const tags = await getBillTags(bill.id);
-              return { ...bill, tags };
-            } catch (error) {
-              console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-              return { ...bill, tags: [] };
-            }
-          })
-        );
-        
+        const billsWithTags = await fetchBillsWithTags(newMode);
         setBills(billsWithTags);
       } catch (err) {
         console.error('Error refreshing bills on toggle:', err);
@@ -626,46 +649,51 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         setLoadingBills(false);
       }
     })();
-  }, [user, viewMode]);
+  }, [user, viewMode, fetchBillsWithTags]);
 
-  // initial load
+  /**
+   * Toggles between showing and hiding archived bills
+   * Automatically fetches the appropriate bills for the new state
+   */
+  const toggleShowArchived = useCallback(() => {
+    const newShowArchived = !showArchived;
+    setShowArchived(newShowArchived);
+
+    (async () => {
+      setLoadingBills(true);
+      try {
+        const billsWithTags = await fetchBillsWithTags();
+        setBills(billsWithTags);
+      } catch (err) {
+        console.error('Error refreshing bills on archived toggle:', err);
+        setError('Failed to refresh bills.');
+      } finally {
+        setLoadingBills(false);
+      }
+    })();
+  }, [showArchived, fetchBillsWithTags]);
+
+  // ---------------------------------------------------------------------------
+  // SECTION 5: INITIAL DATA LOAD
+  // ---------------------------------------------------------------------------
+
   useEffect(() => {
-    if (userLoading) return; // wait until auth resolves
+    if (userLoading) return;
 
     let cancelled = false;
 
     (async () => {
       setLoadingBills(true);
       setError(null);
-      try {
-        if (user) {
-          // LOGGED-IN PATH: respect view mode
-          let results;
-          if (viewMode === 'my-bills') {
-            results = await getUserAdoptedBills(user.id);
-            console.log('User adopted bills set in context', results.length);
-          } else {
-            results = await getAllFoodRelatedBills();
-            console.log('All food-related bills set in context', results.length);
-          }
-          
-          // Fetch tags for all bills
-          const billsWithTags = await Promise.all(
-            results.map(async (bill) => {
-              try {
-                const tags = await getBillTags(bill.id);
-                return { ...bill, tags };
-              } catch (error) {
-                console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-                return { ...bill, tags: [] };
-              }
-            })
-          );
-          
-          if (!cancelled) {
-            setBills(billsWithTags);
 
-            // Load pending proposals for bills owned by the user
+      try {
+        const billsWithTags = await fetchBillsWithTags();
+
+        if (!cancelled) {
+          setBills(billsWithTags);
+
+          // Load proposals only for logged-in users
+          if (user) {
             console.log('🔄 [INITIAL LOAD] Fetching proposals from API...');
             const proposalsResponse = await fetch('/api/proposals/load');
             if (proposalsResponse.ok) {
@@ -684,33 +712,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
               console.error('❌ [INITIAL LOAD] API response not OK:', proposalsResponse.status);
             }
           }
-        } else {
-          // PUBLIC PATH
-          const results = await getAllBills();
-          
-          // Fetch tags for all bills
-          const billsWithTags = await Promise.all(
-            results.map(async (bill) => {
-              try {
-                const tags = await getBillTags(bill.id);
-                return { ...bill, tags };
-              } catch (error) {
-                console.error(`Failed to fetch tags for bill ${bill.id}:`, error);
-                return { ...bill, tags: [] };
-              }
-            })
-          );
-          
-          if (!cancelled) {
-            setBills(billsWithTags);
-            console.log('There are', billsWithTags.length, 'bills');
-            console.log('successful results set in context');
-          }
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('Error searching bills:', err);
-          setError('Failed to search bills.');
+          console.error('Error loading initial bills:', err);
+          setError('Failed to load bills.');
         }
       } finally {
         if (!cancelled) setLoadingBills(false);
@@ -720,10 +726,15 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user, userLoading, viewMode]);
+  }, [user, userLoading, viewMode, fetchBillsWithTags]);
+
+  // ---------------------------------------------------------------------------
+  // CONTEXT VALUE
+  // ---------------------------------------------------------------------------
 
   const value = useMemo(
     () => ({
+      // State
       loadingBills,
       setLoadingBills,
       bills,
@@ -731,13 +742,13 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       tempBills,
       setTempBills,
 
-      // LLM
+      // LLM Operations
       acceptLLMChange,
       rejectLLMChange,
       rejectAllLLMChanges,
       acceptAllLLMChanges,
 
-      // HUMAN proposals
+      // Human Proposal Operations
       proposeStatusChange,
       acceptTempChange,
       rejectTempChange,
@@ -745,11 +756,22 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectAllTempChanges,
       updateBillNickname,
 
-      // View mode
+      // View Mode
       viewMode,
       setViewMode,
       toggleViewMode,
 
+      // Archived Toggle
+      showArchived,
+      setShowArchived,
+      toggleShowArchived,
+
+      // Bill CRUD
+      addBill,
+      updateBill,
+      removeBill,
+
+      // Data Operations
       resetBills,
       refreshBills,
     }),
@@ -770,6 +792,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       viewMode,
       setViewMode,
       toggleViewMode,
+      showArchived,
+      setShowArchived,
+      toggleShowArchived,
+      addBill,
+      updateBill,
+      removeBill,
       resetBills,
       refreshBills,
     ]
@@ -780,10 +808,18 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// ============================================================================
+// HOOK
+// ============================================================================
+
+/**
+ * Hook to access the Bills context
+ * Must be used within a BillsProvider
+ */
 export function useBills() {
   const context = useContext(BillsContext);
   if (context === undefined) {
-    throw new Error('useCardUpdate must be used within a UpdateCardProvider');
+    throw new Error('useBills must be used within a BillsProvider');
   }
   return context;
 }
