@@ -55,6 +55,7 @@ export interface Bill {
   updated_at: Date | null;
   year: number | null;
   archived: boolean;
+  ai_misclassification_type?: 'false_positive' | 'false_negative' | null;
 
   // client side attributes
   updates: StatusUpdate[]
