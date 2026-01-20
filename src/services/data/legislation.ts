@@ -7,81 +7,8 @@ import { Bills, BillStatus, User } from '@/db/types';
 import { Selectable } from 'kysely';
 import { getBatchBillTags } from '@/services/data/tags';
 
-async function getStatusUpdatesForBills(billIds: string[]): Promise<Selectable<BillStatus>[]> {
-    const updates = await db
-      .selectFrom('status_updates as su')
-      .select([
-        'su.chamber',
-        'su.date',
-        'su.id as update_id',
-        'su.statustext',
-        'su.bill_id'
-      ])
-      .where('su.bill_id', 'in', billIds)
-      .orderBy('su.date', 'desc')
-      .execute();
-    return updates;
-}
-
-async function getTrackedByForBills(billIds: string[]): Promise<Record<string, BillTracker[]>> {
-  if (billIds.length === 0) return {};
-
-  const rows = await db
-    .selectFrom('user_bills as ub')
-    .innerJoin('user as u', 'ub.user_id', 'u.id')
-    .select([
-      'ub.bill_id as bill_id',
-      'u.id as user_id',
-      'u.email as user_email',
-      'u.username as user_username',
-      'ub.adopted_at as adopted_at',
-    ])
-    .where('ub.bill_id', 'in', billIds)
-    .orderBy('ub.adopted_at', 'desc')
-    .execute();
-
-  const trackedBy: Record<string, BillTracker[]> = {};
-
-  rows.forEach((row) => {
-    if (!trackedBy[row.bill_id as string]) {
-      trackedBy[row.bill_id as string] = [];
-    }
-
-    trackedBy[row.bill_id as string].push({
-      id: row.user_id as string,
-      email: row.user_email ?? null,
-      username: row.user_username ?? null,
-      adopted_at: row.adopted_at ?? null,
-    });
-  });
-
-  return trackedBy;
-}
-
-async function getTrackedCountForBills(billIds: string[]): Promise<Record<string, number>> {
-  if (billIds.length === 0) return {};
-
-  const rows = await db
-    .selectFrom('user_bills as ub')
-    .select([
-      'ub.bill_id as bill_id',
-      db.fn.countAll().as('tracked_count'),
-    ])
-    .where('ub.bill_id', 'in', billIds)
-    .groupBy('ub.bill_id')
-    .execute();
-
-  const trackedCount: Record<string, number> = {};
-
-  rows.forEach((row) => {
-    trackedCount[row.bill_id as string] = Number(row.tracked_count ?? 0);
-  });
-
-  return trackedCount;
-}
-
 // ==============================================
-// FETCH BILL DATA FUNCTIONS
+// BILL FETCH FUNCTIONS
 // ===============================================
 
 /**
@@ -302,6 +229,79 @@ async function getAdditionalBillData(billIds: string[], includeTrackedBy: boolea
   return { statusUpdates, tags, trackedBy, trackedCount };
 }
 
+async function getStatusUpdatesForBills(billIds: string[]): Promise<Selectable<BillStatus>[]> {
+    const updates = await db
+      .selectFrom('status_updates as su')
+      .select([
+        'su.chamber',
+        'su.date',
+        'su.id as update_id',
+        'su.statustext',
+        'su.bill_id'
+      ])
+      .where('su.bill_id', 'in', billIds)
+      .orderBy('su.date', 'desc')
+      .execute();
+    return updates;
+}
+
+async function getTrackedByForBills(billIds: string[]): Promise<Record<string, BillTracker[]>> {
+  if (billIds.length === 0) return {};
+
+  const rows = await db
+    .selectFrom('user_bills as ub')
+    .innerJoin('user as u', 'ub.user_id', 'u.id')
+    .select([
+      'ub.bill_id as bill_id',
+      'u.id as user_id',
+      'u.email as user_email',
+      'u.username as user_username',
+      'ub.adopted_at as adopted_at',
+    ])
+    .where('ub.bill_id', 'in', billIds)
+    .orderBy('ub.adopted_at', 'desc')
+    .execute();
+
+  const trackedBy: Record<string, BillTracker[]> = {};
+
+  rows.forEach((row) => {
+    if (!trackedBy[row.bill_id as string]) {
+      trackedBy[row.bill_id as string] = [];
+    }
+
+    trackedBy[row.bill_id as string].push({
+      id: row.user_id as string,
+      email: row.user_email ?? null,
+      username: row.user_username ?? null,
+      adopted_at: row.adopted_at ?? null,
+    });
+  });
+
+  return trackedBy;
+}
+
+async function getTrackedCountForBills(billIds: string[]): Promise<Record<string, number>> {
+  if (billIds.length === 0) return {};
+
+  const rows = await db
+    .selectFrom('user_bills as ub')
+    .select([
+      'ub.bill_id as bill_id',
+      db.fn.countAll().as('tracked_count'),
+    ])
+    .where('ub.bill_id', 'in', billIds)
+    .groupBy('ub.bill_id')
+    .execute();
+
+  const trackedCount: Record<string, number> = {};
+
+  rows.forEach((row) => {
+    trackedCount[row.bill_id as string] = Number(row.tracked_count ?? 0);
+  });
+
+  return trackedCount;
+}
+
 // ==============================================
 // BILL UPDATE FUNCTIONS
 // ==============================================
@@ -467,7 +467,7 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
 }
 
 // ==============================================
-// BILL TRACK & INSERT FUNCTIONS
+// BILL TRACK FUNCTIONS
 // ==============================================
 
 /**
@@ -493,7 +493,7 @@ export async function trackBill(userId: string, billUrl: string): Promise<Bill> 
       const { findBill } = await import('@/services/scraper');
       const newBill = await findBill(billUrl);
 
-      // return new bill data
+      // return the new bills ID (scraper service inserts new bill to DB)
       console.log('[TRACK BILL] Scraped new bill data:', newBill);
       billId = newBill.individualBill.id;
     }
@@ -508,8 +508,8 @@ export async function trackBill(userId: string, billUrl: string): Promise<Bill> 
     const alreadyTracked = await db.selectFrom('user_bills').selectAll()
       .where('user_id', '=', userId)
       .where('bill_id', '=', billId)
-      .execute();
-    if (alreadyTracked && alreadyTracked.length > 0) {
+      .executeTakeFirst();
+    if (alreadyTracked) {
       console.log('Bill already tracked by user', userId.slice(0, 6), 'bill', billId.slice(0, 6));
       throw new Error('Bill already tracked by this user');
     }
@@ -521,9 +521,17 @@ export async function trackBill(userId: string, billUrl: string): Promise<Bill> 
       adopted_at: new Date()
     }).executeTakeFirst();
 
+    // Return the bill object
+    const trackedBillResult = await db.selectFrom('bills')
+      .selectAll()
+      .where('id', '=', billId)
+      .executeTakeFirstOrThrow();
+    
+    const trackedBill = await convertDataToBillShape(trackedBillResult);
+
     console.log(`Successfully tracked bill ${billId} for user ${userId}`);
 
-    return { ...billResult } as Bill;
+    return { ...trackedBill } as Bill;
   } catch (error) {
     console.error('Failed to adopt bill:', error);
     throw error;
@@ -553,8 +561,12 @@ export async function untrackBill(userId: string, billId: string): Promise<boole
   }
 }
 
+// ==============================================
+// BILL ASSIGN FUNCTIONS
+// ==============================================
+
 /**
- * Assigns a bill to a target user.
+ * Helper to validate if the assigner can assign bills to the target user.
  * Only admins and supervisors can assign bills.
  * Supervisors can only assign to their adopted interns.
  * Admins can assign to interns and supervisors.
