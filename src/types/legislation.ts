@@ -80,7 +80,7 @@ export interface TempBill {
   bill_number?: string | null;
   bill_title: string | null;
   current_status: BillStatus;
-  suggested_status: BillStatus;
+  proposed_status: BillStatus;
   target_idx: number;
   source?: 'llm' | 'human';
   approval_status?: 'pending' | 'approved' | 'rejected';

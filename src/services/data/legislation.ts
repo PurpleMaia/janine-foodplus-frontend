@@ -362,6 +362,11 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
       throw new Error('Bill data is required to update food-related flag');
     }
 
+    if (bill.bill_url.includes('//data.capitol.hawaii.gov/')) {
+      console.log('Bill object returned was from scraper, setting url to capitol.hawaii.gov format...');
+      bill.bill_url = bill.bill_url.replace('//data.capitol.hawaii.gov/', '//capitol.hawaii.gov/');
+    }
+
     // Check if bill exists
     const existingBill = await findExistingBillByURL(bill.bill_url);
 
@@ -443,7 +448,7 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
       trackedBy,
       trackedCount
     });
-    
+
     if (!convertedBill) {
       throw new Error('Failed to convert bill data');
     }
@@ -503,7 +508,7 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
 
     const result = await db.selectFrom('bills')
       .selectAll()
-      .where('bill_number', '=', billTitle as string)
+      .where('bill_number', 'like', `%${billTitle as string}%`)
       .executeTakeFirst();
 
     if (result) {

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 // Removed direct service import - will use API route instead
 import type { TempBill, Bill } from '@/types/legislation';
-import type { User } from '@/lib/auth';
+import type { User } from '@/types/user';
 
 export function ApprovalsDashboard() {
   const { tempBills, acceptTempChange, rejectTempChange, bills } = useBills();
@@ -260,7 +260,7 @@ export function ApprovalsDashboard() {
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary">{proposal.current_status}</Badge>
                         <span className="text-muted-foreground">→</span>
-                        <Badge variant="default">{proposal.suggested_status}</Badge>
+                        <Badge variant="default">{proposal.proposed_status}</Badge>
                       </div>
                     </div>
 

@@ -16,6 +16,8 @@ export function ProtectedKanbanBoardOrSpreadsheet() {
   const { bills, loadingBills, viewMode } = useBills();
   const { untrackBill } = useTrackedBills();
 
+  const isIntern = user && user.role === 'user';
+
   if (loading) {
     return null
   }
@@ -42,14 +44,26 @@ export function ProtectedKanbanBoardOrSpreadsheet() {
         <KanbanHeader />
         <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
           <div className="text-center space-y-4">
-            <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
-            <p className="text-muted-foreground max-w-md">
-              You haven&apos;t adopted any bills yet. Use the button below to start tracking bills that interest you.
-            </p>
-          </div>
-          <div className="w-64">
-            <TrackBillDialog />
-          </div>
+            { isIntern ? 
+            (
+              <>
+                <h2 className="text-2xl font-semibold">No Bills Assigned Yet</h2>
+                <p className="text-muted-foreground max-w-md">
+                  { isIntern
+                    ? 'Admin or Supervisor has not assigned any bills to you yet. Please check back later.'
+                    : 'You have not adopted any bills yet. Click the button below to track and adopt bills to get started!'
+                  }
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-semibold">You Have No Adopted Bills</h2>
+                <p className="text-muted-foreground max-w-md">
+                  You have not adopted any bills yet. Click the All Bills toggle in the header to track and adopt bills to get started!
+                </p>
+              </>              
+            )}
+          </div>          
         </div>
       </>
     );
