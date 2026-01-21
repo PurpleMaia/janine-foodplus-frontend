@@ -188,7 +188,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                             <AlertDialogHeader>
                               <AlertDialogTitle>Remove Bill from Board?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to remove this bill from the list? This will set the bill as not food-related. You can add back the bill by finding its URL in the state site and using the Add Bill button.
+                                Are you sure you want to remove this bill from the list? This will set the bill as not food-related. You can add back the bill by finding its URL in the Hawaii State Legislature site and using the Add or Remove Bill button.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

@@ -12,11 +12,14 @@ import {
   denyUser,
   assignSupervisorToIntern,
   unassignInternFromSupervisor,
+  getAllAccounts,
 } from '@/app/actions/admin';
+import { db } from '@/db/kysely/client';
 
 // Query keys for cache management
 const queryKeys = {
   pendingRequests: ['admin', 'pending-requests'] as const,
+  allAccounts: ['admin', 'all-accounts'] as const,
   pendingProposals: ['admin', 'pending-proposals'] as const,
   supervisorRequests: ['admin', 'supervisor-requests'] as const,
   allInterns: ['admin', 'all-interns'] as const,
@@ -40,6 +43,17 @@ export function useAdminDashboard() {
       return result.data ?? [];
     },
     staleTime: 30_000, // Consider data fresh for 30 seconds
+  });
+
+  const allAccountsQuery = useQuery({
+    queryKey: queryKeys.allAccounts,
+    queryFn: async () => {
+      const result = await getAllAccounts();
+
+      if (!result.success) throw new Error(result.error);
+      return result.data ?? [];
+    },
+    staleTime: 30_000,
   });
 
   const pendingProposalsQuery = useQuery({
@@ -216,6 +230,7 @@ export function useAdminDashboard() {
     // Data
     pendingUsers: pendingRequestsQuery.data ?? [],
     pendingProposals: pendingProposalsQuery.data ?? [],
+    allAccounts: allAccountsQuery.data ?? [],
     allInterns: allInternsQuery.data ?? [],
     allSupervisors: allSupervisorsQuery.data ?? [],
     allInternBills: allInternBillsQuery.data ?? [],
