@@ -14,7 +14,6 @@ import {
   unassignInternFromSupervisor,
   getAllAccounts,
 } from '@/app/actions/admin';
-import { db } from '@/db/kysely/client';
 
 // Query keys for cache management
 const queryKeys = {
