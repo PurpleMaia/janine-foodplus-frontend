@@ -23,7 +23,7 @@ interface NewBillDialogProps {
     onClose: () => void;
   }
 export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
-    const { addBill } = useBills()    
+    const { addBill, removeBill } = useBills()
     const [isAlreadyInDB, setIsAlreadyInDB] = useState<boolean>(false)
     const [url, setUrl] = useState<string>('')
     const [error, setError] = useState<string>('');
@@ -102,7 +102,11 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
 
         const result = await updateFoodStatusOrCreateBill(billPreview, foodRelatedSelection)
 
-        addBill(result); // add to client bill array 
+        if (foodRelatedSelection === true) {    
+            addBill(result); // add to client bill array 
+        } else {
+            removeBill(result.id); // remove from client bill array
+        }
 
         if (!result) {
             console.log('Error updating bill')

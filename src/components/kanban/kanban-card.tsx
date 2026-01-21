@@ -9,6 +9,19 @@ import { useBills } from '@/hooks/contexts/bills-context';
 import { useAuth } from '@/hooks/contexts/auth-context';
 import { AssignBillDialog } from './assign-bill-dialog';
 import type { Bill } from '@/types/legislation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { updateFoodStatusOrCreateBill } from '@/services/data/legislation';
+import { toast } from '@/hooks/use-toast';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   bill: Bill;
@@ -47,7 +60,9 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     // All hooks must be called before any conditional logic
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
-    const { acceptLLMChange, rejectLLMChange } = useBills();
+    const [isRemoving, setIsRemoving] = useState(false);
+    const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+    const { acceptLLMChange, rejectLLMChange, removeBill } = useBills();
     const { user } = useAuth();    
 
     const canSeeTracking = user?.role === 'admin' || user?.role === 'supervisor';
@@ -99,6 +114,27 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
       }
     };
 
+    const handleRemoveBill = async () => {
+      setIsRemoving(true);
+      try {
+        // Update the food_related flag to false
+        await updateFoodStatusOrCreateBill(bill, false);
+        // Remove from local state
+        removeBill(bill.id);
+
+        toast({
+          title: 'Bill Removed',
+          description: `Bill ${bill.bill_number} has been removed from the board.`,
+          duration: 5000,
+        });
+        setShowRemoveDialog(false);
+      } catch (error) {
+        console.error('Error removing bill from board:', error);
+      } finally {
+        setIsRemoving(false);
+      }
+    };
+
     return (
         <div
             ref={ref}
@@ -129,12 +165,55 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 tabIndex={0}
                 aria-label={`View details for bill ${bill.id}: ${bill.bill_title}`}
             >
-                <CardHeader className="px-3 py-2 space-y-2 justify-between">        
+                <CardHeader className="px-3 py-2 space-y-2 justify-between relative">
+
+                      {/* Remove Bill Button - Only for admins and supervisors */}
+                      {canAssignBills(user) && (
+                        <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="cursor-pointer absolute top-2 right-2 h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowRemoveDialog(true);
+                              }}
+                              disabled={isRemoving}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Bill from Board?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove this bill from the list? This will set the bill as not food-related. You can add back the bill by finding its URL in the state site and using the Add Bill button.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveBill();
+                                }}
+                                className="bg-red-600 hover:bg-red-700"
+                                disabled={isRemoving}
+                              >
+                                {isRemoving ? 'Removing...' : 'Remove Bill'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
 
                       <CardTagSelector
                         billId={bill.id}
                         billTags={bill.tags}
-                      />                                
+                      />
                       <div className="flex gap-2 my-1 items-center">
                         <CardTitle className="text-md font-bold" title={bill.bill_title}>
                           {bill.bill_number}
@@ -144,7 +223,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                             {bill.year}
                           </Badge>
                         )}
-                     </div>           
+                     </div>
 
                 </CardHeader>
                 <CardContent className="p-0 gap-2">

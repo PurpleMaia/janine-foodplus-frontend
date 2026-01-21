@@ -734,11 +734,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
    * Automatically fetches the appropriate bills for the new state
    */
   const toggleShowArchived = useCallback(() => {
+    setLoadingBills(true);
     const newShowArchived = !showArchived;
     setShowArchived(newShowArchived);
 
     (async () => {
-      setLoadingBills(true);
       try {
         const billsWithTags = await fetchBillsWithTags();
         setBills(billsWithTags);
@@ -746,7 +746,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         console.error('Error refreshing bills on archived toggle:', err);
         setError('Failed to refresh bills.');
       } finally {
-        setLoadingBills(false);
+        setTimeout(() => {
+          setLoadingBills(false);
+        }, 500); // slight delay for better UX
       }
     })();
   }, [showArchived, fetchBillsWithTags]);
