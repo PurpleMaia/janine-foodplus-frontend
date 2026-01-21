@@ -506,20 +506,34 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
       throw new Error('Invalid bill URL');
     }
 
-    const result = await db.selectFrom('bills')
+    // First pass of exact match on bill_number
+    const exactMatchResult = await db.selectFrom('bills')
       .selectAll()
-      .where('bill_number', 'like', `%${billTitle as string}%`)
+      .where('bill_number', '=', billTitle as string)
       .executeTakeFirst();
 
-    if (result) {
+    if (exactMatchResult) {
       console.log(`Found existing bill in database based on: `, billURl)
-      const bill = await convertDataToBillShape(result);
+      const bill = await convertDataToBillShape(exactMatchResult);
 
       return bill;
-    } else {
-      console.log('Could not find bill in database based on: ', billURl)
-      return null
     }
+
+    // Second pass of partial match on bill_number (in case of suffixes)
+    const partialMatchResult = await db.selectFrom('bills')
+      .selectAll()
+      .where('bill_number', 'like', `${billTitle}%`)
+      .executeTakeFirst();
+
+    if (partialMatchResult) {
+      console.log(`Found existing bill in database based on partial match: `, billURl)
+      const bill = await convertDataToBillShape(partialMatchResult);
+
+      return bill;
+    }
+
+    console.log('No existing bill found in database for URL:', billURl);
+    return null;
   } catch (error) {
     console.error('Database search failed', error)
     return null
