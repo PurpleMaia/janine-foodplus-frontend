@@ -40,6 +40,7 @@ export async function getAllTags(): Promise<Tag[]> {
  */
 export async function createTag(name: string, color?: string): Promise<Tag> {
   try {
+    console.log('Creating new tag:', name, '...');
     // Check if tag with same name already exists
     const existingTag = await db
       .selectFrom('tags')
@@ -251,6 +252,7 @@ export async function getBatchBillTags(billIds: string[]): Promise<Record<string
  */
 export async function updateBillTags(billId: string, tagIds: string[]): Promise<Tag[]> {
   try {
+    console.log('Updating bill tags for billId:', billId.slice(0, 6), '...');
     // Check if bill exists
     const bill = await db
       .selectFrom('bills')

@@ -5,6 +5,8 @@
 
 import type { ColumnType } from "kysely";
 
+export type AiMisclassification = "false_negative" | "false_positive";
+
 export type BillStatus = "conferenceAssigned" | "conferenceDeferred" | "conferencePassed" | "conferenceScheduled" | "crossoverDeferred1" | "crossoverDeferred2" | "crossoverDeferred3" | "crossoverScheduled1" | "crossoverScheduled2" | "crossoverScheduled3" | "crossoverWaiting1" | "crossoverWaiting2" | "crossoverWaiting3" | "deferred1" | "deferred2" | "deferred3" | "governorSigns" | "introduced" | "lawWithoutSignature" | "passedCommittees" | "scheduled1" | "scheduled2" | "scheduled3" | "transmittedGovernor" | "unassigned" | "vetoList" | "waiting2" | "waiting3";
 
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
@@ -24,6 +26,7 @@ export interface AuthKey {
 }
 
 export interface Bills {
+  ai_misclassification_type: AiMisclassification | null;
   archived: Generated<boolean>;
   bill_number: string | null;
   bill_status: Generated<BillStatus | null>;

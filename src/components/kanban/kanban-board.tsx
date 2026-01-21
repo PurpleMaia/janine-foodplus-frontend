@@ -42,6 +42,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     proposeStatusChange,
     acceptTempChange,
     rejectTempChange,
+    undoProposal,
   } = useBills();
 
   const [, setError] = useState<string | null>(null);
@@ -58,6 +59,10 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   const columnRefs = useRef<(HTMLDivElement | null)[]>(
     new Array(KANBAN_COLUMNS.length).fill(null)
   );
+
+  // Store refs to all bill cards across all columns
+  const billCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const columnScrollViewportRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const introducedIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'introduced');
   const crossoverIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'crossoverWaiting1');
@@ -261,7 +266,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     console.log('📊 [TEMP BILLS BY COLUMN] Search query:', searchQuery);
 
     tempBills.forEach((tb, idx) => {
-      console.log(`  [${idx + 1}] Bill ID: ${tb.id}, Status: ${tb.current_status} → ${tb.suggested_status}`);
+      console.log(`  [${idx + 1}] Bill ID: ${tb.id}, Status: ${tb.current_status} → ${tb.proposed_status}`);
       if (searchQuery.trim() && !visibleBillIds.has(tb.id)) {
         console.log(`    ⚠️ Filtered out (not in visible bills or search)`);
         return;
@@ -269,7 +274,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       // Group by current_status so temp bill appears in the original column
       const key = tb.current_status as BillStatus;
       grouped[key]?.push(tb);
-      console.log(`    ✅ Added to column: ${key} (original status, proposed to move to ${tb.suggested_status})`);
+      console.log(`    ✅ Added to column: ${key} (original status, proposed to move to ${tb.proposed_status})`);
     });
 
     // Log final grouped counts
@@ -385,9 +390,38 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   }, []);
 
   const handleTempCardClick = useCallback(
-    (bill: TempBill) => {
-      // optional: if you want pending click to scroll to its target column
-      scrollToColumnByIndex(bill.target_idx);
+    (tempBill: TempBill) => {
+      // Find the column index where the real bill currently is (current_status)
+      const currentStatusColumnIndex = KANBAN_COLUMNS.findIndex(
+        col => col.id === tempBill.proposed_status
+      );
+
+      // First, scroll horizontally to the column where the real bill is
+      if (currentStatusColumnIndex !== -1) {
+        scrollToColumnByIndex(currentStatusColumnIndex);
+      }
+
+      // Then, scroll vertically to the bill card within that column
+      // Wait a bit for the horizontal scroll to complete
+      setTimeout(() => {
+        const billElement = billCardRefs.current.get(tempBill.id);
+        const viewport = columnScrollViewportRefs.current.get(currentStatusColumnIndex);
+
+        if (billElement && viewport) {
+          // Get the position of the bill card relative to the viewport
+          const billRect = billElement.getBoundingClientRect();
+          const viewportRect = viewport.getBoundingClientRect();
+
+          // Calculate the scroll position to center the bill card
+          const scrollTop = viewport.scrollTop + (billRect.top - viewportRect.top) - (viewportRect.height / 2) + (billRect.height / 2);
+
+          // Smooth scroll to the position
+          viewport.scrollTo({
+            top: scrollTop,
+            behavior: 'smooth'
+          });
+        }
+      }, 300); // Wait for horizontal scroll animation
     },
     [scrollToColumnByIndex]
   );
@@ -429,6 +463,11 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                       canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
                       onApproveTemp={(billId) => acceptTempChange(billId)}
                       onRejectTemp={(billId) => rejectTempChange(billId)}
+                      onUndoProposal={(billId) => undoProposal(billId)}
+                      onTempCardClick={handleTempCardClick}
+                      billCardRefs={billCardRefs}
+                      columnScrollViewportRefs={columnScrollViewportRefs}
+                      columnIndex={idx}
                     />
                   </div>
                 ))}
@@ -477,6 +516,11 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
                             onApproveTemp={(billId) => acceptTempChange(billId)}
                             onRejectTemp={(billId) => rejectTempChange(billId)}
+                            onUndoProposal={(billId) => undoProposal(billId)}
+                            onTempCardClick={handleTempCardClick}
+                            billCardRefs={billCardRefs}
+                            columnScrollViewportRefs={columnScrollViewportRefs}
+                            columnIndex={idx}
                           >
                             {provided.placeholder}
                           </KanbanColumn>

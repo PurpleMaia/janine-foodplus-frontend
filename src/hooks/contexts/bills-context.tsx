@@ -47,6 +47,7 @@ interface BillsContextType {
   rejectTempChange: (billId: string) => Promise<void>;
   acceptAllTempChanges: () => Promise<void>;
   rejectAllTempChanges: () => Promise<void>;
+  undoProposal: (billId: string) => Promise<void>;
   updateBillNickname: (billId: string, nickname: string) => Promise<void>;
 
   // View Mode
@@ -253,10 +254,10 @@ export function BillsProvider({ children }: { children: ReactNode }) {
    */
   const proposeStatusChange: BillsContextType['proposeStatusChange'] = async (
     bill,
-    suggested_status,
+    proposed_status,
     meta
   ) => {
-    console.log('🟣 proposeStatusChange called:', bill.id, '→', suggested_status);
+    console.log('🟣 proposeStatusChange called:', bill.id, '→', proposed_status);
 
     // Validate required fields
     if (!bill.id) {
@@ -268,15 +269,15 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       console.warn(`⚠️ Bill ${bill.id} has missing current_status, using 'unassigned' as fallback`);
     }
 
-    if (!suggested_status || suggested_status.trim() === '') {
-      throw new Error(`Suggested status is missing or empty. Bill ID: ${bill.id}`);
+    if (!proposed_status || proposed_status.trim() === '') {
+      throw new Error(`Proposed status is missing or empty. Bill ID: ${bill.id}`);
     }
 
     const proposal: TempBill = {
       id: bill.id,
       bill_title: bill.bill_title || null,
       current_status: currentStatus as BillStatus,
-      suggested_status,
+      proposed_status: proposed_status as BillStatus,
       target_idx: 0,
       source: 'human',
       approval_status: 'pending',
@@ -294,7 +295,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       const requestBody = {
         billId: bill.id,
         currentStatus: currentStatus,
-        suggestedStatus: suggested_status,
+        proposedStatus: proposed_status,
         note: meta.note || undefined,
       };
 
@@ -322,9 +323,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      // Set the bill that was changed to the new id
+      updateBill(bill.id, { current_status: proposed_status });
+
       toast({
         title: 'Change Proposed',
-        description: `Pending: ${bill.bill_number} → ${suggested_status}`,
+        description: `Pending: ${bill.bill_number} → ${proposed_status}`,
         variant: 'default',
       });
     } catch (error) {
@@ -381,7 +385,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             ? {
                 ...b,
                 previous_status: b.current_status,
-                current_status: tb.suggested_status as BillStatus,
+                current_status: tb.proposed_status as BillStatus,
                 llm_suggested: false,
                 llm_processing: false,
               }
@@ -398,7 +402,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
       toast({
         title: 'Proposal Approved',
-        description: `Bill updated to ${tb.suggested_status}`,
+        description: `Bill updated to ${tb.proposed_status}`,
         variant: 'default',
       });
     } catch (e) {
@@ -448,6 +452,15 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         throw new Error('Failed to reject proposal');
       }
 
+      // Revert the bill's status back to the original status
+      setBills((prev) =>
+        prev.map((b) =>
+          b.id === billId
+            ? { ...b, current_status: tb.current_status }
+            : b
+        )
+      );
+
       setTempBills((prev) => prev.filter((t) => t.id !== billId));
 
       const proposals = await reloadProposalsFromServer();
@@ -457,7 +470,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
       toast({
         title: 'Proposal Rejected',
-        description: 'Pending change discarded.',
+        description: `Bill reverted to ${tb.current_status}`,
         variant: 'default',
       });
     } catch (e) {
@@ -499,6 +512,71 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       description: `Discarded ${humanProposals.length} pending changes.`,
       variant: 'default',
     });
+  };
+
+  /**
+   * Allows a user to undo/delete their own pending proposal
+   * Removes the proposal from the database and reverts the bill to its original status
+   */
+  const undoProposal: BillsContextType['undoProposal'] = async (billId) => {
+    const tb = tempBills.find((t) => t.id === billId);
+    if (!tb) {
+      console.warn('No temp bill found for:', billId);
+      return;
+    }
+
+    // Only allow users to undo their own proposals
+    if (tb.proposed_by?.user_id !== user?.id) {
+      toast({
+        title: 'Forbidden',
+        description: 'You can only undo your own proposals.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      console.log('🗑️ [UNDO] Deleting proposal for bill:', billId);
+
+      const response = await fetch('/api/proposals/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete proposal');
+      }
+
+      const data = await response.json();
+      console.log('✅ [UNDO] Proposal deleted successfully');
+
+      // Revert the bill's status back to the original status
+      setBills((prev) =>
+        prev.map((b) =>
+          b.id === billId
+            ? { ...b, current_status: tb.current_status }
+            : b
+        )
+      );
+
+      // Remove the temp bill from UI
+      setTempBills((prev) => prev.filter((t) => t.id !== billId));
+
+      toast({
+        title: 'Proposal Undone',
+        description: `Bill reverted to ${tb.current_status}`,
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error undoing proposal:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to undo proposal',
+        variant: 'destructive',
+      });
+    }
   };
 
   /**
@@ -656,11 +734,11 @@ export function BillsProvider({ children }: { children: ReactNode }) {
    * Automatically fetches the appropriate bills for the new state
    */
   const toggleShowArchived = useCallback(() => {
+    setLoadingBills(true);
     const newShowArchived = !showArchived;
     setShowArchived(newShowArchived);
 
     (async () => {
-      setLoadingBills(true);
       try {
         const billsWithTags = await fetchBillsWithTags();
         setBills(billsWithTags);
@@ -668,7 +746,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         console.error('Error refreshing bills on archived toggle:', err);
         setError('Failed to refresh bills.');
       } finally {
-        setLoadingBills(false);
+        setTimeout(() => {
+          setLoadingBills(false);
+        }, 500); // slight delay for better UX
       }
     })();
   }, [showArchived, fetchBillsWithTags]);
@@ -754,6 +834,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectTempChange,
       acceptAllTempChanges,
       rejectAllTempChanges,
+      undoProposal,
       updateBillNickname,
 
       // View Mode
@@ -788,6 +869,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       rejectTempChange,
       acceptAllTempChanges,
       rejectAllTempChanges,
+      undoProposal,
       updateBillNickname,
       viewMode,
       setViewMode,

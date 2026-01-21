@@ -326,7 +326,7 @@ export async function updateBillStatus(billId: string, newStatus: string): Promi
     try {
         const updatedBill = await db.updateTable('bills')
         .set({
-            bill_status: newStatus as any,
+            bill_status: newStatus as BillStatus,
             updated_at: new Date()
         })
         .where('id', '=', billId)
@@ -362,11 +362,22 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
       throw new Error('Bill data is required to update food-related flag');
     }
 
+    if (bill.bill_url.includes('https://data.capitol.hawaii.gov/')) {
+      console.log('Bill object returned was from scraper, setting url to capitol.hawaii.gov format...');
+      bill.bill_url = bill.bill_url.replace('https://data.capitol.hawaii.gov/', 'https://capitol.hawaii.gov/');
+    }
+
     // Check if bill exists
     const existingBill = await findExistingBillByURL(bill.bill_url);
 
     if (!existingBill) {
       console.log('Bill not found in database, creating new bill with food-related flag...');
+
+      // Determine AI misclassification type for new bills
+      // If user is adding with food_related=true, it means AI missed it (false negative)
+      // If user is adding with food_related=false, no misclassification (just adding for reference)
+      const aiMisclassificationType = foodState === true ? 'false_negative' : null;
+
       // Insert new bill with food-related flag
       const insertedBill = await db
         .insertInto('bills')
@@ -378,13 +389,17 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
           description: bill.description,
           current_status_string: bill.current_status_string ?? '',
           updated_at: new Date(),
-          food_related: foodState
+          food_related: foodState,
+          ai_misclassification_type: aiMisclassificationType
         })
         .returningAll()
         .executeTakeFirst();
 
       if (insertedBill) {
         console.log(`Successfully created new bill ${insertedBill.bill_number} with food_related set to ${foodState} in database`);
+        if (aiMisclassificationType) {
+          console.log(`Bill flagged as AI misclassification: ${aiMisclassificationType}`);
+        }
         return await convertDataToBillShape(insertedBill);
       } else {
         console.log('Failed to create new bill in database');
@@ -392,9 +407,26 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
       }
     }
 
+    // If bill exists, determine if this is a manual correction
+    let aiMisclassificationType: 'false_positive' | 'false_negative' | null = null;
+
+    if (existingBill.food_related !== foodState) {
+      // User is changing the food_related status - this is a manual correction
+      if (existingBill.food_related === true && foodState === false) {
+        // AI said food-related, but user says it's not
+        aiMisclassificationType = 'false_positive';
+      } else if (existingBill.food_related === false && foodState === true) {
+        // AI said not food-related, but user says it is
+        aiMisclassificationType = 'false_negative';
+      }
+    }
+
     // If bill exists, update its food-related flag
     const result = await db.updateTable('bills')
-      .set({ food_related: foodState })
+      .set({
+        food_related: foodState,
+        ai_misclassification_type: aiMisclassificationType
+      })
       .where('id', '=', existingBill.id)
       .returningAll()
       .executeTakeFirst();
@@ -402,9 +434,24 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
     if (!result) {
       throw new Error('Failed to update food-related flag');
     }
-    
-    console.log(`Successfully updated bill ${result.bill_number} food_related state to ${foodState} in database`);  
-    const convertedBill = await convertDataToBillShape(result);
+
+    console.log(`Successfully updated bill ${result.bill_number} food_related state to ${foodState} in database`);
+    if (aiMisclassificationType) {
+      console.log(`Bill flagged as AI misclassification: ${aiMisclassificationType}`);
+    }    
+
+    // includeTrackedBy = true since this feature is only available to admins and supervisors
+    const { statusUpdates, tags, trackedBy, trackedCount } = await getAdditionalBillData([result.id], true);
+    const convertedBill = await convertDataToBillShape(result, {
+      statusUpdates,
+      tags,
+      trackedBy,
+      trackedCount
+    });
+
+    if (!convertedBill) {
+      throw new Error('Failed to convert bill data');
+    }
 
     return convertedBill;
   } catch (error) {
@@ -446,20 +493,47 @@ export async function searchBills(bills: Bill[], query: string): Promise<Bill[]>
  */
 export async function findExistingBillByURL(billURl: string): Promise<Bill | null> {
   try {
-    const result = await db.selectFrom('bills')
+
+    // extract the billtype and billnumber from the URL
+    const urlObj = new URL(billURl);
+    const billType = urlObj.searchParams.get('billtype');
+    const billNumber = urlObj.searchParams.get('billnumber');
+
+    const billTitle = billType && billNumber ? `${billType}${billNumber}` : null;
+
+    if (!billTitle) {
+      console.log('Invalid bill URL, cannot extract bill type and number:', billURl);
+      throw new Error('Invalid bill URL');
+    }
+
+    // First pass of exact match on bill_number
+    const exactMatchResult = await db.selectFrom('bills')
       .selectAll()
-      .where('bill_url', 'like', `${billURl}%`)      
+      .where('bill_number', '=', billTitle as string)
       .executeTakeFirst();
 
-    if (result) {
+    if (exactMatchResult) {
       console.log(`Found existing bill in database based on: `, billURl)
-      const bill = await convertDataToBillShape(result);
+      const bill = await convertDataToBillShape(exactMatchResult);
 
       return bill;
-    } else {
-      console.log('Could not find bill in database based on: ', billURl)
-      return null
     }
+
+    // Second pass of partial match on bill_number (in case of suffixes)
+    const partialMatchResult = await db.selectFrom('bills')
+      .selectAll()
+      .where('bill_number', 'like', `${billTitle}%`)
+      .executeTakeFirst();
+
+    if (partialMatchResult) {
+      console.log(`Found existing bill in database based on partial match: `, billURl)
+      const bill = await convertDataToBillShape(partialMatchResult);
+
+      return bill;
+    }
+
+    console.log('No existing bill found in database for URL:', billURl);
+    return null;
   } catch (error) {
     console.error('Database search failed', error)
     return null
@@ -774,46 +848,56 @@ async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, 
 
   // Map bills data (data, updates, tags) to Bill client objects
   await Promise.all(bills.map(async (row: Selectable<Bills>) => {
-
-    // Init map data to client data shape
     if (!billObjects.has(row.id)) {
-      billObjects.set(row.id, await convertDataToBillShape(row));
-    }
-
-    // Add status updates & tags to the bill object
-    const bill = billObjects.get(row.id) as Bill;
-    if (bill) {
-        const updatesForBill = statusUpdates.filter(update => update.bill_id === row.id);
-        bill.updates = updatesForBill.map(update => ({
-            id: update.update_id as string,
-            statustext: (update.statustext || '') as string,
-            date: (update.date || '') as string,
-            chamber: (update.chamber || '') as string
-        }));
-
-        // Add tags to the bill object
-        bill.tags = tags[row.id] || [];
-
-        if (trackedBy) {
-          bill.tracked_by = trackedBy[row.id] || [];
-        }
-
-        if (trackedCount) {
-          bill.tracked_count = trackedCount[row.id] ?? 0;
-        }
+      // Use convertDataToBillShape with additional data to avoid duplicate mapping logic
+      const bill = await convertDataToBillShape(row, {
+        statusUpdates,
+        tags,
+        trackedBy,
+        trackedCount
+      });
+      billObjects.set(row.id, bill);
     }
   }));
 
   return billObjects;
 }
 
+interface AdditionalBillData {
+  statusUpdates: Selectable<BillStatus>[];
+  tags: Record<string, Tag[]>;
+  trackedBy?: Record<string, BillTracker[]>;
+  trackedCount?: Record<string, number>;
+}
 /**
  * Converts a singular bill from the database format to the client-side format.
  * @param bill The bill to convert.
  * @returns The converted bill.
  */
-async function convertDataToBillShape(bill: Selectable<Bills>): Promise<Bill> {
+async function convertDataToBillShape(bill: Selectable<Bills>, additionalData?: AdditionalBillData): Promise<Bill> {
   const { toDate } = await import('@/lib/utils');
+
+  // Extract additional data if provided
+  let updates: { id: string; statustext: string; date: string; chamber: string; }[] = [];
+  let billTags: Tag[] = [];
+  let trackedBy: BillTracker[] = [];
+  let trackedCount = 0;
+
+  if (additionalData) {
+    // Map status updates for this bill
+    updates = additionalData.statusUpdates
+      .filter(update => update.bill_id === bill.id)
+      .map(update => ({
+        id: update.update_id as string,
+        statustext: (update.statustext || '') as string,
+        date: (update.date || '') as string,
+        chamber: (update.chamber || '') as string
+      }));
+    billTags = additionalData.tags[bill.id] || [];
+    trackedBy = additionalData.trackedBy?.[bill.id] || [];
+    trackedCount = additionalData.trackedCount?.[bill.id] ?? 0;
+  }
+
   return {
     // attributes from the database
     bill_number: bill.bill_number ?? '',
@@ -831,12 +915,13 @@ async function convertDataToBillShape(bill: Selectable<Bills>): Promise<Bill> {
     updated_at: toDate(bill.updated_at),
     year: bill.year ?? null,
     archived: bill.archived ?? false,
+    ai_misclassification_type: bill.ai_misclassification_type ?? null,
 
-    // client-side attributes
-    updates: [],
-    tags: [],
-    tracked_by: [],
-    tracked_count: 0,
+    // client-side attributes (use provided data or defaults)
+    updates: updates,
+    tags: billTags,
+    tracked_by: trackedBy,
+    tracked_count: trackedCount,
     previous_status: undefined,
     llm_suggested: undefined,
     llm_processing: undefined,

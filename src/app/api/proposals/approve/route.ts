@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the bill status
-    await updateBillStatus(proposal.bill_id, proposal.suggested_status as any);
+    await updateBillStatus(proposal.bill_id, proposal.proposed_status);
 
     // Mark proposal as approved
     await db

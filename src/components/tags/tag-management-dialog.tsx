@@ -72,9 +72,7 @@ export function TagManagementDialog({ isOpen, onClose }: TagManagementDialogProp
       toast({
         title: 'Success',
         description: 'Tag created successfully',
-      });
-      // Refresh bills to show the new tag in filter list
-      await refreshBills();
+      });      
     } catch (error) {
       toast({
         title: 'Error',

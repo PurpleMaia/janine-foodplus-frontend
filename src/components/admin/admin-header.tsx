@@ -5,7 +5,7 @@ import { Badge } from '../ui/badge';
 
 interface AdminHeaderProps {
   count: {
-    pendingRequests: number;
+    accounts: number;
     allInterns: number;
     allSupervisors: number;
     allTrackedBills: number;
@@ -18,7 +18,7 @@ export default function AdminHeader({ count }: AdminHeaderProps) {
         <div className=''>
             <TabsList className="space-x-4 shadow-sm border">
                 <TabsTrigger value="pending-requests" className={activeStyle}>
-                  Pending Requests <Badge className='ml-1 bg-red-100 text-red-800'>{count.pendingRequests}</Badge>
+                  Accounts <Badge className='ml-1 bg-red-100 text-red-800'>{count.accounts}</Badge>
                 </TabsTrigger>
                 <TabsTrigger value="all-tracked-bills" className={activeStyle}>
                   Tracked Bills <Badge className='ml-1 bg-yellow-100 text-yellow-800'>{count.allTrackedBills}</Badge>

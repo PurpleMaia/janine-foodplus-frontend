@@ -4,6 +4,7 @@ import { db } from '@/db/kysely/client';
 import { auth } from '@/lib/auth';
 import { Errors } from '@/lib/errors';
 import { BillWithInterns, InternWithBills, PendingProposal, PendingUser, SupervisorWithInterns } from '@/types/admin';
+import { User } from '@/types/user';
 import { revalidatePath } from 'next/cache';
 
 interface ActionResult<T = void> {
@@ -52,6 +53,29 @@ export async function getPendingRequests(): Promise<ActionResult<PendingUser[]>>
     return { success: false, error: 'Failed to fetch pending requests' };
   }
 }
+
+export async function getAllAccounts(): Promise<ActionResult<PendingUser[]>> {
+  try {
+    console.log('🔍 [ALL ACCOUNTS] Verifying admin access...')
+    await verifyAdminAccess();
+
+    console.log('📋 [ALL ACCOUNTS] Loading all active user accounts')
+    
+    const activeUsers: PendingUser[] = await db.selectFrom('user')
+      .selectAll()
+      .where('account_status', '=', 'active')
+      .orderBy('created_at', 'desc')
+      .execute();
+
+    console.log(`✅ [ALL ACCOUNTS] Successfully loaded ${activeUsers.length} active accounts`);
+
+    return { success: true, data: activeUsers };
+  } catch (error) {
+    console.error('❌ [ALL ACCOUNTS] Error fetching all accounts:', error);
+    return { success: false, error: 'Failed to fetch all accounts' };
+  }
+}
+
 // NOTE will be available to all not just admin
 export async function getPendingProposals(): Promise<ActionResult<PendingProposal[]>> {
   try {
@@ -364,6 +388,218 @@ export async function denyUser(userId: string): Promise<ActionResult> {
   }
 }
 
+// Get all active users for role management
+export async function getAllActiveUsers(includeArchived: boolean = false): Promise<ActionResult<PendingUser[]>> {
+  try {
+    console.log('🔍 [ALL USERS] Verifying admin access...');
+    const admin = await verifyAdminAccess();
+
+    console.log(`📋 [ALL USERS] Loading ${includeArchived ? 'all' : 'active'} users`);
+
+    let query = db.selectFrom('user')
+      .select(['id', 'email', 'username', 'created_at', 'requested_admin', 'requested_supervisor', 'account_status', 'role'])
+      .where('id', '!=', admin.userId); // Exclude current admin from the list
+
+    if (includeArchived) {
+      // Include both active and archived users
+      query = query.where('account_status', 'in', ['active', 'archived']);
+    } else {
+      // Only active users
+      query = query.where('account_status', '=', 'active');
+    }
+
+    const users: PendingUser[] = await query
+      .orderBy('account_status', 'asc') // Show active first
+      .orderBy('created_at', 'desc')
+      .execute();
+
+    console.log(`✅ [ALL USERS] Successfully loaded ${users.length} users`);
+
+    return { success: true, data: users };
+  } catch (error) {
+    console.error('❌ [ALL USERS] Error fetching users:', error);
+    return { success: false, error: 'Failed to fetch users' };
+  }
+}
+
+// Update user role (admin only)
+export async function updateUserRole(userId: string, newRole: 'user' | 'supervisor' | 'admin'): Promise<ActionResult> {
+  try {
+    console.log(`🔍 [UPDATE ROLE] Verifying admin access...`);
+    const admin = await verifyAdminAccess();
+
+    // Prevent admin from changing their own role
+    if (userId === admin.userId) {
+      return { success: false, error: 'Cannot change your own role' };
+    }
+
+    // Validate role
+    const validRoles = ['user', 'supervisor', 'admin'];
+    if (!validRoles.includes(newRole)) {
+      return { success: false, error: 'Invalid role specified' };
+    }
+
+    console.log(`📋 [UPDATE ROLE] Updating user ${userId} to role: ${newRole}`);
+
+    // Verify user exists and is active
+    const user = await db.selectFrom('user')
+      .select(['id', 'role', 'account_status'])
+      .where('id', '=', userId)
+      .where('account_status', '=', 'active')
+      .executeTakeFirst();
+
+    if (!user) {
+      return { success: false, error: 'User not found or not active' };
+    }
+
+    // Update the user's role
+    await db.updateTable('user')
+      .set({ role: newRole })
+      .where('id', '=', userId)
+      .where('account_status', '=', 'active')
+      .executeTakeFirst();
+
+    revalidatePath('/admin');
+
+    console.log(`✅ [UPDATE ROLE] Successfully updated user ${userId} from ${user.role} to ${newRole}`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [UPDATE ROLE] Error updating user role:', error);
+    return { success: false, error: 'Failed to update user role' };
+  }
+}
+
+// Archive user account (admin only)
+export async function archiveAccount(userId: string): Promise<ActionResult> {
+  try {
+    console.log(`🔍 [ARCHIVE ACCOUNT] Verifying admin access...`);
+    const admin = await verifyAdminAccess();
+
+    // Prevent admin from archiving their own account
+    if (userId === admin.userId) {
+      return { success: false, error: 'Cannot archive your own account' };
+    }
+
+    console.log(`📋 [ARCHIVE ACCOUNT] Archiving user ${userId}...`);
+
+    // Verify user exists and is active
+    const user = await db.selectFrom('user')
+      .select(['id', 'account_status'])
+      .where('id', '=', userId)
+      .where('account_status', '=', 'active')
+      .executeTakeFirst();
+
+    if (!user) {
+      return { success: false, error: 'User not found or not active' };
+    }
+
+    // Update the user's account status to archived
+    await db.updateTable('user')
+      .set({ account_status: 'archived' })
+      .where('id', '=', userId)
+      .where('account_status', '=', 'active')
+      .executeTakeFirst();
+
+    revalidatePath('/admin');
+
+    console.log(`✅ [ARCHIVE ACCOUNT] Successfully archived user ${userId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [ARCHIVE ACCOUNT] Error archiving user:', error);
+    return { success: false, error: 'Failed to archive user account' };
+  }
+}
+
+// Assign multiple bills to multiple users (admin only)
+export async function assignMultipleBillsToUsers(
+  billIds: string[],
+  userIds: string[]
+): Promise<ActionResult<{ assignmentsCreated: number }>> {
+  try {
+    console.log(`🔍 [ASSIGN MULTIPLE BILLS] Verifying admin access...`);
+    await verifyAdminAccess();
+
+    // Validate inputs
+    if (!billIds || billIds.length === 0) {
+      return { success: false, error: 'At least one bill ID is required' };
+    }
+
+    if (!userIds || userIds.length === 0) {
+      return { success: false, error: 'At least one user ID is required' };
+    }
+
+    console.log(`📋 [ASSIGN MULTIPLE BILLS] Assigning ${billIds.length} bill(s) to ${userIds.length} user(s)...`);
+
+    // Verify all bills exist and are food-related
+    const bills = await db
+      .selectFrom('bills')
+      .select(['id', 'bill_number', 'food_related'])
+      .where('id', 'in', billIds)
+      .where('food_related', '=', true)
+      .execute();
+
+    if (bills.length !== billIds.length) {
+      return { success: false, error: 'Some bills not found or are not food-related' };
+    }
+
+    // Verify all users exist and are active
+    const users = await db
+      .selectFrom('user')
+      .select(['id', 'username', 'account_status', 'role'])
+      .where('id', 'in', userIds)
+      .where('account_status', '=', 'active')
+      .execute();
+
+    if (users.length !== userIds.length) {
+      return { success: false, error: 'Some users not found or are not active' };
+    }
+
+    // Get existing assignments to avoid duplicates
+    const existingAssignments = await db
+      .selectFrom('user_bills')
+      .select(['user_id', 'bill_id'])
+      .where('bill_id', 'in', billIds)
+      .where('user_id', 'in', userIds)
+      .execute();
+
+    const existingSet = new Set(
+      existingAssignments.map(a => `${a.user_id}-${a.bill_id}`)
+    );
+
+    // Create new assignments
+    const newAssignments = [];
+    for (const userId of userIds) {
+      for (const billId of billIds) {
+        const key = `${userId}-${billId}`;
+        if (!existingSet.has(key)) {
+          newAssignments.push({
+            user_id: userId,
+            bill_id: billId,
+          });
+        }
+      }
+    }
+
+    // Batch insert new assignments
+    let assignmentsCreated = 0;
+    if (newAssignments.length > 0) {
+      await db
+        .insertInto('user_bills')
+        .values(newAssignments)
+        .execute();
+      assignmentsCreated = newAssignments.length;
+    }
+
+    revalidatePath('/admin');
+
+    console.log(`✅ [ASSIGN MULTIPLE BILLS] Created ${assignmentsCreated} new assignments (${existingAssignments.length} already existed)`);
+    return { success: true, data: { assignmentsCreated } };
+  } catch (error) {
+    console.error('❌ [ASSIGN MULTIPLE BILLS] Error assigning bills:', error);
+    return { success: false, error: 'Failed to assign bills to users' };
+  }
+}
+
 export async function assignSupervisorToIntern(
   supervisorId: string,
   internIds: string[]
@@ -470,5 +706,75 @@ export async function unassignInternFromSupervisor(internId: string): Promise<Ac
   } catch (error) {
     console.error('❌ [UNASSIGN SUPERVISOR] Error unassigning supervisor from intern:', error);
     return { success: false, error: 'Failed to unassign supervisor from intern' };
+  }
+}
+
+export async function removeBillFromIntern(
+  internId: string,
+  billId: string
+): Promise<ActionResult> {
+  try {
+    await verifyAdminAccess();
+
+    if (!internId) {
+      return { success: false, error: 'Intern ID is required' };
+    }
+
+    if (!billId) {
+      return { success: false, error: 'Bill ID is required' };
+    }
+
+    console.log(`📋 [REMOVE BILL] Removing bill ${billId} from intern ${internId}...`);
+
+    // Verify intern exists
+    const intern = await db
+      .selectFrom('user')
+      .select(['id', 'role'])
+      .where('id', '=', internId)
+      .where('role', '=', 'user')
+      .where('account_status', '=', 'active')
+      .executeTakeFirst();
+
+    if (!intern) {
+      return { success: false, error: 'Invalid intern ID or intern not active' };
+    }
+
+    // Verify bill exists
+    const bill = await db
+      .selectFrom('bills')
+      .select(['id'])
+      .where('id', '=', billId)
+      .executeTakeFirst();
+
+    if (!bill) {
+      return { success: false, error: 'Invalid bill ID' };
+    }
+
+    // Verify the relationship exists
+    const relationship = await db
+      .selectFrom('user_bills')
+      .select(['user_id', 'bill_id'])
+      .where('user_id', '=', internId)
+      .where('bill_id', '=', billId)
+      .executeTakeFirst();
+
+    if (!relationship) {
+      return { success: false, error: 'Bill is not tracked by this intern' };
+    }
+
+    // Remove the bill from the intern's tracking list
+    await db
+      .deleteFrom('user_bills')
+      .where('user_id', '=', internId)
+      .where('bill_id', '=', billId)
+      .execute();
+
+    console.log(`✅ [REMOVE BILL] Successfully removed bill ${billId} from intern ${internId}`);
+
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [REMOVE BILL] Error removing bill from intern:', error);
+    return { success: false, error: 'Failed to remove bill from intern' };
   }
 }
