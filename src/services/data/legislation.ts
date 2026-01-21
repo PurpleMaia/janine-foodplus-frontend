@@ -362,9 +362,9 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
       throw new Error('Bill data is required to update food-related flag');
     }
 
-    if (bill.bill_url.includes('//data.capitol.hawaii.gov/')) {
+    if (bill.bill_url.includes('https://data.capitol.hawaii.gov/')) {
       console.log('Bill object returned was from scraper, setting url to capitol.hawaii.gov format...');
-      bill.bill_url = bill.bill_url.replace('//data.capitol.hawaii.gov/', '//capitol.hawaii.gov/');
+      bill.bill_url = bill.bill_url.replace('https://data.capitol.hawaii.gov/', 'https://capitol.hawaii.gov/');
     }
 
     // Check if bill exists
