@@ -284,7 +284,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       if (billIndex > -1) {
         const updatedBill = {
           ...newBills[billIndex],
-          current_status: destinationColumnId,
+          current_bill_status: destinationColumnId,
           llm_suggested: false,
         };
         newBills.splice(billIndex, 1, updatedBill);
