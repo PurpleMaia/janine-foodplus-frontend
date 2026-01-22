@@ -1,23 +1,20 @@
-'use client'; // Keep header client-side for search input interaction
+'use client'; 
 
-import { Button } from '@/components/ui/button';
-import { KanbanSquareIcon, Search, Table, Tag, UserCheck2Icon, Users2Icon } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { Switch } from '../ui/switch';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 import { Label } from '../ui/label';
-import { useState } from 'react';
 import NewBillButton from './new-bill/new-bill-button';
-import { AdoptBillDialog } from './adopt-bill-dialog';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { TagFilterList } from '../tags/tag-filter-list';
 
 export function KanbanHeader() {
   const { user } = useAuth();
-  const { viewMode, toggleViewMode } = useBills();
-  const { selectedTagIds, setSelectedTagIds } = useKanbanBoard();
+  const { viewMode, toggleViewMode, showArchived, toggleShowArchived } = useBills();
+  const { selectedTagIds, setSelectedTagIds, selectedYears, setSelectedYears } = useKanbanBoard();
 
   const isPublic = !user;
+  const canAddRemoveBills = user?.role === 'admin' || user?.role === 'supervisor';
 
   return (
     <div className='p-2 border-b bg-white flex items-center justify-between shadow-md'>
@@ -29,9 +26,15 @@ export function KanbanHeader() {
               <p className="text-sm text-muted-foreground">All Food+ Tracked Bills</p>
             </div>
           ) : (
-            <div className='flex items-center space-x-2'>
-              <Switch id='my-bills' checked={viewMode === 'all-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
-              <Label htmlFor='my-bills' className='text-md'>All Bills</Label>
+            <div className='flex items-center space-x-6'>
+              <div className='flex items-center space-x-2'>
+                <Switch id='my-bills' checked={viewMode === 'all-bills'} onCheckedChange={toggleViewMode}> View All Bills</Switch>
+                <Label htmlFor='my-bills' className='text-md'>All Bills</Label>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <Switch id='show-archived' checked={showArchived} onCheckedChange={toggleShowArchived}> Show Archived</Switch>
+                <Label htmlFor='show-archived' className='text-md'>Show Archived</Label>
+              </div>
             </div>
           )}
         </div>
@@ -47,13 +50,23 @@ export function KanbanHeader() {
                     : [...prev, tagId]
                 );
               }}
-              onClearFilters={() => setSelectedTagIds([])}
+              selectedYears={selectedYears}
+              onYearToggle={(year: number) => {
+                setSelectedYears((prev) =>
+                  prev.includes(year)
+                    ? prev.filter((y) => y !== year)
+                    : [...prev, year]
+                );
+              }}
+              onClearFilters={() => {
+                setSelectedTagIds([]);
+                setSelectedYears([]);
+              }}
             />
 
             {!isPublic && (
               <>
-                <NewBillButton />
-                <AdoptBillDialog />                
+                {canAddRemoveBills && <NewBillButton />}
               </>
             )}
         </div>

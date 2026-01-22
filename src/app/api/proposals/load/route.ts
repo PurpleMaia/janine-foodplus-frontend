@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
           'bills.bill_number',
           'bills.bill_title',
         ])
-        .where('pending_proposals.user_id', '=', user.id)
+        .where('pending_proposals.proposed_by_user_id', '=', user.id)
         .where('pending_proposals.approval_status', '=', 'pending')
         .execute();
       console.log(`📋 [LOAD PROPOSALS] Found ${proposals.length} pending proposals from database`);
@@ -91,8 +91,7 @@ export async function GET(request: NextRequest) {
       bill_number: p.bill_number ?? undefined,
       bill_title: p.bill_title ?? undefined,
       current_status: p.current_status,
-      suggested_status: p.suggested_status,
-      proposed_status: p.suggested_status,
+      proposed_status: p.proposed_status,
       target_idx: 0, // Not needed for display
       source: 'human' as const,
       approval_status: 'pending' as const,

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Bill, StatusUpdate } from '@/types/legislation';
-import { getAllBills, getUserAdoptedBills } from '@/services/legislation';
+import { getAllBills, getUserAdoptedBills } from '@/services/data/legislation';
 
 export const QUERY_KEYS = {
   bills: 'bills',
@@ -17,7 +17,7 @@ export const QUERY_KEYS = {
 //   });
 // }
 
-export function useAdoptedBills(userID: string) {
+export function useTrackedBills(userID: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.bills, userID],
     queryFn: async () => {        

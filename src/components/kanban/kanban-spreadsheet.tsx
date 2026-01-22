@@ -9,9 +9,9 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { useBills } from '@/contexts/bills-context';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
-import { searchBills } from '@/services/legislation';
+import { useBills } from '@/hooks/contexts/bills-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
+import { searchBills } from '@/services/data/legislation';
 
 
 export function KanbanSpreadsheet() {
@@ -69,6 +69,7 @@ export function KanbanSpreadsheet() {
               <TableHead>Current Status</TableHead>
               <TableHead>Committee Assignment</TableHead>
               <TableHead>Introducers</TableHead>
+              <TableHead>Year</TableHead>
               <TableHead>Created At</TableHead>
               <TableHead>Updated At</TableHead>
             </TableRow>
@@ -76,7 +77,7 @@ export function KanbanSpreadsheet() {
           <TableBody>
             {filteredBills.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   {searchQuery.trim() ? `No bills found matching "${searchQuery}"` : 'No bills available'}
                 </TableCell>
               </TableRow>
@@ -123,6 +124,7 @@ export function KanbanSpreadsheet() {
                 <TableCell>{bill.current_status}</TableCell>
                 <TableCell>{bill.committee_assignment}</TableCell>
                 <TableCell>{bill.introducer}</TableCell>
+                <TableCell>{bill.year ?? 'N/A'}</TableCell>
                 <TableCell>{bill.created_at ? new Date(bill.created_at).toLocaleDateString() : 'N/A'}</TableCell>
                 <TableCell>{bill.updated_at ? new Date(bill.updated_at).toLocaleDateString() : 'N/A'}</TableCell>
               </TableRow>

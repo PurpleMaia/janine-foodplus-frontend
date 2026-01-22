@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import type { Bill } from '@/types/legislation';
+import { cn, formatBillStatusName, canAssignBills } from '@/lib/utils';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Removed unused imports
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { Calendar, CheckCircle, Clock, FileText, GitBranch, Send, Gavel, Sparkles, X, Check } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { useBills } from '@/contexts/bills-context';
+import { Button } from '@/components/ui/button';
 import { CardTagSelector } from '../tags/card-tag-selector';
+import { useBills } from '@/hooks/contexts/bills-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
+import { AssignBillDialog } from './assign-bill-dialog';
+import type { Bill } from '@/types/legislation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { updateFoodStatusOrCreateBill } from '@/services/data/legislation';
+import { toast } from '@/hooks/use-toast';
 
 interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   bill: Bill;
@@ -43,9 +57,20 @@ const getStatusVariant = (status: Bill['current_status']): "default" | "secondar
 export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, isHighlighted = false, className, style, ...props }, ref) => {
 
+    // All hooks must be called before any conditional logic
     const [formattedDate, setFormattedDate] = useState<string>('N/A');
     const [isProcessing, setIsProcessing] = useState(false);
-    const { acceptLLMChange, rejectLLMChange, setBills } = useBills()
+    const [isRemoving, setIsRemoving] = useState(false);
+    const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+    const { acceptLLMChange, rejectLLMChange, removeBill } = useBills();
+    const { user } = useAuth();    
+
+    const canSeeTracking = user?.role === 'admin' || user?.role === 'supervisor';
+    const trackedBy = bill.tracked_by ?? [];
+    const trackedCount = bill.tracked_count ?? trackedBy.length;
+    const visibleTrackers = trackedBy.slice(0, 2);
+    const extraTrackerCount = trackedBy.length - visibleTrackers.length;
+
 
     // Format date only on client-side after mount to prevent hydration mismatch
     useEffect(() => {
@@ -89,6 +114,27 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
       }
     };
 
+    const handleRemoveBill = async () => {
+      setIsRemoving(true);
+      try {
+        // Update the food_related flag to false
+        await updateFoodStatusOrCreateBill(bill, false);
+        // Remove from local state
+        removeBill(bill.id);
+
+        toast({
+          title: 'Bill Removed',
+          description: `Bill ${bill.bill_number} has been removed from the board.`,
+          duration: 5000,
+        });
+        setShowRemoveDialog(false);
+      } catch (error) {
+        console.error('Error removing bill from board:', error);
+      } finally {
+        setIsRemoving(false);
+      }
+    };
+
     return (
         <div
             ref={ref}
@@ -107,7 +153,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
         >
             {/* Add click handler to the content div */}
             <div 
-                className="flex flex-col p-3 w-full min-h-[80px] cursor-pointer"
+                className="flex flex-col w-full min-h-[80px] cursor-pointer"
                 onClick={handleCardClick}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -119,75 +165,78 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 tabIndex={0}
                 aria-label={`View details for bill ${bill.id}: ${bill.bill_title}`}
             >
-                <CardHeader className="p-0 pb-1 space-y-0.5 w-1">
-                     <div className="items-center flex gap-[100px]">
-                         <div className="flex items-center gap-2">
-                             <CardTitle className="text-sm font-bold" title={bill.bill_title}>
-                                {bill.bill_number}
-                             </CardTitle>
-                             {getStatusIcon(bill.current_status)}
-                         </div>
-                         {/* Unadopt button on the right */}
-                         <div className="flex items-center justify-end flex-1">
-                            {showUnadoptButton && onUnadopt && (
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onUnadopt(bill.id);
-                                    }}
-                                    className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                    title="Unadopt bill"
-                                >
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            )}
-                         </div>                              
+                <CardHeader className="px-3 py-2 space-y-2 justify-between relative">
+
+                      {/* Remove Bill Button - Only for admins and supervisors */}
+                      {canAssignBills(user) && (
+                        <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="cursor-pointer absolute top-2 right-2 h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowRemoveDialog(true);
+                              }}
+                              disabled={isRemoving}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Bill from Board?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove this bill from the list? This will set the bill as not food-related. You can add back the bill by finding its URL in the Hawaii State Legislature site and using the Add or Remove Bill button.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveBill();
+                                }}
+                                className="bg-red-600 hover:bg-red-700"
+                                disabled={isRemoving}
+                              >
+                                {isRemoving ? 'Removing...' : 'Remove Bill'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+
+                      <CardTagSelector
+                        billId={bill.id}
+                        billTags={bill.tags}
+                      />
+                      <div className="flex gap-2 my-1 items-center">
+                        <CardTitle className="text-md font-bold" title={bill.bill_title}>
+                          {bill.bill_number}
+                        </CardTitle>
+                        {bill.year && (
+                          <Badge variant='secondary' className="text-xs h-4 px-1 rounded-md text-muted-foreground">
+                            {bill.year}
+                          </Badge>
+                        )}
                      </div>
+
                 </CardHeader>
-                <CardContent className="p-0 mt-1 gap-2">
+                <CardContent className="p-0 gap-2">
                     {bill.user_nickname && (
-                      <p className="text-xs text-muted-foreground mb-2">
+                      <p className="text-xs text-muted-foreground">
                         Nickname: {bill.user_nickname}
                       </p>
                     )}
-                    <p className='text-sm text-foreground text-wrap mb-3 line-clamp-2'>{bill.description}</p>
-
-                    {/* Tags */}
-                    <CardTagSelector
-                      billId={bill.id}
-                      billTags={bill.tags}
-                    />
-
-                    {/* Status Information */}
-                    <div className="flex items-center justify-between mb-2">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Badge
-                                        variant={getStatusVariant(bill.current_status)}
-                                        className="text-xs font-medium cursor-help"
-                                    >
-                                        {getStatusIcon(bill.current_status)}
-                                        <span className="ml-1">{bill.current_status_string || bill.current_status}</span>
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className="max-w-xs">
-                                        <strong>Current Status:</strong> {bill.current_status_string || bill.current_status}
-                                        {bill.updates && bill.updates.length > 0 && (
-                                            <><br /><strong>Latest Update:</strong> {bill.updates[0].statustext}</>
-                                        )}
-                                    </p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
+                    <p className='text-sm text-foreground text-wrap line-clamp-2 px-3'>{bill.description}</p>
 
                     {/* Latest Status Update Preview */}
                     {bill.updates && bill.updates.length > 0 && (
-                        <div className="bg-muted/30 rounded-md p-2 mb-2">
+                        <div className="border-y bg-slate-100 bg-muted/30 my-2 p-3 mt-3 items-center align-middle justify-center">
                             <div className="flex items-start gap-2">
                                 <div className="w-2 h-2 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
                                 <div className="flex-1 min-w-0">
@@ -208,6 +257,48 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                             </div>
                         </div>
                     )}
+
+                    <div className='flex justify-between items-center mt-2 px-3 mb-2'>
+
+                      <Badge variant='outline' className='text-muted-foreground'>
+                        {formatBillStatusName(bill.current_status)}
+                      </Badge>
+
+                      {canSeeTracking ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Tracked By: </span>
+                          {trackedBy.length > 0 ? (
+                            <div className="gap-1 flex items-center">
+                              {visibleTrackers.map((tracker) => (
+                                <Badge key={tracker.id} variant="default" className="text-[10px] h-5 px-1.5">
+                                  {tracker.username || tracker.email || 'Unknown'}
+                                </Badge>
+                              ))}
+                              {extraTrackerCount > 0 && (
+                              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                                +{extraTrackerCount} more
+                              </Badge>
+                            )}
+                          </div>
+                          ) : trackedBy.length === 0 ? (
+                          <Badge variant="destructive" className="text-[10px] text-white">No One</Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">Restricted</span>
+                        )}
+                        </div>
+                      ) : (
+                        <div>
+                          {trackedCount > 0 ? (
+                            <Badge className="h-5 px-1.5">
+                              Tracked
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-white">Not Tracked</Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                 </CardContent>                           
             </div>
 
@@ -246,6 +337,25 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                   </div>
                   <span className="animate-pulse">AI Processing...</span>
                 </div>
+              </div>
+            )}
+
+            {/* Assign Bill Button - Only for admins and supervisors */}
+            {canAssignBills(user) && (
+              <div className="p-3 border-t border-gray-100">
+                <AssignBillDialog
+                  bill={bill}
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs h-8"
+                      onClick={(e) => e.stopPropagation()} // Prevent card click
+                    >
+                      Assign to User
+                    </Button>
+                  }
+                />
               </div>
             )}
       </div>

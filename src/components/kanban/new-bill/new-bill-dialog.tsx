@@ -6,31 +6,31 @@ import {
     DialogDescription,
     DialogFooter,
   } from "@/components/ui/dialog";
-  import { Button } from "@/components/ui/button";
-  import { Input } from "@/components/ui/input";
-  import { Label } from "@/components/ui/label";
-  import { Alert, AlertDescription } from "@/components/ui/alert";
-  import { Loader2, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
-  import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Bill } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
-import { findExistingBillByURL, insertNewBill, updateFoodRelatedFlagByURL } from "@/services/legislation";
-import { useBills } from "@/contexts/bills-context";
-
+import { findExistingBillByURL, updateFoodStatusOrCreateBill } from "@/services/data/legislation";
+import { useBills } from "@/hooks/contexts/bills-context";
 
 interface NewBillDialogProps {
     isOpen: boolean;
     onClose: () => void;
   }
 export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
-    const { bills, setBills } = useBills()
+    const { addBill, removeBill } = useBills()
     const [isAlreadyInDB, setIsAlreadyInDB] = useState<boolean>(false)
     const [url, setUrl] = useState<string>('')
     const [error, setError] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [billPreview, setBillPreview] = useState<Bill | null>(null)
     const [isUpdating, setIsUpdating] = useState<boolean>(false);
+    const [isAdopting, setIsAdopting] = useState<boolean>(false);
     const [foodRelatedSelection, setFoodRelatedSelection] = useState<boolean | null>(null);
 
     // Reset state when dialog opens/closes
@@ -42,6 +42,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             setIsAlreadyInDB(false);
             setIsLoading(false);
             setIsUpdating(false);
+            setIsAdopting(false);
             setFoodRelatedSelection(null);
         }
     }, [isOpen]);    
@@ -54,11 +55,6 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
 
         if (!url.includes('www.capitol.hawaii.gov')) {
             setError('Please enter a valid bill url (e.g. from capitol.hawaii.gov')
-            return
-        }
-
-        if (url.includes('measure_indiv_Archives.aspx')) {
-            setError('The bill appears to be from the Archives. Please create new bill cards from the current session for now.')
             return
         }
 
@@ -80,7 +76,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             setIsLoading(false)
             return
         } else {
-            setError('Could not find bill in database, inserting now...')
+            setError('Could not find bill in database, scraping for preview now...')
         }
 
         const result = await findBill(url) // result is the full json
@@ -101,22 +97,16 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
         }         
     }
 
-    const handleUpdateFoodRelated = async () => {
+    const handleConfirm = async () => {
         setIsUpdating(true)
-        
-        const result = await updateFoodRelatedFlagByURL(url, foodRelatedSelection)
 
-        // Update local state - remove LLM flags
-        setBills(prevBills => 
-            prevBills.map(b => 
-              b.id === billPreview?.id 
-                ? { 
-                    ...b, 
-                    food_related: foodRelatedSelection 
-                  }
-                : b
-              )
-            );
+        const result = await updateFoodStatusOrCreateBill(billPreview, foodRelatedSelection)
+
+        if (foodRelatedSelection === true) {    
+            addBill(result); // add to client bill array 
+        } else {
+            removeBill(result.id); // remove from client bill array
+        }
 
         if (!result) {
             console.log('Error updating bill')
@@ -125,9 +115,9 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             toast({
                 title: `Successfully updated bill: `,
                 description: `${billPreview?.bill_number} is now set as ${!foodRelatedSelection ? 'not' : ''} food-related`,
-            });            
+            });
             setIsUpdating(false)
-        }      
+        }
     }
 
     return (
@@ -194,22 +184,23 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                             <div>
                                 <Label className="text-sm font-medium text-muted-foreground">Bill Number</Label>
                                 <p className="font-mono text-sm">{billPreview.bill_number}</p>
-                            </div>
-                            <div>
-                                <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                                <p className="text-sm">{billPreview.current_status ? billPreview.current_status : 'Not assigned'}</p>
-                            </div>                                                        
-                        </div>
+                            </div>                            
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label className="text-sm font-medium text-muted-foreground">Title</Label>
                                 <p className="text-sm font-medium">{billPreview.bill_title}</p>
                             </div>                
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             
                             <div>
                                 <Label className="text-sm font-medium text-muted-foreground">Committee Assignment</Label>
                                 <p className="text-sm">{billPreview.committee_assignment}</p>
+                            </div>                                                        
+                            <div>
+                                <Label className="text-sm font-medium text-muted-foreground">Introduced By</Label>
+                                <p className="text-sm">{billPreview.introducer}</p>
                             </div>                                                        
                         </div>
 
@@ -227,28 +218,20 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                                 <Label className="text-sm font-medium text-muted-foreground">Last Updated</Label>
                                 <p className="font-mono text-sm">{billPreview.updated_at ? billPreview.updated_at.toDateString() : 'N/A'}</p>
                             </div>                                                        
-                        </div>
-
-                        <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Food-related?</Label>
-                            <p className="font-mono text-sm">{billPreview.food_related ? 'True' : 'False'}</p>
-                        </div>      
+                        </div>   
 
                         <Alert className="my-4">
                             <AlertDescription>
                                 {isAlreadyInDB ? (
                                     <>
-                                        <div className="flex items-center gap-2">
-                                            <CheckCircle className="h-4 w-4 text-green-600" />
-                                            <p>This bill exists in our database.</p>
-                                        </div>
 
                                         {billPreview?.food_related ? (
                                             <>
-                                                <p className="my-4">
-                                                    This bill is currently tracked as food-related and appears in the Kanban Board/Spreadsheet.
-                                                </p>
-                                                <h2 className="font-semibold">Remove from Food+ Tracked Bills?</h2>
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                                    <p> This bill is currently flagged as food-related and appears in the All Bills View.</p>
+                                                </div>
+                                                <h2 className="font-semibold">Would you like to unflag this bill to be non-food-related?</h2>
                                                 <div className="flex items-center gap-4 my-4">
                                                     <Button variant="destructive" onClick={() => setFoodRelatedSelection(false)}>
                                                         Yes, Remove
@@ -260,15 +243,16 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                                             </>
                                         ) : (
                                             <>
-                                                <p className="my-4">
-                                                    This bill is not currently flagged as food-related.
-                                                </p>
-                                                <h2 className="font-semibold">Add to Food+ Tracked Bills?</h2>
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                                    <p>This bill is not currently flagged as food-related and does not appear in the All Bills View.</p>
+                                                </div>
+                                                <h2 className="font-semibold">Set this bill as food-related?</h2>
                                                 <div className="flex items-center gap-4 my-4">
-                                                    <Button onClick={() => setFoodRelatedSelection(true)}>
-                                                        Yes, Add to Tracking
+                                                    <Button onClick={() => setFoodRelatedSelection(true)} disabled={isAdopting}>
+                                                        Yes, Set as Food-related
                                                     </Button>
-                                                    <Button variant="outline" onClick={() => setFoodRelatedSelection(false)}>
+                                                    <Button variant="outline" onClick={onClose} disabled={isAdopting}>
                                                         No, Don&apos;t Track
                                                     </Button>
                                                 </div>
@@ -279,12 +263,11 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                                     <>
                                         <div className="flex items-center gap-2">
                                             <AlertCircle className="h-4 w-4 text-yellow-600" />
-                                            <p>This bill is not yet in our database.</p>
+                                            <p className="my-4">
+                                                Would you like to add this bill and track it as food-related?
+                                            </p>
                                         </div>
 
-                                        <p className="my-4">
-                                            Would you like to add this bill and track it as food-related?
-                                        </p>
                                         <h2 className="font-semibold">Add to Food+ Tracked Bills?</h2>
                                         <div className="flex items-center gap-4 my-4">
                                             <Button onClick={() => setFoodRelatedSelection(true)}>
@@ -315,9 +298,9 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
             {/* Footer (contains the close button) - Removed sticky and bottom-0 */}
             <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between"> {/* mt-auto pushes it down if ScrollArea doesn't fill space */}
               <div className='flex gap-2'>
-                {isAlreadyInDB && foodRelatedSelection !== null && (
+                {foodRelatedSelection !== null && (
                     <Button
-                        onClick={handleUpdateFoodRelated}
+                        onClick={handleConfirm}
                         disabled={isUpdating}
                         size="sm"
                         className="w-full"
@@ -325,10 +308,10 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
                         {isUpdating ? (
                             <>
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                Updating...
+                                Saving...
                             </>
                         ) : (
-                            'Update Bill'
+                            'Confirm Changes'
                         )}
                     </Button>
                 )}

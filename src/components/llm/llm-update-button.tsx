@@ -5,9 +5,9 @@ import { Button } from '../ui/button';
 import { CircleStop, RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 export default function AIUpdateButton() {
   const [processing, setProcessing] = useState<boolean>(false); // State for dialog visibility

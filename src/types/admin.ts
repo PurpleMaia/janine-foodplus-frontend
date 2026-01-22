@@ -9,6 +9,7 @@ export interface PendingUser{
   requested_admin: Selectable<User>['requested_admin'];
   requested_supervisor: Selectable<User>['requested_supervisor'];
   account_status: Selectable<User>['account_status'];
+  role?: Selectable<User>['role']; // Optional, used for displaying current role in all users view
 }
 
 export interface SupervisorRequest {

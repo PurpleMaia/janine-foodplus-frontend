@@ -40,26 +40,38 @@ export interface NewsArticle {
 export interface Bill {
   // attributes from the database
   bill_number: string;
-  bill_title: string;  
+  bill_title: string;
   bill_url: string;
   committee_assignment: string;
   created_at: Date | null;
-  current_status: string;  
+  current_status: string;
   current_status_string: string;
-  description: string; 
+  description: string;
   food_related: boolean | null;
-  id: string;  
+  id: string;
   introducer: string;
   nickname: string;
   user_nickname?: string | null;
   updated_at: Date | null;
+  year: number | null;
+  archived: boolean;
+  ai_misclassification_type?: 'false_positive' | 'false_negative' | null;
 
   // client side attributes
   updates: StatusUpdate[]
-  previous_status?: BillStatus;  
-  llm_suggested?: boolean;  
+  previous_status?: BillStatus;
+  llm_suggested?: boolean;
   llm_processing?: boolean;
   tags?: Tag[];
+  tracked_by?: BillTracker[];
+  tracked_count?: number;
+}
+
+export interface BillTracker {
+  id: string;
+  email: string | null;
+  username: string | null;
+  adopted_at?: Date | string | null;
 }
 
 export interface TempBill {
@@ -68,7 +80,7 @@ export interface TempBill {
   bill_number?: string | null;
   bill_title: string | null;
   current_status: BillStatus;
-  suggested_status: BillStatus;
+  proposed_status: BillStatus;
   target_idx: number;
   source?: 'llm' | 'human';
   approval_status?: 'pending' | 'approved' | 'rejected';
