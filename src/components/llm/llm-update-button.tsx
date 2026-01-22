@@ -64,7 +64,7 @@ export default function AIUpdateButton() {
       );    
       return null
     }
-    console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_status);
+    console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_bill_status);
     const classification = await classifyStatusWithLLM(bill.id); 
     // console.log("CLASSIFICATION:", classification);
     // Check if cancelled after LLM call
@@ -97,16 +97,16 @@ export default function AIUpdateButton() {
       });
     } else {
 
-      if (classification !== bill.current_status) {
-        // const currentColumnIdx = getColumnIndex(bill.current_status);
+      if (classification !== bill.current_bill_status) {
+        // const currentColumnIdx = getColumnIndex(bill.current_bill_status);
         const targetColumnIdx = getColumnIndex(classification);
 
          // Create temp bill for the original position
         const tempBill: TempBill = {
           id: bill.id,
           bill_number: bill.bill_number,
-          current_status: bill.current_status,          
-          suggested_status: classification,
+          current_status: bill.current_bill_status,          
+          proposed_status: classification,
           target_idx: targetColumnIdx, 
           bill_title: bill.bill_title,
           source: 'llm'
@@ -133,8 +133,8 @@ export default function AIUpdateButton() {
           b.id === bill.id 
             ? {
                 ...b, 
-                previous_status: b.current_status, // Store original status
-                current_status: classification,
+                previous_status: b.current_bill_status, // Store original status
+                current_bill_status: classification,
                 llm_suggested: true,
                 llm_processing: false
               }

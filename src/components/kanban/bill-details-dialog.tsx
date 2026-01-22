@@ -74,7 +74,7 @@ const getCurrentStageName = (status: BillStatus): string => {
 }
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills, setBills, setTempBills, proposeStatusChange, viewMode } = useBills()
+  const { bills, setBills, setTempBills, proposeStatusChange, updateBill, viewMode } = useBills()
   const { user } = useAuth()
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
@@ -217,9 +217,13 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
   }
 
   const handleStatusUpdateRefresh = (updates: StatusUpdate[]) => {
-    const updatedDetails = billDetails ? { ...billDetails, updates } : null;
+    const sortedUpdates = [...updates].sort((a, b) => b.date.localeCompare(a.date));
+    const updatedDetails = billDetails ? { ...billDetails, updates: sortedUpdates } : null;
 
     setBillDetails(updatedDetails);
+    if (bill) {
+      updateBill(bill.id, { latest_update: sortedUpdates[0] ?? null });
+    }
   }
 
   return (
