@@ -277,7 +277,7 @@ async function getBatchStatusUpdates(billIds: string[]): Promise<Record<string, 
       .selectFrom('status_updates as su')
       .selectAll()
       .where('su.bill_id', 'in', billIds)
-      .orderBy('su.date', 'desc')
+      .orderBy(sql`cast(su.date as date)`, 'desc')
       .execute();
 
     const updatesByBillId = updates.reduce((acc, update) => {
