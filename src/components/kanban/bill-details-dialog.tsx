@@ -295,40 +295,100 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               </div>
             </div>
           ) : (
-          <div className="space-y-6 p-4">
-            {/* Top Section */}
-            <div className="mt-3 grid gap-4 grid-cols-4">
+          <div className="space-y-6 p-6">
+            {/* Bill Information Section - Priority 1 */}
+            <section className="rounded-lg border bg-card p-6 shadow-sm">
+              <h3 className="text-sm font-semibold mb-4">Bill Information</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DetailItem label="Bill Number" value={billDetails?.bill_number || bill.bill_number} />
+                  <DetailItem label="Year Introduced" value={billDetails?.year?.toString() || bill.year?.toString() || 'N/A'} />
+                </div>
 
-              {/* Tags */}
-              <div className="rounded-md border bg-muted/40 p-3 space-y-2 col-span-2">
-                <h4 className="font-semibold text-sm">Tags</h4>
-                <p className="text-xs text-muted-foreground">
-                  Add tags to categorize this bill.
-                </p>
-                <TagSelector billId={bill.id} />
-              </div>              
+                <DetailItem label="Bill Title" value={billDetails?.bill_title || bill.bill_title} />
 
-              {/* View Original Url */}
-              <div className="rounded-md border bg-muted/40 p-3 space-y-2">
-                <h4 className="text-sm font-semibold">Bill URL</h4>
-                <p className='text-xs text-muted-foreground'>Hawaii State Legislature: </p>
-                {billDetails?.bill_url ? (
-                  <a href={billDetails.bill_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                    <FileText className="h-4 w-4" />
-                    View Original Bill
-                  </a>
-                ) : (
-                  <p className="text-xs text-muted-foreground">URL not available</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DetailItem label="Committee Assignment" value={billDetails?.committee_assignment || 'Not Assigned'} />
+                  <DetailItem label="Introducers" value={billDetails?.introducer || 'N/A'} />
+                </div>
+
+                <DetailItem label="Description" value={billDetails?.description || bill.description || 'No description available.'} />
+
+                {billDetails?.bill_url && (
+                  <div>
+                    <span className="font-medium">Bill URL:</span>{' '}
+                    <a href={billDetails.bill_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                      <FileText className="h-4 w-4" />
+                      View on Hawaii State Legislature
+                    </a>
+                  </div>
                 )}
               </div>
+            </section>
 
-              {/* Who is Tracking */}
-              <div className="rounded-md border bg-muted/40 p-3 space-y-3">
-                {canSeeTracking && (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="text-sm font-semibold">Tracked By</h4>                        
+            {/* Status Updates Section - Priority 2 */}
+            <section className="rounded-lg border bg-card p-6 shadow-sm">
+              <h3 className="text-sm font-semibold mb-4">Status Updates</h3>
+              {billDetails?.updates && billDetails.updates.length > 0 ? (
+                <div className="relative max-h-96 overflow-y-auto pr-2">
+                  <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
+
+                  {billDetails.updates.map((update, index) => (
+                    <div key={`${billDetails.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
+                      <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
+                        {index === 0 ? (
+                          <div className="w-5 h-5 bg-green-500 border-4 border-green-200 rounded-full shadow-lg"></div>
+                        ) : (
+                          <div className="w-4 h-4 bg-gray-300 border-2 border-gray-200 rounded-full opacity-60"></div>
+                        )}
+                      </div>
+                      <div className="flex-1 bg-muted/50 rounded-lg p-4 border">
+                        <div className="flex items-start justify-between gap-4 mb-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {update.chamber}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(update.date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground leading-relaxed break-words">
+                          {update.statustext}
+                        </p>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No status updates available</p>
+                </div>
+              )}
+            </section>
+
+            {/* Tags and Tracking Section - Priority 3 */}
+            <section className="rounded-lg border bg-card p-6 shadow-sm">
+              <h3 className="text-sm font-semibold mb-4">Tags & Tracking</h3>
+              <div className="space-y-6">
+                {/* Tags */}
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Tags</h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Add tags to categorize this bill.
+                  </p>
+                  <TagSelector billId={bill.id} />
+                </div>
+
+                {/* Tracked By */}
+                {canSeeTracking && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Tracked By</h4>
                     {bill.tracked_by && bill.tracked_by.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {bill.tracked_by.map((tracker) => (
@@ -343,77 +403,14 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                   </div>
                 )}
               </div>
-            </div>
-
-            <section className="rounded-lg border bg-card p-4 shadow-sm">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Bill Information
-              </h3>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <DetailItem label="Bill Number" value={billDetails?.bill_number || bill.bill_number} />
-                <DetailItem label="Year Introduced" value={billDetails?.year?.toString() || bill.year?.toString() || 'N/A'} />
-                <DetailItem label="Bill Title" value={billDetails?.bill_title || bill.bill_title} />
-                <DetailItem label="Committee Assignment" value={billDetails?.committee_assignment || 'Not Assigned'} />
-                <div className="sm:col-span-2 space-y-4">
-                  <DetailItem label="Introducers" value={billDetails?.introducer || 'N/A'} />
-                  <DetailItem label="Description" value={billDetails?.description || bill.description || 'No description available.'} />
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-lg border bg-card p-4 shadow-sm">
-              <h3 className="text-sm font-semibold">Status Updates</h3>
-              <div className="mt-3 space-y-3">
-                {billDetails?.updates && billDetails.updates.length > 0 ? (
-                  <div className="relative max-h-96 overflow-y-auto pr-2">
-                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
-
-                    {billDetails.updates.map((update, index) => (
-                      <div key={`${billDetails.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
-                        <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
-                          {index === 0 ? (
-                            <div className="w-5 h-5 bg-green-500 border-4 border-green-200 rounded-full shadow-lg"></div>
-                          ) : (
-                            <div className="w-4 h-4 bg-gray-300 border-2 border-gray-200 rounded-full opacity-60"></div>
-                          )}
-                        </div>
-                        <div className="flex-1 bg-muted/50 rounded-lg p-3 border min-w-0">
-                          <div className="flex items-start justify-between mb-2">
-                            <Badge variant="outline" className="text-xs">
-                              {update.chamber}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(update.date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-sm text-foreground leading-relaxed">
-                            {update.statustext}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No status updates available</p>
-                  </div>
-                )}
-              </div>
             </section>
           </div>
           )}
         </ScrollArea>
         {/* Status Change Section - Now conditionally editable */}
-        <div className="z-10 border-t justify-center align-middle space-y-4 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-sm font-medium text-muted-foreground">New Status</h3>
+        <div className="border-t bg-background p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-sm font-semibold">Change Bill Status</h3>
             {!user && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Lock className="h-3 w-3" />
@@ -422,33 +419,34 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
             )}
           </div>
 
-          <div className='flex gap-4'>
-            <Select 
-              value={selectedStatus} 
+          <div className='flex gap-3'>
+            <Select
+              value={selectedStatus}
               onValueChange={handleOnValueChange}
-              disabled={!user || !canEditBill} // Disable when not authenticated or intern in all-bills view
+              disabled={!user || !canEditBill}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="flex-1">
                 <SelectValue placeholder={
-                  !user 
-                    ? "Login to edit status" 
-                    : !canEditBill 
-                      ? "Only editable in 'My Bills' view" 
+                  !user
+                    ? "Login to edit status"
+                    : !canEditBill
+                      ? "Only editable in 'My Bills' view"
                       : "Select a new status"
                 } />
               </SelectTrigger>
               <SelectContent>
                 {KANBAN_COLUMNS.map((column) => (
-                  <SelectItem key={column.id} value={column.id}>
+                  <SelectItem key={column.id} value={column.id} className='cursor-pointer hover:bg-slate-100'>
                     {column.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Button 
+            <Button
               onClick={handleSave}
-              disabled={!user || !selectedStatus || !canEditBill} // Disable when not authenticated, no status selected, or intern in all-bills view
+              disabled={!user || !selectedStatus || !canEditBill}
+              className="px-8"
             >
               Save
             </Button>
@@ -456,12 +454,12 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
         </div>
 
         {/* Footer - Also conditionally show admin buttons */}
-        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between">
-          <div className='flex gap-2'>
+        <DialogFooter className="p-6 border-t bg-background sm:justify-between items-center">
+          <div className='flex gap-2 items-center'>
             {user ? (
               <>
                 <AIUpdateSingleButton bill={bill} />
-                <RefreshStatusesButton bill={bill} onRefresh={handleStatusUpdateRefresh} /> 
+                <RefreshStatusesButton bill={bill} onRefresh={handleStatusUpdateRefresh} />
               </>
             ) : (
               <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -470,7 +468,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               </div>
             )}
           </div>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} className="min-w-[100px]">
             Close
           </Button>
         </DialogFooter>
@@ -486,22 +484,24 @@ interface DetailItemProps {
     badge?: boolean;
 }
 const DetailItem: React.FC<DetailItemProps> = ({ label, value, badge }) => (
-    <div>
-        <span className="font-medium">{label}:</span>{' '}
-        {label === 'Bill URL' ? (
-          <a
-            href={value}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline break-all hover:text-blue-800"
-          >
-            {checkURL(value)}
-          </a>
-        ) : badge ? (
-          <Badge variant="secondary">{value}</Badge>
-        ) : (
-          <span className="text-muted-foreground">{value}</span>
-        )}
+    <div className="space-y-1">
+        <span className="font-medium text-sm">{label}:</span>
+        <div className="text-sm">
+          {label === 'Bill URL' ? (
+            <a
+              href={value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline break-all hover:text-blue-800"
+            >
+              {checkURL(value)}
+            </a>
+          ) : badge ? (
+            <Badge variant="secondary">{value}</Badge>
+          ) : (
+            <p className="text-muted-foreground break-words whitespace-normal">{value}</p>
+          )}
+        </div>
     </div>
 );
 
