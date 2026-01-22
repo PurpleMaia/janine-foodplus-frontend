@@ -10,12 +10,8 @@ import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
 import { TempBillCard } from './temp-card';
 import { ListRestart, TriangleAlert } from 'lucide-react';
-import RefreshColumnButton from '../scraper/update-column-button';
 import LLMUpdateColumnButton from '../llm/llm-update-column-button';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
-
-
-
 
 // Adds readOnly prop to control card rendering
 // When readOnly=true, cards aren't wrapped in Draggable components
@@ -44,7 +40,6 @@ export interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> 
   columnIndex?: number; // Index of this column in the board
 
   enableDnd?: boolean;
-
 }
 
 
@@ -63,7 +58,6 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
       className,
       readOnly = false,
 
-      // NEW
       pendingTempBills = [],
       canModerate = false,
       onApproveTemp,
@@ -87,8 +81,6 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
     const billCardRefsToUse = sharedBillCardRefs || localBillCardRefs;
 
     const pendingCount = pendingTempBills?.length ?? 0;
-    const useDnD = enableDnd && !readOnly;
-
 
     return (
       <div
@@ -119,11 +111,11 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             </span>
 
             <div className="flex items-center gap-1">
-              <LLMUpdateColumnButton
+              {/* <LLMUpdateColumnButton
                 bills={bills}
                 onRefreshStart={() => setRefreshing(true)}
                 onRefreshEnd={() => setRefreshing(false)}
-              />
+              /> */}
               {/* <RefreshColumnButton
                 bills={bills}
                 onRefreshStart={() => setRefreshing(true)}

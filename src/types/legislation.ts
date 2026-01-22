@@ -39,32 +39,36 @@ export interface NewsArticle {
  */
 export interface Bill {
   // attributes from the database
+  id: string;
   bill_number: string;
   bill_title: string;
-  bill_url: string;
-  committee_assignment: string;
-  created_at: Date | null;
-  current_status: string;
+  year: number | null;
+  current_bill_status: string;
   current_status_string: string;
   description: string;
-  food_related: boolean | null;
-  id: string;
-  introducer: string;
-  nickname: string;
-  user_nickname?: string | null;
-  updated_at: Date | null;
-  year: number | null;
   archived: boolean;
-  ai_misclassification_type?: 'false_positive' | 'false_negative' | null;
 
   // client side attributes
-  updates: StatusUpdate[]
+  latest_update: StatusUpdate | null;
   previous_status?: BillStatus;
+
+  // LLM state 
   llm_suggested?: boolean;
   llm_processing?: boolean;
   tags?: Tag[];
-  tracked_by?: BillTracker[];
   tracked_count?: number;
+  tracked_by?: BillTracker[];
+}
+
+export interface BillDetails extends Bill {
+  bill_url: string;
+  committee_assignment: string;
+  introducer: string;
+  food_related: boolean | null;
+  created_at: Date | null;
+  updated_at: Date | null;
+
+  updates: StatusUpdate[];
 }
 
 export interface BillTracker {

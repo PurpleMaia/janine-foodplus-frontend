@@ -167,11 +167,17 @@ function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
   const [archivingUserId, setArchivingUserId] = useState<string | null>(null);
+  const [archiveDialogUserId, setArchiveDialogUserId] = useState<string | null>(null);
 
   // Filter state
   const [showArchived, setShowArchived] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [usernameSearch, setUsernameSearch] = useState('');  
+  const [usernameSearch, setUsernameSearch] = useState('');
+
+  // Sync activeUsers with allAccounts when it changes
+  React.useEffect(() => {
+    setActiveUsers(allAccounts);
+  }, [allAccounts]);
 
   const handleRoleChange = (userId: string, newRole: string) => {
     setSelectedRoles(prev => ({
@@ -256,6 +262,11 @@ function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
   // Filter users based on filters
   const filteredUsers = React.useMemo(() => {
     return activeUsers.filter(user => {
+      // Filter by archived status
+      if (!showArchived && user.account_status === 'archived') {
+        return false;
+      }
+
       // Filter by role
       if (roleFilter !== 'all' && user.role !== roleFilter) {
         return false;
@@ -268,7 +279,7 @@ function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
 
       return true;
     });
-  }, [activeUsers, roleFilter, usernameSearch]);
+  }, [activeUsers, showArchived, roleFilter, usernameSearch]);
 
   return (
     <div>
@@ -338,7 +349,6 @@ function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
             const currentRole = selectedRoles[user.id] || user.role || 'user';
             const hasChanged = currentRole !== user.role;
             const isArchived = user.account_status === 'archived';
-            const [showArchiveDialog, setShowArchiveDialog] = React.useState(false);
 
             return (
               <React.Fragment key={user.id}>
@@ -382,7 +392,7 @@ function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
                             </Button>
                           )}
                           <Button
-                            onClick={() => setShowArchiveDialog(true)}
+                            onClick={() => setArchiveDialogUserId(user.id)}
                             disabled={archivingUserId === user.id}
                             size="sm"
                             variant="outline"
@@ -397,7 +407,7 @@ function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
                 </Card>
 
                 {/* Archive Confirmation Dialog */}
-                <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+                <AlertDialog open={archiveDialogUserId === user.id} onOpenChange={(open) => !open && setArchiveDialogUserId(null)}>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Archive Account</AlertDialogTitle>
@@ -410,7 +420,7 @@ function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
                       <AlertDialogAction
                         onClick={() => {
                           handleArchiveAccount(user.id);
-                          setShowArchiveDialog(false);
+                          setArchiveDialogUserId(null);
                         }}
                       >
                         Archive

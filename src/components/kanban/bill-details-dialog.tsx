@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import type { BillStatus } from '@/types/legislation';
+import type { Bill, BillStatus, BillDetails, StatusUpdate } from '@/types/legislation';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { FileText, RefreshCw, WandSparkles, Lock } from 'lucide-react';
+import { FileText, RefreshCw, WandSparkles, Lock, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMemo, useState } from 'react';
@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { updateBillStatus } from '@/services/data/legislation';
+import { updateBillStatus, getBillDetails } from '@/services/data/legislation';
 import { Input } from '@/components/ui/input';
 import { TagSelector } from '../tags/tag-selector';
 import { useTrackedBills } from '@/hooks/use-tracked-bills';
@@ -74,47 +74,63 @@ const getCurrentStageName = (status: BillStatus): string => {
 }
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange, viewMode, updateBill } = useBills()
-  const { user } = useAuth() // Add this line to get authentication state
-  const { trackBill, untrackBill } = useTrackedBills();
+  const { bills, setBills, setTempBills, proposeStatusChange, viewMode } = useBills()
+  const { user } = useAuth()
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
-  const [nickname, setNickname] = useState<string>('');
-  const [isSavingNickname, setIsSavingNickname] = useState<boolean>(false);
-  const [isClaiming, setIsClaiming] = useState<boolean>(false);
-  const [isUntracking, setIsUntracking] = useState<boolean>(false);
+  const [billDetails, setBillDetails] = useState<BillDetails | null>(null)
+  const [loadingDetails, setLoadingDetails] = useState<boolean>(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
 
-  // Find the bill based on billID
+  // Find the basic bill data from context (for card info)
   const bill = useMemo(() => {
-
-    const found = bills.find(b => b.id === billID)    
-
+    const found = bills.find(b => b.id === billID)
     return found
   }, [bills, billID])
-      
-  // Sync selectedStatus with bill's current_status when dialog opens or bill changes
+
+  // Fetch detailed bill data when dialog opens
   useEffect(() => {
-      if (isOpen && bill) {
-          setSelectedStatus(bill.current_status || '');
-          setNickname(bill.user_nickname ?? '');
-      }
-  }, [isOpen, bill, bill?.current_status, bill?.id, bill?.user_nickname]);
-  
-  // Clear selectedStatus when dialog closes
+    if (isOpen && billID) {
+      setLoadingDetails(true)
+      setDetailsError(null)
+
+      getBillDetails(billID)
+        .then((details) => {
+          setBillDetails(details)
+          setSelectedStatus(details.current_bill_status || '')
+        })
+        .catch((error) => {
+          console.error('Failed to fetch bill details:', error)
+          setDetailsError('Failed to load bill details')
+          toast({
+            title: 'Error',
+            description: 'Failed to load bill details. Please try again.',
+            variant: 'destructive',
+          })
+        })
+        .finally(() => {
+          setLoadingDetails(false)
+        })
+    }
+  }, [isOpen, billID])
+
+  // Clear state when dialog closes
   useEffect(() => {
       if (!isOpen) {
-          setSelectedStatus('');
-          setNickname('');
+          setSelectedStatus('')
+          setBillDetails(null)
+          setDetailsError(null)
       }
-  }, [isOpen]);
-  
-  
+  }, [isOpen])
+
 
   if (!bill) {
     return null; // Don't render anything if no bill is selected
   }
-  const progressValue = getProgressValue(bill.current_status as BillStatus);
-  const currentStageName = getCurrentStageName(bill.current_status as BillStatus);
+  // Use billDetails for status if available, otherwise fall back to bill
+  const currentStatus = billDetails?.current_bill_status || bill.current_bill_status
+  const progressValue = getProgressValue(currentStatus as BillStatus);
+  const currentStageName = getCurrentStageName(currentStatus as BillStatus);
 
   const handleOnValueChange = (status: string) => {
     setSelectedStatus(status)
@@ -170,8 +186,8 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                     ...b, 
                     llm_suggested: false,
                     llm_processing: false,
-                    previous_status: b.current_status, // Store original status
-                    current_status: selectedStatus,                        
+                    previous_status: b.current_bill_status, // Store original status
+                    current_bill_status: selectedStatus,                        
                 }
                 : b
             )
@@ -198,6 +214,12 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     } finally {
         setSaving(false)
     }         
+  }
+
+  const handleStatusUpdateRefresh = (updates: StatusUpdate[]) => {
+    const updatedDetails = billDetails ? { ...billDetails, updates } : null;
+
+    setBillDetails(updatedDetails);
   }
 
   return (
@@ -240,36 +262,133 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
         {/* Main Content Area (Scrollable) */}
         <ScrollArea className="flex-1 overflow-y-auto"> {/* flex-1 allows this area to grow and push footer down */}
-          <div className="space-y-6 p-4">
-            {/* Top Section */}
-            <div className="mt-3 grid gap-4 grid-cols-4">
-
-              {/* Tags */}
-              <div className="rounded-md border bg-muted/40 p-3 space-y-2 col-span-2">
-                <h4 className="font-semibold text-sm">Tags</h4>
-                <p className="text-xs text-muted-foreground">
-                  Add tags to categorize this bill.
-                </p>
-                <TagSelector billId={bill.id} />
-              </div>              
-
-              {/* View Original Url */}
-              <div className="rounded-md border bg-muted/40 p-3 space-y-2">
-                <h4 className="text-sm font-semibold">Bill URL</h4>
-                <p className='text-xs text-muted-foreground'>Hawaii State Legislature: </p>
-                <a href={bill.bill_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  <FileText className="h-4 w-4" />
-                  View Original Bill
-                </a>
+          {loadingDetails ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading bill details...</p>
               </div>
+            </div>
+          ) : detailsError ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <p className="text-sm text-destructive">{detailsError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => {
+                    if (billID) {
+                      setLoadingDetails(true)
+                      setDetailsError(null)
+                      getBillDetails(billID)
+                        .then(setBillDetails)
+                        .catch((error) => {
+                          setDetailsError('Failed to load bill details')
+                        })
+                        .finally(() => setLoadingDetails(false))
+                    }
+                  }}
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          ) : (
+          <div className="space-y-6 p-6">
+            {/* Bill Information Section - Priority 1 */}
+            <section className="rounded-lg border bg-card p-6 shadow-sm">
+              <h3 className="text-sm font-semibold mb-4">Bill Information</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DetailItem label="Bill Number" value={billDetails?.bill_number || bill.bill_number} />
+                  <DetailItem label="Year Introduced" value={billDetails?.year?.toString() || bill.year?.toString() || 'N/A'} />
+                </div>
 
-              {/* Who is Tracking */}
-              <div className="rounded-md border bg-muted/40 p-3 space-y-3">
-                {canSeeTracking && (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="text-sm font-semibold">Tracked By</h4>                        
+                <DetailItem label="Bill Title" value={billDetails?.bill_title || bill.bill_title} />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DetailItem label="Committee Assignment" value={billDetails?.committee_assignment || 'Not Assigned'} />
+                  <DetailItem label="Introducers" value={billDetails?.introducer || 'N/A'} />
+                </div>
+
+                <DetailItem label="Description" value={billDetails?.description || bill.description || 'No description available.'} />
+
+                {billDetails?.bill_url && (
+                  <div>
+                    <span className="font-medium">Bill URL:</span>{' '}
+                    <a href={billDetails.bill_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                      <FileText className="h-4 w-4" />
+                      View on Hawaii State Legislature
+                    </a>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Status Updates Section - Priority 2 */}
+            <section className="rounded-lg border bg-card p-6 shadow-sm">
+              <h3 className="text-sm font-semibold mb-4">Status Updates</h3>
+              {billDetails?.updates && billDetails.updates.length > 0 ? (
+                <div className="relative max-h-96 overflow-y-auto pr-2">
+                  <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
+
+                  {billDetails.updates.map((update, index) => (
+                    <div key={`${billDetails.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
+                      <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
+                        {index === 0 ? (
+                          <div className="w-5 h-5 bg-green-500 border-4 border-green-200 rounded-full shadow-lg"></div>
+                        ) : (
+                          <div className="w-4 h-4 bg-gray-300 border-2 border-gray-200 rounded-full opacity-60"></div>
+                        )}
+                      </div>
+                      <div className="flex-1 bg-muted/50 rounded-lg p-4 border">
+                        <div className="flex items-start justify-between gap-4 mb-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {update.chamber}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(update.date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground leading-relaxed break-words">
+                          {update.statustext}
+                        </p>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No status updates available</p>
+                </div>
+              )}
+            </section>
+
+            {/* Tags and Tracking Section - Priority 3 */}
+            <section className="rounded-lg border bg-card p-6 shadow-sm">
+              <h3 className="text-sm font-semibold mb-4">Tags & Tracking</h3>
+              <div className="space-y-6">
+                {/* Tags */}
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Tags</h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Add tags to categorize this bill.
+                  </p>
+                  <TagSelector billId={bill.id} />
+                </div>
+
+                {/* Tracked By */}
+                {canSeeTracking && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Tracked By</h4>
                     {bill.tracked_by && bill.tracked_by.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {bill.tracked_by.map((tracker) => (
@@ -284,76 +403,14 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                   </div>
                 )}
               </div>
-            </div>
-
-            <section className="rounded-lg border bg-card p-4 shadow-sm">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Bill Information
-              </h3>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <DetailItem label="Bill Number" value={bill.bill_number} />
-                <DetailItem label="Year Introduced" value={bill.year?.toString() ?? 'N/A'} />
-                <DetailItem label="Bill Title" value={bill.bill_title} />
-                <DetailItem label="Committee Assignment" value={bill.committee_assignment ? bill.committee_assignment : 'Not Assigned'} />
-                <div className="sm:col-span-2 space-y-4">
-                  <DetailItem label="Introducers" value={bill.introducer} />
-                  <DetailItem label="Description" value={bill.description || 'No description available.'} />
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-lg border bg-card p-4 shadow-sm">
-              <h3 className="text-sm font-semibold">Status Updates</h3>
-              <div className="mt-3 space-y-3">
-                {bill.updates && bill.updates.length > 0 ? (
-                  <div className="relative max-h-96 overflow-y-auto pr-2">
-                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
-                    
-                    {bill.updates.map((update, index) => (
-                      <div key={`${bill.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
-                        <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
-                          {index === 0 ? (
-                            <div className="w-5 h-5 bg-green-500 border-4 border-green-200 rounded-full shadow-lg"></div>
-                          ) : (
-                            <div className="w-4 h-4 bg-gray-300 border-2 border-gray-200 rounded-full opacity-60"></div>
-                          )}
-                        </div>
-                        <div className="flex-1 bg-muted/50 rounded-lg p-3 border min-w-0">
-                          <div className="flex items-start justify-between mb-2">
-                            <Badge variant="outline" className="text-xs">
-                              {update.chamber}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(update.date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-sm text-foreground leading-relaxed">
-                            {update.statustext}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No status updates available</p>
-                  </div>
-                )}
-              </div>
             </section>
           </div>
+          )}
         </ScrollArea>
         {/* Status Change Section - Now conditionally editable */}
-        <div className="z-10 border-t justify-center align-middle space-y-4 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-sm font-medium text-muted-foreground">New Status</h3>
+        <div className="border-t bg-background p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-sm font-semibold">Change Bill Status</h3>
             {!user && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Lock className="h-3 w-3" />
@@ -362,33 +419,34 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
             )}
           </div>
 
-          <div className='flex gap-4'>
-            <Select 
-              value={selectedStatus} 
+          <div className='flex gap-3'>
+            <Select
+              value={selectedStatus}
               onValueChange={handleOnValueChange}
-              disabled={!user || !canEditBill} // Disable when not authenticated or intern in all-bills view
+              disabled={!user || !canEditBill}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="flex-1">
                 <SelectValue placeholder={
-                  !user 
-                    ? "Login to edit status" 
-                    : !canEditBill 
-                      ? "Only editable in 'My Bills' view" 
+                  !user
+                    ? "Login to edit status"
+                    : !canEditBill
+                      ? "Only editable in 'My Bills' view"
                       : "Select a new status"
                 } />
               </SelectTrigger>
               <SelectContent>
                 {KANBAN_COLUMNS.map((column) => (
-                  <SelectItem key={column.id} value={column.id}>
+                  <SelectItem key={column.id} value={column.id} className='cursor-pointer hover:bg-slate-100'>
                     {column.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Button 
+            <Button
               onClick={handleSave}
-              disabled={!user || !selectedStatus || !canEditBill} // Disable when not authenticated, no status selected, or intern in all-bills view
+              disabled={!user || !selectedStatus || !canEditBill}
+              className="px-8"
             >
               Save
             </Button>
@@ -396,12 +454,12 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
         </div>
 
         {/* Footer - Also conditionally show admin buttons */}
-        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto sm:justify-between">
-          <div className='flex gap-2'>
+        <DialogFooter className="p-6 border-t bg-background sm:justify-between items-center">
+          <div className='flex gap-2 items-center'>
             {user ? (
               <>
                 <AIUpdateSingleButton bill={bill} />
-                <RefreshStatusesButton bill={bill} /> 
+                <RefreshStatusesButton bill={bill} onRefresh={handleStatusUpdateRefresh} />
               </>
             ) : (
               <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -410,7 +468,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               </div>
             )}
           </div>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} className="min-w-[100px]">
             Close
           </Button>
         </DialogFooter>
@@ -426,22 +484,24 @@ interface DetailItemProps {
     badge?: boolean;
 }
 const DetailItem: React.FC<DetailItemProps> = ({ label, value, badge }) => (
-    <div>
-        <span className="font-medium">{label}:</span>{' '}
-        {label === 'Bill URL' ? (
-          <a
-            href={value}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline break-all hover:text-blue-800"
-          >
-            {checkURL(value)}
-          </a>
-        ) : badge ? (
-          <Badge variant="secondary">{value}</Badge>
-        ) : (
-          <span className="text-muted-foreground">{value}</span>
-        )}
+    <div className="space-y-1">
+        <span className="font-medium text-sm">{label}:</span>
+        <div className="text-sm">
+          {label === 'Bill URL' ? (
+            <a
+              href={value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline break-all hover:text-blue-800"
+            >
+              {checkURL(value)}
+            </a>
+          ) : badge ? (
+            <Badge variant="secondary">{value}</Badge>
+          ) : (
+            <p className="text-muted-foreground break-words whitespace-normal">{value}</p>
+          )}
+        </div>
     </div>
 );
 
