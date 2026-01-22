@@ -111,11 +111,11 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             </span>
 
             <div className="flex items-center gap-1">
-              {/* <LLMUpdateColumnButton
+              <LLMUpdateColumnButton
                 bills={bills}
                 onRefreshStart={() => setRefreshing(true)}
                 onRefreshEnd={() => setRefreshing(false)}
-              /> */}
+              />
               {/* <RefreshColumnButton
                 bills={bills}
                 onRefreshStart={() => setRefreshing(true)}
@@ -124,12 +124,12 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             </div>
           </h2>
 
-          {bills.length >= 20 && (
+          {/* {bills.length >= 20 && (
             <p className="mt-2 text-xs text-gray-600 flex items-center gap-2">
               <TriangleAlert className="h-4 w-4 text-yellow-600" />
               Clicking <ListRestart className="h-3 w-3" /> will take a long time
             </p>
-          )}
+          )} */}
         </div>
 
         <ScrollArea className="flex-1 p-2">

@@ -192,12 +192,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     const bill = bills.find((b) => b.id === billId);
     if (!bill || !bill.llm_suggested) return;
 
-    setBills((prevBills) =>
+    setBills((prevBills: Bill[]) =>
       prevBills.map((b) =>
         b.id === billId
           ? {
               ...b,
-              current_status: b.previous_status!,
+              current_bill_status: b.previous_status!,
               llm_suggested: false,
               previous_status: undefined,
             }
@@ -385,7 +385,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
             ? {
                 ...b,
                 previous_status: b.current_bill_status,
-                current_status: tb.proposed_status as BillStatus,
+                current_bill_status: tb.proposed_status as BillStatus,
                 llm_suggested: false,
                 llm_processing: false,
               }
@@ -456,7 +456,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       setBills((prev) =>
         prev.map((b) =>
           b.id === billId
-            ? { ...b, current_status: tb.current_status }
+            ? { ...b, current_bill_status: tb.current_status }
             : b
         )
       );
@@ -556,7 +556,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       setBills((prev) =>
         prev.map((b) =>
           b.id === billId
-            ? { ...b, current_status: tb.current_status }
+            ? { ...b, current_bill_status: tb.current_status }
             : b
         )
       );
@@ -632,7 +632,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         ...bill,
         llm_processing: false,
         llm_suggested: false,
-        current_status: bill.previous_status || bill.current_bill_status,
+        current_bill_status: bill.previous_status || bill.current_bill_status,
         previous_status: undefined,
       }))
     );

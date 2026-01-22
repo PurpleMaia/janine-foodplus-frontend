@@ -54,7 +54,7 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
       tempBill.proposed_by?.username ??
       tempBill.proposed_by?.email ??
       tempBill.proposed_by?.user_id ??
-      'Unknown user';
+      'AI';
 
     const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
