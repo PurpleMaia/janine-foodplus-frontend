@@ -4,7 +4,7 @@ import type { Bill, BillTracker, Tag, BillDetails, StatusUpdate } from '@/types/
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { db } from '@/db/kysely/client';
 import { Bills, BillStatus, StatusUpdates, User } from '@/db/types';
-import { Selectable } from 'kysely';
+import { Selectable, sql } from 'kysely';
 import { getBatchBillTags } from '@/services/data/tags';
 
 // ==============================================
@@ -313,7 +313,7 @@ async function getStatusUpdatesForBill(billId: string): Promise<StatusUpdate[]> 
         'su.statustext',
       ])
       .where('su.bill_id', '=', billId)
-      .orderBy('su.date', 'desc')
+      .orderBy(sql`cast(su.date as date)`, 'desc')
       .execute();
     return updates;
 }
