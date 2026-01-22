@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import type { BillStatus } from '@/types/legislation';
+import type { Bill, BillStatus, BillDetails, StatusUpdate } from '@/types/legislation';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { FileText, RefreshCw, WandSparkles, Lock } from 'lucide-react';
+import { FileText, RefreshCw, WandSparkles, Lock, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMemo, useState } from 'react';
@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { updateBillStatus } from '@/services/data/legislation';
+import { updateBillStatus, getBillDetails } from '@/services/data/legislation';
 import { Input } from '@/components/ui/input';
 import { TagSelector } from '../tags/tag-selector';
 import { useTrackedBills } from '@/hooks/use-tracked-bills';
@@ -74,47 +74,63 @@ const getCurrentStageName = (status: BillStatus): string => {
 }
 
 export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialogProps) {
-  const { bills, setBills, setTempBills, updateBillNickname, proposeStatusChange, viewMode, updateBill } = useBills()
-  const { user } = useAuth() // Add this line to get authentication state
-  const { trackBill, untrackBill } = useTrackedBills();
+  const { bills, setBills, setTempBills, proposeStatusChange, viewMode } = useBills()
+  const { user } = useAuth()
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [, setSaving] = useState<boolean>(false)
-  const [nickname, setNickname] = useState<string>('');
-  const [isSavingNickname, setIsSavingNickname] = useState<boolean>(false);
-  const [isClaiming, setIsClaiming] = useState<boolean>(false);
-  const [isUntracking, setIsUntracking] = useState<boolean>(false);
+  const [billDetails, setBillDetails] = useState<BillDetails | null>(null)
+  const [loadingDetails, setLoadingDetails] = useState<boolean>(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
 
-  // Find the bill based on billID
+  // Find the basic bill data from context (for card info)
   const bill = useMemo(() => {
-
-    const found = bills.find(b => b.id === billID)    
-
+    const found = bills.find(b => b.id === billID)
     return found
   }, [bills, billID])
-      
-  // Sync selectedStatus with bill's current_status when dialog opens or bill changes
+
+  // Fetch detailed bill data when dialog opens
   useEffect(() => {
-      if (isOpen && bill) {
-          setSelectedStatus(bill.current_status || '');
-          setNickname(bill.user_nickname ?? '');
-      }
-  }, [isOpen, bill, bill?.current_status, bill?.id, bill?.user_nickname]);
-  
-  // Clear selectedStatus when dialog closes
+    if (isOpen && billID) {
+      setLoadingDetails(true)
+      setDetailsError(null)
+
+      getBillDetails(billID)
+        .then((details) => {
+          setBillDetails(details)
+          setSelectedStatus(details.current_bill_status || '')
+        })
+        .catch((error) => {
+          console.error('Failed to fetch bill details:', error)
+          setDetailsError('Failed to load bill details')
+          toast({
+            title: 'Error',
+            description: 'Failed to load bill details. Please try again.',
+            variant: 'destructive',
+          })
+        })
+        .finally(() => {
+          setLoadingDetails(false)
+        })
+    }
+  }, [isOpen, billID])
+
+  // Clear state when dialog closes
   useEffect(() => {
       if (!isOpen) {
-          setSelectedStatus('');
-          setNickname('');
+          setSelectedStatus('')
+          setBillDetails(null)
+          setDetailsError(null)
       }
-  }, [isOpen]);
-  
-  
+  }, [isOpen])
+
 
   if (!bill) {
     return null; // Don't render anything if no bill is selected
   }
-  const progressValue = getProgressValue(bill.current_status as BillStatus);
-  const currentStageName = getCurrentStageName(bill.current_status as BillStatus);
+  // Use billDetails for status if available, otherwise fall back to bill
+  const currentStatus = billDetails?.current_bill_status || bill.current_bill_status
+  const progressValue = getProgressValue(currentStatus as BillStatus);
+  const currentStageName = getCurrentStageName(currentStatus as BillStatus);
 
   const handleOnValueChange = (status: string) => {
     setSelectedStatus(status)
@@ -170,8 +186,8 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                     ...b, 
                     llm_suggested: false,
                     llm_processing: false,
-                    previous_status: b.current_status, // Store original status
-                    current_status: selectedStatus,                        
+                    previous_status: b.current_bill_status, // Store original status
+                    current_bill_status: selectedStatus,                        
                 }
                 : b
             )
@@ -198,6 +214,12 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     } finally {
         setSaving(false)
     }         
+  }
+
+  const handleStatusUpdateRefresh = (updates: StatusUpdate[]) => {
+    const updatedDetails = billDetails ? { ...billDetails, updates } : null;
+
+    setBillDetails(updatedDetails);
   }
 
   return (
@@ -240,6 +262,39 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
 
         {/* Main Content Area (Scrollable) */}
         <ScrollArea className="flex-1 overflow-y-auto"> {/* flex-1 allows this area to grow and push footer down */}
+          {loadingDetails ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading bill details...</p>
+              </div>
+            </div>
+          ) : detailsError ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <p className="text-sm text-destructive">{detailsError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => {
+                    if (billID) {
+                      setLoadingDetails(true)
+                      setDetailsError(null)
+                      getBillDetails(billID)
+                        .then(setBillDetails)
+                        .catch((error) => {
+                          setDetailsError('Failed to load bill details')
+                        })
+                        .finally(() => setLoadingDetails(false))
+                    }
+                  }}
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-6 p-4">
             {/* Top Section */}
             <div className="mt-3 grid gap-4 grid-cols-4">
@@ -257,10 +312,14 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               <div className="rounded-md border bg-muted/40 p-3 space-y-2">
                 <h4 className="text-sm font-semibold">Bill URL</h4>
                 <p className='text-xs text-muted-foreground'>Hawaii State Legislature: </p>
-                <a href={bill.bill_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  <FileText className="h-4 w-4" />
-                  View Original Bill
-                </a>
+                {billDetails?.bill_url ? (
+                  <a href={billDetails.bill_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                    <FileText className="h-4 w-4" />
+                    View Original Bill
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">URL not available</p>
+                )}
               </div>
 
               {/* Who is Tracking */}
@@ -291,13 +350,13 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
                 Bill Information
               </h3>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <DetailItem label="Bill Number" value={bill.bill_number} />
-                <DetailItem label="Year Introduced" value={bill.year?.toString() ?? 'N/A'} />
-                <DetailItem label="Bill Title" value={bill.bill_title} />
-                <DetailItem label="Committee Assignment" value={bill.committee_assignment ? bill.committee_assignment : 'Not Assigned'} />
+                <DetailItem label="Bill Number" value={billDetails?.bill_number || bill.bill_number} />
+                <DetailItem label="Year Introduced" value={billDetails?.year?.toString() || bill.year?.toString() || 'N/A'} />
+                <DetailItem label="Bill Title" value={billDetails?.bill_title || bill.bill_title} />
+                <DetailItem label="Committee Assignment" value={billDetails?.committee_assignment || 'Not Assigned'} />
                 <div className="sm:col-span-2 space-y-4">
-                  <DetailItem label="Introducers" value={bill.introducer} />
-                  <DetailItem label="Description" value={bill.description || 'No description available.'} />
+                  <DetailItem label="Introducers" value={billDetails?.introducer || 'N/A'} />
+                  <DetailItem label="Description" value={billDetails?.description || bill.description || 'No description available.'} />
                 </div>
               </div>
             </section>
@@ -305,12 +364,12 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
             <section className="rounded-lg border bg-card p-4 shadow-sm">
               <h3 className="text-sm font-semibold">Status Updates</h3>
               <div className="mt-3 space-y-3">
-                {bill.updates && bill.updates.length > 0 ? (
+                {billDetails?.updates && billDetails.updates.length > 0 ? (
                   <div className="relative max-h-96 overflow-y-auto pr-2">
                     <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
-                    
-                    {bill.updates.map((update, index) => (
-                      <div key={`${bill.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
+
+                    {billDetails.updates.map((update, index) => (
+                      <div key={`${billDetails.id}-update-${index}-${update.id || index}`} className="relative flex gap-4 mb-4 last:mb-0">
                         <div className="relative z-10 flex-shrink-0 w-12 h-12 flex items-center justify-center">
                           {index === 0 ? (
                             <div className="w-5 h-5 bg-green-500 border-4 border-green-200 rounded-full shadow-lg"></div>
@@ -349,6 +408,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
               </div>
             </section>
           </div>
+          )}
         </ScrollArea>
         {/* Status Change Section - Now conditionally editable */}
         <div className="z-10 border-t justify-center align-middle space-y-4 p-4">
@@ -401,7 +461,7 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
             {user ? (
               <>
                 <AIUpdateSingleButton bill={bill} />
-                <RefreshStatusesButton bill={bill} /> 
+                <RefreshStatusesButton bill={bill} onRefresh={handleStatusUpdateRefresh} /> 
               </>
             ) : (
               <div className="text-xs text-muted-foreground flex items-center gap-1">

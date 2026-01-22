@@ -116,17 +116,17 @@ export function KanbanSpreadsheet() {
                     </PopoverContent>
                 </Popover>
                 </TableCell>
-                <TableCell>
+                {/* <TableCell>
                   <a href={bill.bill_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
                     {bill.bill_number}
                   </a>
-                </TableCell>
-                <TableCell>{bill.current_status}</TableCell>
-                <TableCell>{bill.committee_assignment}</TableCell>
+                </TableCell> */}
+                <TableCell>{bill.current_bill_status}</TableCell>
+                {/* <TableCell>{bill.committee_assignment}</TableCell>
                 <TableCell>{bill.introducer}</TableCell>
                 <TableCell>{bill.year ?? 'N/A'}</TableCell>
                 <TableCell>{bill.created_at ? new Date(bill.created_at).toLocaleDateString() : 'N/A'}</TableCell>
-                <TableCell>{bill.updated_at ? new Date(bill.updated_at).toLocaleDateString() : 'N/A'}</TableCell>
+                <TableCell>{bill.updated_at ? new Date(bill.updated_at).toLocaleDateString() : 'N/A'}</TableCell> */}
               </TableRow>
               ))
             )}

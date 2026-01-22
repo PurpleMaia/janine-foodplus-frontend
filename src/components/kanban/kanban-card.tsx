@@ -33,7 +33,7 @@ interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 // Function to get an appropriate icon based on status
-const getStatusIcon = (status: Bill['current_status']): React.ReactNode => {
+const getStatusIcon = (status: Bill['current_bill_status']): React.ReactNode => {
   if (!status) return <FileText className="h-3 w-3 text-muted-foreground" />; // Handle undefined/null
   if (status.includes('scheduled')) return <Calendar className="h-3 w-3 text-blue-600" />;
   if (status.includes('deferred') || status.includes('vetoList')) return <Clock className="h-3 w-3 text-orange-600" />;
@@ -46,7 +46,7 @@ const getStatusIcon = (status: Bill['current_status']): React.ReactNode => {
 };
 
 // Function to get status color variant
-const getStatusVariant = (status: Bill['current_status']): "default" | "secondary" | "destructive" | "outline" => {
+const getStatusVariant = (status: Bill['current_bill_status']): "default" | "secondary" | "destructive" | "outline" => {
   if (!status) return "outline"; // Handle undefined/null
   if (status.includes('passedCommittees') || status.includes('governorSigns') || status.includes('lawWithoutSignature')) return "default";
   if (status.includes('deferred') || status.includes('vetoList')) return "destructive";
@@ -54,7 +54,7 @@ const getStatusVariant = (status: Bill['current_status']): "default" | "secondar
   return "outline";
 };
 
-export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
+const KanbanCardComponent = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     ({ bill, isDragging, onCardClick, onUnadopt, showUnadoptButton = false, isHighlighted = false, className, style, ...props }, ref) => {
 
     // All hooks must be called before any conditional logic
@@ -66,29 +66,13 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
     const { user } = useAuth();    
 
     const canSeeTracking = user?.role === 'admin' || user?.role === 'supervisor';
+
+    // Bill now has latest_update and tracked_by directly
+    const latestUpdate = bill.latest_update;
     const trackedBy = bill.tracked_by ?? [];
     const trackedCount = bill.tracked_count ?? trackedBy.length;
     const visibleTrackers = trackedBy.slice(0, 2);
-    const extraTrackerCount = trackedBy.length - visibleTrackers.length;
-
-
-    // Format date only on client-side after mount to prevent hydration mismatch
-    useEffect(() => {
-      let dateToFormat: Date | null = null;
-      if (bill.updated_at instanceof Date) {
-        dateToFormat = bill.updated_at;
-      } else if (typeof bill.updated_at === 'string') {
-          try {
-              const parsedDate = new Date(bill.updated_at);
-              if (!isNaN(parsedDate.getTime())) {
-                dateToFormat = parsedDate;
-              }
-          } catch {
-              console.warn("Could not parse date string:", bill.updated_at);
-          }
-      }
-      setFormattedDate(dateToFormat ? dateToFormat.toLocaleDateString() : 'N/A');
-    }, [bill.updated_at]);
+    const extraTrackerCount = Math.max(0, trackedCount - visibleTrackers.length);
 
 
     const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -143,7 +127,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                 "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 w-full max-w-[300px]", // limit card width
                 "flex flex-col", // Flex column layout
                 isDragging ? "opacity-80 shadow-xl rotate-3 scale-105 cursor-grabbing" : "hover:shadow-md cursor-grab",
-                bill.updates && bill.updates.length > 0 && "ring-1 ring-green-200/50", // Subtle glow for active bills
+                latestUpdate && "ring-1 ring-green-200/50", // Subtle glow for active bills
                 isHighlighted && "ring-2 ring-blue-500 ring-offset-2 bg-blue-50/50 border-blue-300", // Highlight search match
                  className
             )}
@@ -227,31 +211,26 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
 
                 </CardHeader>
                 <CardContent className="p-0 gap-2">
-                    {bill.user_nickname && (
+                    {/* {bill.user_nickname && (
                       <p className="text-xs text-muted-foreground">
                         Nickname: {bill.user_nickname}
                       </p>
-                    )}
+                    )} */}
                     <p className='text-sm text-foreground text-wrap line-clamp-2 px-3'>{bill.description}</p>
 
                     {/* Latest Status Update Preview */}
-                    {bill.updates && bill.updates.length > 0 && (
+                    {latestUpdate && (
                         <div className="border-y bg-slate-100 bg-muted/30 my-2 p-3 mt-3 items-center align-middle justify-center">
                             <div className="flex items-start gap-2">
                                 <div className="w-2 h-2 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-xs text-muted-foreground">
-                                            Latest update • {new Date(bill.updates[0].date).toLocaleDateString()}
-                                        </p>
-                                        {bill.updates.length > 1 && (
-                                            <Badge variant="outline" className="text-xs h-5 px-1.5">
-                                                +{bill.updates.length - 1} more
-                                            </Badge>
-                                        )}
+                                            Latest update • {new Date(latestUpdate.date).toLocaleDateString()}
+                                        </p>                                        
                                     </div>
                                     <p className="text-xs text-foreground line-clamp-2 leading-relaxed">
-                                        {bill.updates[0].statustext}
+                                        {latestUpdate.statustext}
                                     </p>
                                 </div>
                             </div>
@@ -261,7 +240,7 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
                     <div className='flex justify-between items-center mt-2 px-3 mb-2'>
 
                       <Badge variant='outline' className='text-muted-foreground'>
-                        {formatBillStatusName(bill.current_status)}
+                        {formatBillStatusName(bill.current_bill_status)}
                       </Badge>
 
                       {canSeeTracking ? (
@@ -361,4 +340,53 @@ export const KanbanCard = React.forwardRef<HTMLDivElement, KanbanCardProps>(
       </div>
     );
 });
-KanbanCard.displayName = "KanbanCard";
+KanbanCardComponent.displayName = "KanbanCard";
+
+// Custom comparison function for React.memo
+// Only re-render if the specific props we care about have changed
+const arePropsEqual = (prevProps: KanbanCardProps, nextProps: KanbanCardProps): boolean => {
+  // Quick check: if it's a different bill entirely, re-render
+  if (prevProps.bill.id !== nextProps.bill.id) return false;
+
+  // Check UI state props
+  if (prevProps.isDragging !== nextProps.isDragging) return false;
+  if (prevProps.isHighlighted !== nextProps.isHighlighted) return false;
+  if (prevProps.showUnadoptButton !== nextProps.showUnadoptButton) return false;
+
+  // Check bill properties that affect display
+  const prev = prevProps.bill;
+  const next = nextProps.bill;
+
+  if (prev.bill_number !== next.bill_number) return false;
+  if (prev.year !== next.year) return false;
+  if (prev.description !== next.description) return false;
+  if (prev.current_bill_status !== next.current_bill_status) return false;
+  // if (prev.user_nickname !== next.user_nickname) return false;
+  if (prev.llm_suggested !== next.llm_suggested) return false;
+  if (prev.llm_processing !== next.llm_processing) return false;
+  if (prev.tracked_count !== next.tracked_count) return false;
+
+  // Check tags array (shallow comparison of IDs)
+  const prevTags = prev.tags || [];
+  const nextTags = next.tags || [];
+  if (prevTags.length !== nextTags.length) return false;
+  if (prevTags.some((tag, i) => tag.id !== nextTags[i]?.id)) return false;
+
+  // Check latest update (we only display the first one)
+  const prevUpdate = prev.latest_update;
+  const nextUpdate = next.latest_update;
+  if (prevUpdate?.statustext !== nextUpdate?.statustext) return false;
+  if (prevUpdate?.date !== nextUpdate?.date) return false;  
+
+  // Check tracked_by (we only display first 2)
+  const prevTracked = prev.tracked_by || [];
+  const nextTracked = next.tracked_by || [];
+  if (prevTracked.length !== nextTracked.length) return false;
+  if (prevTracked.slice(0, 2).some((t, i) => t.id !== nextTracked[i]?.id)) return false;
+
+  // All checks passed - props are equal, skip re-render
+  return true;
+};
+
+// Export memoized component
+export const KanbanCard = React.memo(KanbanCardComponent, arePropsEqual);

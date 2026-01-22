@@ -3,19 +3,17 @@ import { useState } from "react"
 import { Button } from "../ui/button"
 import { ListRestart, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Bill } from "@/types/legislation";
+import { Bill, StatusUpdate } from "@/types/legislation";
 import { scrapeForUpdates } from "@/services/scraper";
-import { useBills } from "@/hooks/contexts/bills-context";
 
 interface Props {
     bill: Bill
+    onRefresh: (updates: StatusUpdate[]) => void
 }
 
 // NOTE: This component does not save to the database. It only updates the UI optimistically.
-// TODO: Extend this to save to the database as well.
-export default function RefreshStatusesButton({ bill } : Props) {
+export default function RefreshStatusesButton({ bill, onRefresh } : Props) {
     const [loading, setLoading] = useState<boolean>(false)
-    const { setBills } = useBills()
 
     const handleScrapeStatuses = async () => {
         toast({
@@ -34,17 +32,8 @@ export default function RefreshStatusesButton({ bill } : Props) {
                 variant: 'destructive',
             });
         } else {
-            // Update the UI with LLM suggestion (optimistic)
-            setBills(prevBills => 
-                prevBills.map(b => 
-                b.id === bill.id 
-                    ? { 
-                        ...b, 
-                        updates: result.individualBill.updates
-                    }
-                    : b
-                )
-            );
+            // Update the Details Dialog with updates
+            onRefresh(result.individualBill.updates);            
 
             toast({
                 title: `Done: ${bill.bill_number}`,

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Bill } from "@/types/legislation";
+import { Bill, BillDetails } from "@/types/legislation";
 import { findBill } from "@/services/scraper";
 import { toast } from "@/hooks/use-toast";
 import { findExistingBillByURL, updateFoodStatusOrCreateBill } from "@/services/data/legislation";
@@ -28,7 +28,7 @@ export function NewBillDialog({ isOpen, onClose }: NewBillDialogProps) {
     const [url, setUrl] = useState<string>('')
     const [error, setError] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [billPreview, setBillPreview] = useState<Bill | null>(null)
+    const [billPreview, setBillPreview] = useState<BillDetails | null>(null)
     const [isUpdating, setIsUpdating] = useState<boolean>(false);
     const [isAdopting, setIsAdopting] = useState<boolean>(false);
     const [foodRelatedSelection, setFoodRelatedSelection] = useState<boolean | null>(null);

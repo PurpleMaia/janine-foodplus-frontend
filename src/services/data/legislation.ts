@@ -1,9 +1,9 @@
 'use server';
 
-import type { Bill, BillTracker, Tag } from '@/types/legislation';
+import type { Bill, BillTracker, Tag, BillDetails, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { db } from '@/db/kysely/client';
-import { Bills, BillStatus, User } from '@/db/types';
+import { Bills, BillStatus, StatusUpdates, User } from '@/db/types';
 import { Selectable } from 'kysely';
 import { getBatchBillTags } from '@/services/data/tags';
 
@@ -41,15 +41,13 @@ export async function getAllTrackedBills(showArchived: boolean = false): Promise
         }
 
         const billIds = bills.map(bill => bill.id);
-        
-        console.log(`[BILLS FETCH (PUBLIC)] Found ${billIds.length} food-related adopted bills, fetching status updates & tags...`);        
-        const { statusUpdates, tags, trackedCount } = await getAdditionalBillData(billIds);
+
+        console.log(`[BILLS FETCH (PUBLIC)] Found ${billIds.length} food-related adopted bills, fetching status updates & tags...`);
+        const additionalData = await getAdditionalBillData(billIds);
 
         const billObjects = await mapBillDataToBillClient({
           bills,
-          statusUpdates,
-          tags,
-          trackedCount
+          additionalData
         });
 
         console.log(`[BILLS FETCH (PUBLIC)] Rendering ${billObjects.size} food-related adopted bills...`);
@@ -89,15 +87,12 @@ export async function getAllFoodRelatedBills(showArchived: boolean = false, incl
 
         const billIds = bills.map(bill => bill.id);
 
-        console.log(`[BILLS FETCH (ALL)] Found ${billIds.length} food-related adopted bills, fetching status updates & tags...`);        
-        const { statusUpdates, tags, trackedBy, trackedCount } = await getAdditionalBillData(billIds, includeTrackedBy);
+        console.log(`[BILLS FETCH (ALL)] Found ${billIds.length} food-related adopted bills, fetching status updates & tags...`);
+        const additionalData = await getAdditionalBillData(billIds, includeTrackedBy);
 
         const billObjects = await mapBillDataToBillClient({
           bills,
-          statusUpdates,
-          tags,
-          trackedBy,
-          trackedCount
+          additionalData
         });
 
         console.log(`[BILLS FETCH (ALL)] Rendering ${billObjects.size} food-related adopted bills...`);
@@ -193,15 +188,17 @@ export async function getUserTrackedBills(userId: string, showArchived: boolean 
     }
 
     const billIds = bills.map(bill => bill.id);
-    console.log(`[BILLS FETCH (USER)] Fetching status updates & tags for ${billIds.length} bills...`);    
+    console.log(`[BILLS FETCH (USER)] Fetching status updates & tags for ${billIds.length} bills...`);
     const { statusUpdates, tags, trackedBy, trackedCount } = await getAdditionalBillData(billIds, includeTrackedBy);
 
     const billObjects = await mapBillDataToBillClient({
       bills,
-      statusUpdates,
-      tags,
-      trackedBy,
-      trackedCount
+      additionalData: {
+        statusUpdates,
+        tags,
+        trackedBy,
+        trackedCount
+      }
     });
 
     console.log(`[BILLS FETCH (USER)] Rendering ${billObjects.size} tracked bills...`);
@@ -217,8 +214,8 @@ export async function getUserTrackedBills(userId: string, showArchived: boolean 
  */
 async function getAdditionalBillData(billIds: string[], includeTrackedBy: boolean = false) {
   // Batch fetch status updates for these bills
-  const statusUpdates = await getStatusUpdatesForBills(billIds);
-  
+  const statusUpdates = await getBatchStatusUpdates(billIds);
+
   // Batch fetch tags for these bills
   const tags = await getBatchBillTags(billIds);
 
@@ -229,17 +226,93 @@ async function getAdditionalBillData(billIds: string[], includeTrackedBy: boolea
   return { statusUpdates, tags, trackedBy, trackedCount };
 }
 
-async function getStatusUpdatesForBills(billIds: string[]): Promise<Selectable<BillStatus>[]> {
+/**
+ * Fetches detailed bill information including status updates and extended metadata.
+ * Used by BillDetailsDialog to get full bill information on-demand.
+ *
+ * @param billId The ID of the bill to fetch
+ * @returns BillDetails object with all metadata and status updates
+ */
+export async function getBillDetails(billId: string): Promise<BillDetails> {
+  console.log(`[BILL DETAILS] Fetching details for bill: ${billId.slice(0, 6)}...`);
+
+  try {
+    const bill = await db
+      .selectFrom('bills')
+      .selectAll()
+      .where('id', '=', billId)
+      .executeTakeFirst();
+
+    if (!bill) {
+      console.error(`[BILL DETAILS] Bill not found: ${billId}`);
+      throw new Error('Bill not found');
+    }
+
+    const updates = await getStatusUpdatesForBill(billId);
+    console.log(`[BILL DETAILS] Found ${updates.length} status updates for bill ${billId.slice(0, 6)}`);
+
+    // Use the generic converter with includeExtendedFields flag
+    const billDetails = await convertDataToBillShape(
+      bill,
+      { updates },
+      true  // includeExtendedFields = true to get BillDetails
+    );
+
+    console.log(`[BILL DETAILS] Successfully converted bill details for ${billId.slice(0, 6)}`);
+    return billDetails;
+  } catch (error) {
+    console.error('[BILL DETAILS] Failed to get bill details:', error);
+    throw error instanceof Error ? error : new Error('Failed to get bill details');
+  }
+}
+
+async function getBatchStatusUpdates(billIds: string[]): Promise<Record<string, Selectable<StatusUpdates>[]>> {
+  try {
+    if (!Array.isArray(billIds) || billIds.length === 0) {
+      return {};
+    }
+
+    // Fetch all status updates for the given bill IDs
+    const updates = await db
+      .selectFrom('status_updates as su')
+      .selectAll()
+      .where('su.bill_id', 'in', billIds)
+      .orderBy('su.date', 'desc')
+      .execute();
+
+    const updatesByBillId = updates.reduce((acc, update) => {
+      if (!acc[update.bill_id]) {
+        acc[update.bill_id] = [];
+      }
+      acc[update.bill_id].push(update);
+      return acc;
+    }, {} as Record<string, Selectable<StatusUpdates>[]>);
+
+    // Ensure all requested bill IDs have an entry (even if empty)
+    billIds.forEach(billId => {
+      if (!updatesByBillId[billId]) {
+        updatesByBillId[billId] = [];
+      }
+    });
+
+    return updatesByBillId;
+  } catch (error) {
+    console.error('Failed to get batch status updates:', error);
+    return {};
+  }
+}
+
+
+async function getStatusUpdatesForBill(billId: string): Promise<StatusUpdate[]> {
     const updates = await db
       .selectFrom('status_updates as su')
       .select([
         'su.chamber',
         'su.date',
-        'su.id as update_id',
+        'su.id',
         'su.statustext',
-        'su.bill_id'
       ])
-      .where('su.bill_id', 'in', billIds)
+      .where('su.bill_id', '=', billId)
       .orderBy('su.date', 'desc')
       .execute();
     return updates;
@@ -355,20 +428,35 @@ export async function updateBillStatus(billId: string, newStatus: string): Promi
  * @param state The new state of the food-related flag.
  * @returns The updated Bill object
  */
-export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState: boolean | null): Promise<Bill> {
-  try {
+
+export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | null, foodState: boolean | null): Promise<Bill> {
+  try {    
 
     if (!bill) {
       throw new Error('Bill data is required to update food-related flag');
     }
 
-    if (bill.bill_url.includes('https://data.capitol.hawaii.gov/')) {
+    // if bill type is Bill, convert to BillDetails by fetching missing fields
+    let billURL: string = '';
+    const isBasicBill = !(bill as BillDetails).bill_url;
+    if (isBasicBill) {
+      const missingFields = await db
+        .selectFrom('bills')
+        .select('bill_url')
+        .where('id', '=', bill.id)
+        .executeTakeFirst();     
+      billURL = missingFields?.bill_url ?? '';
+    } else {
+      billURL = (bill as BillDetails).bill_url;
+    }
+
+    if (billURL.includes('https://data.capitol.hawaii.gov/')) {
       console.log('Bill object returned was from scraper, setting url to capitol.hawaii.gov format...');
-      bill.bill_url = bill.bill_url.replace('https://data.capitol.hawaii.gov/', 'https://capitol.hawaii.gov/');
+      billURL = billURL.replace('https://data.capitol.hawaii.gov/', 'https://capitol.hawaii.gov/');
     }
 
     // Check if bill exists
-    const existingBill = await findExistingBillByURL(bill.bill_url);
+    const existingBill = await findExistingBillByURL(billURL);
 
     if (!existingBill) {
       console.log('Bill not found in database, creating new bill with food-related flag...');
@@ -385,7 +473,7 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
           id: bill.id,
           bill_number: bill.bill_number,
           bill_title: bill.bill_title,
-          bill_url: bill.bill_url,
+          bill_url: billURL,
           description: bill.description,
           current_status_string: bill.current_status_string ?? '',
           updated_at: new Date(),
@@ -453,7 +541,7 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | null, foodState:
       throw new Error('Failed to convert bill data');
     }
 
-    return convertedBill;
+    return convertedBill; // to render on board
   } catch (error) {
     console.error('Database update failed', error)
     throw new Error('Failed to update food-related flag');
@@ -486,12 +574,12 @@ export async function searchBills(bills: Bill[], query: string): Promise<Bill[]>
 }
 
 /**
- * Finds an existing bill in the database by its URL.
+ * Finds an existing bill in the database by its URL used in adding/removing a bill manually ONLY
  *
  * @param billURL The URL of the bill to find.
  * @returns The found Bill object or null if not found.
  */
-export async function findExistingBillByURL(billURl: string): Promise<Bill | null> {
+export async function findExistingBillByURL(billURl: string): Promise<BillDetails | null> {
   try {
 
     // extract the billtype and billnumber from the URL
@@ -507,14 +595,19 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
     }
 
     // First pass of exact match on bill_number
-    const exactMatchResult = await db.selectFrom('bills')
+    const exactMatch = await db.selectFrom('bills')
       .selectAll()
       .where('bill_number', '=', billTitle as string)
-      .executeTakeFirst();
+      .executeTakeFirst();    
 
-    if (exactMatchResult) {
+    if (exactMatch) {
       console.log(`Found existing bill in database based on: `, billURl)
-      const bill = await convertDataToBillShape(exactMatchResult);
+      const updates = await getStatusUpdatesForBill(exactMatch.id);
+      const bill = await convertDataToBillShape(
+        exactMatch, 
+        { updates },
+        true
+      );
 
       return bill;
     }
@@ -527,7 +620,12 @@ export async function findExistingBillByURL(billURl: string): Promise<Bill | nul
 
     if (partialMatchResult) {
       console.log(`Found existing bill in database based on partial match: `, billURl)
-      const bill = await convertDataToBillShape(partialMatchResult);
+      const updates = await getStatusUpdatesForBill(partialMatchResult.id);
+      const bill = await convertDataToBillShape(
+        partialMatchResult, 
+        { updates }, 
+        true
+      );
 
       return bill;
     }
@@ -831,19 +929,18 @@ export async function getAssignableUsers(userId: string): Promise<Selectable<Use
 
 interface BillData {
   bills: Selectable<Bills>[];
-  statusUpdates: Selectable<BillStatus>[];
-  tags: Record<string, Tag[]>;
-  trackedBy?: Record<string, BillTracker[]>;
-  trackedCount?: Record<string, number>;
+  additionalData: AdditionalBillData;
 }
 /**
- * Converts the raw bill data (object bills[], statusUpdates[], tags[]) from the database to the client-side Bill objects and 
- * maps status updates and tags to their corresponding bills.
+ * Converts the raw bill data (object bills[], tags[], trackedBy[], trackedCount[]) from the database to the client-side Bill objects and
+ * maps tags and trackedBy to their corresponding bills.
  * @param billData The raw bill data from the database.
  * @returns A map of bill IDs to their corresponding Bill objects.
  */
 async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, Bill>> {
-  const { bills, statusUpdates, tags, trackedBy, trackedCount } = billData;
+  const { bills, additionalData } = billData;
+  const { statusUpdates, tags, trackedBy, trackedCount } = additionalData;
+
   const billObjects = new Map<string, Bill>();
 
   // Map bills data (data, updates, tags) to Bill client objects
@@ -854,7 +951,7 @@ async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, 
         statusUpdates,
         tags,
         trackedBy,
-        trackedCount
+        trackedCount,
       });
       billObjects.set(row.id, bill);
     }
@@ -864,66 +961,106 @@ async function mapBillDataToBillClient(billData: BillData): Promise<Map<string, 
 }
 
 interface AdditionalBillData {
-  statusUpdates: Selectable<BillStatus>[];
-  tags: Record<string, Tag[]>;
+  statusUpdates?: Record<string, Selectable<StatusUpdates>[]>;
+  tags?: Record<string, Tag[]>;
   trackedBy?: Record<string, BillTracker[]>;
   trackedCount?: Record<string, number>;
+  updates?: StatusUpdate[]; // For getBillDetails - direct updates array
 }
+
 /**
- * Converts a singular bill from the database format to the client-side format.
- * @param bill The bill to convert.
- * @returns The converted bill.
+ * Generic converter for database bill data to client-side Bill format.
+ * Can return either Bill (basic card data) or BillDetails (extended metadata).
+ *
+ * @param bill The raw bill data from the database
+ * @param additionalData Optional additional data (status updates, tags, etc.)
+ * @param includeExtendedFields If true, returns BillDetails with extended metadata
+ * @returns Converted Bill or BillDetails object
  */
-async function convertDataToBillShape(bill: Selectable<Bills>, additionalData?: AdditionalBillData): Promise<Bill> {
-  const { toDate } = await import('@/lib/utils');
+async function convertDataToBillShape(
+  bill: Selectable<Bills>,
+  additionalData?: AdditionalBillData,
+  includeExtendedFields?: false
+): Promise<Bill>;
+
+async function convertDataToBillShape(
+  bill: Selectable<Bills>,
+  additionalData?: AdditionalBillData,
+  includeExtendedFields?: true
+): Promise<BillDetails>;
+
+async function convertDataToBillShape(
+  bill: Selectable<Bills>,
+  additionalData?: AdditionalBillData,
+  includeExtendedFields: boolean = false
+): Promise<Bill | BillDetails> {
 
   // Extract additional data if provided
-  let updates: { id: string; statustext: string; date: string; chamber: string; }[] = [];
+  let updates: StatusUpdate[] = [];
   let billTags: Tag[] = [];
   let trackedBy: BillTracker[] = [];
   let trackedCount = 0;
 
   if (additionalData) {
-    // Map status updates for this bill
-    updates = additionalData.statusUpdates
-      .filter(update => update.bill_id === bill.id)
-      .map(update => ({
-        id: update.update_id as string,
+    // Handle batch status updates (Record<billId, StatusUpdate[]>)
+    if (additionalData.statusUpdates) {
+      const billUpdates = additionalData.statusUpdates[bill.id] || [];
+      updates = billUpdates.map(update => ({
+        id: update.id as string,
         statustext: (update.statustext || '') as string,
         date: (update.date || '') as string,
         chamber: (update.chamber || '') as string
       }));
-    billTags = additionalData.tags[bill.id] || [];
+    }
+
+    // Direct updates array (used for getBillDetails)
+    if (additionalData.updates) {
+      updates = additionalData.updates;
+    }
+
+    if (additionalData.tags) {
+      billTags = additionalData.tags[bill.id] || [];
+    }
+
     trackedBy = additionalData.trackedBy?.[bill.id] || [];
     trackedCount = additionalData.trackedCount?.[bill.id] ?? 0;
   }
 
-  return {
+  // Base Bill object
+  const baseBill: Bill = {
     // attributes from the database
+    id: typeof bill.id === 'string' ? bill.id : '',
     bill_number: bill.bill_number ?? '',
     bill_title: bill.bill_title ?? '',
-    bill_url: bill.bill_url,
-    committee_assignment: bill.committee_assignment ?? '',
-    created_at: toDate(bill.created_at),
-    current_status: typeof bill.bill_status === 'string' ? bill.bill_status : '',
+    current_bill_status: typeof bill.bill_status === 'string' ? bill.bill_status : '',
     current_status_string: bill.current_status_string ?? '',
     description: bill.description ?? '',
-    food_related: typeof bill.food_related === 'boolean' ? bill.food_related : null,
-    id: typeof bill.id === 'string' ? bill.id : '',
-    introducer: bill.introducer ?? '',
-    nickname: bill.nickname ?? '',
-    updated_at: toDate(bill.updated_at),
-    year: bill.year ?? null,
     archived: bill.archived ?? false,
-    ai_misclassification_type: bill.ai_misclassification_type ?? null,
+    year: bill.year ?? null,
 
-    // client-side attributes (use provided data or defaults)
-    updates: updates,
+    latest_update: updates[0] || null,
+
     tags: billTags,
     tracked_by: trackedBy,
     tracked_count: trackedCount,
-    previous_status: undefined,
+
     llm_suggested: undefined,
     llm_processing: undefined,
+    previous_status: undefined,
   };
+
+  // Return extended BillDetails if requested
+  if (includeExtendedFields) {
+    return {
+      ...baseBill,
+      bill_url: bill.bill_url ?? '',
+      committee_assignment: bill.committee_assignment ?? '',
+      introducer: bill.introducer ?? '',
+      food_related: bill.food_related ?? null,
+      created_at: bill.created_at ?? null,
+      updates: updates,
+    } as BillDetails;
+  }
+
+  return baseBill;
 }
