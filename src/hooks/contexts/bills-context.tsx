@@ -48,7 +48,7 @@ interface BillsContextType {
   acceptAllTempChanges: () => Promise<void>;
   rejectAllTempChanges: () => Promise<void>;
   undoProposal: (billId: string) => Promise<void>;
-  updateBillNickname: (billId: string, nickname: string) => Promise<void>;
+  // updateBillNickname: (billId: string, nickname: string) => Promise<void>;
 
   // View Mode
   viewMode: 'my-bills' | 'all-bills';
@@ -154,12 +154,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
   /**
    * Accepts an LLM suggestion and commits the status change to the database
    */
-  const acceptLLMChange = async (billId: string) => {
+  const acceptLLMChange = useCallback(async (billId: string) => {
     const bill = bills.find((b) => b.id === billId);
     if (!bill || !bill.llm_suggested) return;
 
     try {
-      await updateBillStatus(billId, bill.current_status);
+      await updateBillStatus(billId, bill.current_bill_status);
 
       setBills((prevBills) =>
         prevBills.map((b) =>
@@ -173,7 +173,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
 
       toast({
         title: 'Change Accepted',
-        description: `${bill.bill_number} status updated to ${bill.current_status}`,
+        description: `${bill.bill_number} status updated to ${bill.current_bill_status}`,
         variant: 'default',
       });
     } catch {
@@ -183,12 +183,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         variant: 'destructive',
       });
     }
-  };
+  }, [bills]);
 
   /**
    * Rejects an LLM suggestion and reverts to the previous status
    */
-  const rejectLLMChange = async (billId: string) => {
+  const rejectLLMChange = useCallback(async (billId: string) => {
     const bill = bills.find((b) => b.id === billId);
     if (!bill || !bill.llm_suggested) return;
 
@@ -212,12 +212,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       description: `${bill.bill_number} reverted to ${bill?.previous_status}`,
       variant: 'default',
     });
-  };
+  }, [bills]);
 
   /**
    * Rejects all pending LLM suggestions
    */
-  const rejectAllLLMChanges = async () => {
+  const rejectAllLLMChanges = useCallback(async () => {
     const suggestedBills = bills.filter((b) => b.llm_suggested);
     for (const bill of suggestedBills) {
       await rejectLLMChange(bill.id);
@@ -227,12 +227,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       description: `Rejected ${suggestedBills.length} AI suggestions`,
       variant: 'default',
     });
-  };
+  }, [bills, rejectLLMChange]);
 
   /**
    * Accepts all pending LLM suggestions
    */
-  const acceptAllLLMChanges = async () => {
+  const acceptAllLLMChanges = useCallback(async () => {
     const suggestedBills = bills.filter((b) => b.llm_suggested);
     for (const bill of suggestedBills) {
       await acceptLLMChange(bill.id);
@@ -242,7 +242,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       description: `Accepted ${suggestedBills.length} AI suggestions`,
       variant: 'default',
     });
-  };
+  }, [bills, acceptLLMChange]);
 
   // ---------------------------------------------------------------------------
   // SECTION 2: HUMAN PROPOSAL OPERATIONS
@@ -252,7 +252,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
    * Creates or updates a pending proposal for a bill status change
    * Used by interns or supervisors who want review before committing
    */
-  const proposeStatusChange: BillsContextType['proposeStatusChange'] = async (
+  const proposeStatusChange: BillsContextType['proposeStatusChange'] = useCallback(async (
     bill,
     proposed_status,
     meta
@@ -264,9 +264,9 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       throw new Error('Bill ID is missing');
     }
 
-    const currentStatus = bill.current_status?.trim() || 'unassigned';
+    const currentStatus = bill.current_bill_status?.trim() || 'unassigned';
     if (!currentStatus || currentStatus === '') {
-      console.warn(`⚠️ Bill ${bill.id} has missing current_status, using 'unassigned' as fallback`);
+      console.warn(`⚠️ Bill ${bill.id} has missing current_bill_status, using 'unassigned' as fallback`);
     }
 
     if (!proposed_status || proposed_status.trim() === '') {
@@ -324,7 +324,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       }
 
       // Set the bill that was changed to the new id
-      updateBill(bill.id, { current_status: proposed_status });
+      updateBill(bill.id, { current_bill_status: proposed_status });
 
       toast({
         title: 'Change Proposed',
@@ -339,13 +339,13 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         variant: 'destructive',
       });
     }
-  };
+  }, [user, reloadProposalsFromServer]);
 
   /**
    * Supervisor/Admin approves a single proposal
    * Commits the change to the database and updates local state
    */
-  const acceptTempChange: BillsContextType['acceptTempChange'] = async (billId) => {
+  const acceptTempChange: BillsContextType['acceptTempChange'] = useCallback(async (billId) => {
     const tb = tempBills.find((t) => t.id === billId);
     if (!tb) return;
 
@@ -384,7 +384,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
           b.id === billId
             ? {
                 ...b,
-                previous_status: b.current_status,
+                previous_status: b.current_bill_status,
                 current_status: tb.proposed_status as BillStatus,
                 llm_suggested: false,
                 llm_processing: false,
@@ -412,13 +412,13 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         variant: 'destructive',
       });
     }
-  };
+  }, [tempBills, user, bills, acceptLLMChange, reloadProposalsFromServer]);
 
   /**
    * Supervisor/Admin rejects a single proposal
    * Removes the proposal from pending state
    */
-  const rejectTempChange: BillsContextType['rejectTempChange'] = async (billId) => {
+  const rejectTempChange: BillsContextType['rejectTempChange'] = useCallback(async (billId) => {
     const tb = tempBills.find((t) => t.id === billId);
     if (!tb) return;
 
@@ -480,12 +480,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         variant: 'destructive',
       });
     }
-  };
+  }, [tempBills, user, bills, rejectLLMChange, reloadProposalsFromServer]);
 
   /**
    * Approves all pending human proposals
    */
-  const acceptAllTempChanges: BillsContextType['acceptAllTempChanges'] = async () => {
+  const acceptAllTempChanges: BillsContextType['acceptAllTempChanges'] = useCallback(async () => {
     if (!canCommitStatus(user?.role)) {
       toast({
         title: 'Forbidden',
@@ -498,12 +498,12 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     const ops = humanProposals.map((t) => acceptTempChange(t.id));
     await Promise.allSettled(ops);
     await reloadProposalsFromServer();
-  };
+  }, [user, tempBills, acceptTempChange, reloadProposalsFromServer]);
 
   /**
    * Rejects all pending human proposals
    */
-  const rejectAllTempChanges: BillsContextType['rejectAllTempChanges'] = async () => {
+  const rejectAllTempChanges: BillsContextType['rejectAllTempChanges'] = useCallback(async () => {
     const humanProposals = tempBills.filter((t) => t.source === 'human');
     if (humanProposals.length === 0) return;
     setTempBills((prev) => prev.filter((t) => t.source !== 'human'));
@@ -512,13 +512,13 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       description: `Discarded ${humanProposals.length} pending changes.`,
       variant: 'default',
     });
-  };
+  }, [tempBills]);
 
   /**
    * Allows a user to undo/delete their own pending proposal
    * Removes the proposal from the database and reverts the bill to its original status
    */
-  const undoProposal: BillsContextType['undoProposal'] = async (billId) => {
+  const undoProposal: BillsContextType['undoProposal'] = useCallback(async (billId) => {
     const tb = tempBills.find((t) => t.id === billId);
     if (!tb) {
       console.warn('No temp bill found for:', billId);
@@ -577,52 +577,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
         variant: 'destructive',
       });
     }
-  };
-
-  /**
-   * Updates the user's custom nickname for a bill
-   */
-  const updateBillNickname: BillsContextType['updateBillNickname'] = async (
-    billId,
-    nickname
-  ) => {
-    const trimmed = nickname.trim();
-    const previous = bills.find((b) => b.id === billId)?.user_nickname ?? null;
-
-    setBills((prev) =>
-      prev.map((b) =>
-        b.id === billId ? { ...b, user_nickname: trimmed || null } : b
-      )
-    );
-
-    try {
-      const response = await fetch('/api/bills/nickname', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ billId, nickname: trimmed }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to save nickname');
-      }
-
-      const savedNickname = data.nickname ?? (trimmed || null);
-      setBills((prev) =>
-        prev.map((b) =>
-          b.id === billId ? { ...b, user_nickname: savedNickname } : b
-        )
-      );
-    } catch (error) {
-      console.error('Failed to update bill nickname:', error);
-      setBills((prev) =>
-        prev.map((b) =>
-          b.id === billId ? { ...b, user_nickname: previous } : b
-        )
-      );
-      throw error instanceof Error ? error : new Error('Failed to save nickname');
-    }
-  };
+  }, [tempBills, user]);  
 
   // ---------------------------------------------------------------------------
   // SECTION 3: BILL CRUD OPERATIONS
@@ -670,25 +625,25 @@ export function BillsProvider({ children }: { children: ReactNode }) {
    * Resets all bill states and clears proposals
    * Reverts any pending LLM suggestions
    */
-  const resetBills = async () => {
+  const resetBills = useCallback(async () => {
     setTempBills([]);
     setBills((prevBills) =>
       prevBills.map((bill) => ({
         ...bill,
         llm_processing: false,
         llm_suggested: false,
-        current_status: bill.previous_status || bill.current_status,
+        current_status: bill.previous_status || bill.current_bill_status,
         previous_status: undefined,
       }))
     );
-  };
+  }, []);
 
   /**
    * Refreshes the bills list from the server
    * Uses batch API for efficient tag fetching
    * Does NOT clear bills during refresh to preserve Kanban board state
    */
-  const refreshBills = async () => {
+  const refreshBills = useCallback(async () => {
     console.log('Refreshing bills...');
     setLoadingBills(true);
     setError(null);
@@ -703,7 +658,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoadingBills(false);
     }
-  };
+  }, [fetchBillsWithTags]);
 
   /**
    * Toggles between 'my-bills' and 'all-bills' view modes
@@ -835,7 +790,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       acceptAllTempChanges,
       rejectAllTempChanges,
       undoProposal,
-      updateBillNickname,
+      // updateBillNickname,
 
       // View Mode
       viewMode,
@@ -870,7 +825,7 @@ export function BillsProvider({ children }: { children: ReactNode }) {
       acceptAllTempChanges,
       rejectAllTempChanges,
       undoProposal,
-      updateBillNickname,
+      // updateBillNickname,
       viewMode,
       setViewMode,
       toggleViewMode,

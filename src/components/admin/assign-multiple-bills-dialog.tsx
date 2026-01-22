@@ -225,7 +225,7 @@ export function AssignMultipleBillsDialog({ trigger, onSuccess }: AssignMultiple
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-sm">{bill.bill_number}</span>
                               <Badge variant="outline" className="text-xs">
-                                {formatBillStatusName(bill.current_status)}
+                                {formatBillStatusName(bill.current_bill_status)}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground line-clamp-2">
