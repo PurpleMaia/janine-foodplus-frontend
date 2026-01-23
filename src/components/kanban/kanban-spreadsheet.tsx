@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Bill } from '@/types/legislation';
+import React, { useState, useEffect, useRef } from 'react';
+import type { BillDetails } from '@/types/legislation';
 import {
   Table,
   TableHeader,
@@ -8,53 +8,93 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 import { useBills } from '@/hooks/contexts/bills-context';
 import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
-import { searchBills } from '@/services/data/legislation';
+import { getBillDetails } from '@/services/data/legislation';
+import { formatBillStatusName } from '@/lib/utils';
 
 
-export function KanbanSpreadsheet() {
-  const [openPopover, setOpenPopover] = useState<string | null>(null);
+interface KanbanSpreadsheetProps {
+  isPublicView?: boolean;
+}
+
+export function KanbanSpreadsheet({ isPublicView = false }: KanbanSpreadsheetProps) {
   const { bills } = useBills();
   const { searchQuery } = useKanbanBoard();
-  const [filteredBills, setFilteredBills] = useState<Bill[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [filteredBills, setFilteredBills] = useState<BillDetails[]>([]);
   const firstMatchRef = useRef<HTMLTableRowElement | null>(null);
 
-  // Filter bills based on search query (async)
+  // From the bills object, fetch all bill details
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredBills(bills);
-      return;
-    }
+    const fetchBillDetails = async () => {
+      setLoading(true);
+      setFilteredBills([]); // Clear previous data to prevent duplicates
 
-    const handler = setTimeout(async () => {
       try {
-        const results = await searchBills(bills, searchQuery);
-        setFilteredBills(results);
-      } catch (err) {
-        console.error('Error searching bills:', err);
-        setFilteredBills(bills);
-      }
-    }, 300);
+        // Fetch all bill details in parallel
+        const detailsPromises = bills.map(bill =>
+          getBillDetails(bill.id).catch(err => {
+            console.error('Error fetching bill details for', bill.bill_number, err);
+            return null; // Return null for failed fetches
+          })
+        );
 
-    return () => {
-      clearTimeout(handler);
+        const allDetails = await Promise.all(detailsPromises);
+
+        // Filter out null values (failed fetches) and deduplicate by ID
+        const validDetails = allDetails.filter((detail): detail is BillDetails => detail !== null);
+        const uniqueDetails = Array.from(
+          new Map(validDetails.map(detail => [detail.id, detail])).values()
+        );
+
+        setFilteredBills(uniqueDetails);
+      } catch (err) {
+        console.error('Error fetching bill details:', err);
+        setFilteredBills([]);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [bills, searchQuery]);
+
+    fetchBillDetails();
+  }, [bills]);
+
+  // Filter bills based on search query (async)
+  // useEffect(() => {
+  //   if (!searchQuery.trim()) {
+  //     setFilteredBills(bills);
+  //     return;
+  //   }
+
+  //   const handler = setTimeout(async () => {
+  //     try {
+  //       const results = await searchBills(bills, searchQuery);
+  //       setFilteredBills(results);
+  //     } catch (err) {
+  //       console.error('Error searching bills:', err);
+  //       setFilteredBills(bills);
+  //     }
+  //   }, 300);
+
+  //   return () => {
+  //     clearTimeout(handler);
+  //   };
+  // }, [bills, searchQuery]);
 
   // Scroll to first match when search results change
-  useEffect(() => {
-    if (searchQuery.trim() && filteredBills.length > 0 && firstMatchRef.current) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        firstMatchRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        });
-      }, 100);
-    }
-  }, [filteredBills, searchQuery]);
+  // useEffect(() => {
+  //   if (searchQuery.trim() && filteredBills.length > 0 && firstMatchRef.current) {
+  //     // Small delay to ensure DOM is updated
+  //     setTimeout(() => {
+  //       firstMatchRef.current?.scrollIntoView({ 
+  //         behavior: 'smooth', 
+  //         block: 'center' 
+  //       });
+  //     }, 100);
+  //   }
+  // }, [filteredBills, searchQuery]);
 
   return (
     <div className="h-full w-full overflow-auto">
@@ -62,72 +102,96 @@ export function KanbanSpreadsheet() {
         <Table className="min-w-max">
           <TableHeader>
             <TableRow>
-              <TableHead className="sticky left-0 z-20 bg-background min-w-[12rem] max-w-[12rem] w-[12rem] truncate py-4">Bill Number</TableHead>
-              <TableHead className="sticky left-0 z-20 bg-background min-w-[12rem] max-w-[12rem] w-[12rem] truncate py-4">Title</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Bill URL</TableHead>
-              <TableHead>Current Status</TableHead>
-              <TableHead>Committee Assignment</TableHead>
-              <TableHead>Introducers</TableHead>
-              <TableHead>Year</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead>Updated At</TableHead>
+              <TableHead className="sticky left-0 z-20 bg-background w-[8rem] py-4">Bill #</TableHead>
+              <TableHead className="w-[10rem] py-4">Current Status</TableHead>
+              <TableHead className="min-w-[20rem] max-w-[30rem] w-[30rem] py-4">Bill Title</TableHead>
+              <TableHead className="min-w-[15rem] max-w-[30rem] w-[30rem] py-4">Policy Description</TableHead>
+              <TableHead className="w-[12rem] py-4">Committee</TableHead>
+              <TableHead className="w-[12rem] py-4">Introducer</TableHead>
+              <TableHead className="w-[15rem] py-4">Tags</TableHead>
+              {!isPublicView && <TableHead className="w-[12rem] py-4">Tracking</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredBills.length === 0 ? (
+            {loading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={isPublicView ? 7 : 8} className="text-center py-8 text-muted-foreground">
+                  Loading bill details...
+                </TableCell>
+              </TableRow>
+            ) : filteredBills.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={isPublicView ? 7 : 8} className="text-center py-8 text-muted-foreground">
                   {searchQuery.trim() ? `No bills found matching "${searchQuery}"` : 'No bills available'}
                 </TableCell>
               </TableRow>
             ) : (
               filteredBills.map((bill, index) => (
-                <TableRow 
+                <TableRow
                   key={bill.id}
                   ref={index === 0 && searchQuery.trim() ? firstMatchRef : null}
                   className={index === 0 && searchQuery.trim() ? 'bg-blue-50 border-blue-300 border-2' : ''}
                 >
-                <TableCell className="sticky left-0 z-20 bg-background min-w-[10rem] max-w-[10rem] w-[10rem] truncate py-4">{bill.bill_number}</TableCell>
-                <TableCell className="sticky left-[10rem] z-20 bg-background min-w-[10rem] max-w-[10rem] w-[10rem] truncate cursor-pointer py-4">
-                  <Popover open={openPopover === bill.id} onOpenChange={(open) => setOpenPopover(open ? bill.id : null)}>
-                    <PopoverTrigger asChild>
-                      <div className="truncate cursor-pointer" onClick={() => setOpenPopover(bill.id)}>
-                        {bill.bill_title}
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" align="start" className="max-w-xs">
-                      {bill.bill_title}
-                    </PopoverContent>
-                  </Popover>
-                </TableCell>
-                <TableCell className="min-w-[50rem] max-w-[10rem] w-[10rem] truncate cursor-pointer py-4">
-                <Popover
-                    open={openPopover === `${bill.id}-desc`}
-                    onOpenChange={(open) => setOpenPopover(open ? `${bill.id}-desc` : null)}
-                >
-                    <PopoverTrigger asChild>
-                    <div className="truncate cursor-pointer" onClick={() => setOpenPopover(`${bill.id}-desc`)}>
-                        {bill.description}
-                    </div>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" align="start" className="max-w-xs">
-                    {bill.description}
-                    </PopoverContent>
-                </Popover>
-                </TableCell>
-                {/* <TableCell>
-                  <a href={bill.bill_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                  {/* Bill Number */}
+                  <TableCell className="sticky left-0 z-20 bg-background w-[8rem] py-4">
                     {bill.bill_number}
-                  </a>
-                </TableCell> */}
-                <TableCell>{bill.current_bill_status}</TableCell>
-                {/* <TableCell>{bill.committee_assignment}</TableCell>
-                <TableCell>{bill.introducer}</TableCell>
-                <TableCell>{bill.year ?? 'N/A'}</TableCell>
-                <TableCell>{bill.created_at ? new Date(bill.created_at).toLocaleDateString() : 'N/A'}</TableCell>
-                <TableCell>{bill.updated_at ? new Date(bill.updated_at).toLocaleDateString() : 'N/A'}</TableCell> */}
-              </TableRow>
+                  </TableCell>
+
+                  {/* Current Status */}
+                  <TableCell className="w-[10rem] py-4">
+                    {formatBillStatusName(bill.current_bill_status)}
+                  </TableCell>
+
+                  {/* Bill Title */}
+                  <TableCell className="text-wrap min-w-[20rem] max-w-[30rem] w-[30rem] py-4">
+                    {bill.bill_title}
+                  </TableCell>
+
+                  {/* Policy Description */}
+                  <TableCell className="text-wrap min-w-[15rem] max-w-[30rem] w-[30rem] py-4">
+                    {bill.description}
+                  </TableCell>
+
+                  {/* Committee */}
+                  <TableCell className="text-wrap w-[12rem] py-4">
+                    {bill.committee_assignment || 'N/A'}
+                  </TableCell>
+
+                  {/* Introducer */}
+                  <TableCell className="text-wrap w-[12rem] py-4">
+                    {bill.introducer || 'N/A'}
+                  </TableCell>
+
+                  {/* Tags */}
+                  <TableCell className="w-[15rem] py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {bill.tags && bill.tags.length > 0 ? (
+                        bill.tags.map((tag) => (
+                          <Badge key={tag.id} variant="secondary" className="text-xs">
+                            {tag.name}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground text-sm">No tags</span>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  {/* Tracking Information - Hidden in public view */}
+                  {!isPublicView && (
+                    <TableCell className="w-[12rem] py-4">
+                      <div className="text-sm">
+                        {bill.tracked_count !== undefined && bill.tracked_count > 0 ? (
+                          <span className="text-muted-foreground">
+                            {bill.tracked_count} {bill.tracked_count === 1 ? 'tracker' : 'trackers'}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Not tracked</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
               ))
             )}
           </TableBody>
