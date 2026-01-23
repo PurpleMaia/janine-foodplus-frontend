@@ -797,6 +797,31 @@ function AllInternBillsTab(
   }
 ) {
   const { isLoadingBills } = useAdminDashboard();
+  const [removingBill, setRemovingBill] = useState<{ internId: string; billId: string; billNumber: string; internName: string } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  const handleRemoveBill = async () => {
+    if (!removingBill) return;
+
+    setIsRemoving(true);
+    try {
+      const { removeBillFromIntern } = await import('@/app/actions/admin');
+      const result = await removeBillFromIntern(removingBill.internId, removingBill.billId);
+
+      if (result.success) {
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        alert(result.error || 'Failed to remove bill');
+      }
+    } catch (error) {
+      console.error('Error removing bill:', error);
+      alert('Failed to remove bill');
+    } finally {
+      setIsRemoving(false);
+      setRemovingBill(null);
+    }
+  };
   
   if (isLoadingBills) {
     return (
@@ -853,8 +878,23 @@ function AllInternBillsTab(
                         <p className="text-sm text-muted-foreground">No interns tracking this bill</p>
                       ) : (
                         bill.tracked_by.map((intern) => (
-                          <Badge key={intern.id} variant="secondary" className="bg-blue-100 text-blue-800">
-                            {intern.username}
+                          <Badge key={intern.id} variant="secondary" className="bg-blue-100 text-blue-800 pr-1 pl-3 py-1 inline-flex items-center gap-1">
+                            <span>{intern.username}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRemovingBill({
+                                  internId: intern.id,
+                                  billId: bill.bill_id,
+                                  billNumber: bill.bill_number || 'N/A',
+                                  internName: intern.username || 'Unknown'
+                                });
+                              }}
+                              className="ml-1 rounded-full hover:bg-blue-200 p-0.5 transition-colors"
+                              aria-label={`Remove ${intern.username} from ${bill.bill_number}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
                           </Badge>
                         ))
                       )}
@@ -865,6 +905,29 @@ function AllInternBillsTab(
             )}
           </div>
       </div>
+
+      {/* Remove Bill Confirmation Dialog */}
+      <AlertDialog open={!!removingBill} onOpenChange={(open) => !open && setRemovingBill(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Bill from Intern</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove bill <strong>{removingBill?.billNumber}</strong> from <strong>{removingBill?.internName}</strong>&apos;s tracking list? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveBill}
+              disabled={isRemoving}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isRemoving ? 'Removing...' : 'Remove Bill'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </TabsContent>
   )
 }
