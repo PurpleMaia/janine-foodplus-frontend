@@ -99,7 +99,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             title={title}
           >
             <span className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-ellipsis max-w-[12rem] md:max-w-[16rem]">
+              <span className="text-wrap max-w-[12rem] md:max-w-[16rem]">
                 {title}
               </span>
               <span className="shrink-0 text-muted-foreground">({bills.length})</span>
