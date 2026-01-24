@@ -40,7 +40,7 @@ export const nicknameSchema = z.object({
 export const proposalSchema = z.object({
     billId: uuidSchema,
     currentStatus: z.string().min(1, { message: "Current status cannot be empty." }).max(100, { message: "Current status cannot exceed 100 characters." }),
-    suggestedStatus: z.string().min(1, { message: "Suggested status cannot be empty." }).max(100, { message: "Suggested status cannot exceed 100 characters." }),
+    proposedStatus: z.string().min(1, { message: "Proposed status cannot be empty." }).max(100, { message: "Proposed status cannot exceed 100 characters." }),
     note: z.string().max(1000, { message: "Note cannot exceed 1000 characters." }).optional()
 });
 

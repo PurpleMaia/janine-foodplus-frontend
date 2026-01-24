@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { LoginDialog } from './login-dialog';
 import { RegisterDialog } from './register-dialog';
 import { UserMenu } from './user-menu';

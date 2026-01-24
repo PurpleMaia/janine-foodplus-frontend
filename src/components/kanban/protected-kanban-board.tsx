@@ -1,20 +1,22 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 import { KanbanBoard } from './kanban-board';
 import { KanbanSpreadsheet } from './kanban-spreadsheet';
-import { useAdoptedBills } from '@/hooks/use-adopted-bills';
-import { AdoptBillDialog } from './adopt-bill-dialog';
-import { useBills } from '@/contexts/bills-context';
+import { useTrackedBills } from '@/hooks/use-tracked-bills';
+import { TrackBillDialog } from './track-bill-dialog';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { KanbanHeader } from './kanban-header';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 
 export function ProtectedKanbanBoardOrSpreadsheet() {
   const { user, loading } = useAuth();
   const { view } = useKanbanBoard();
   const { bills, loadingBills, viewMode } = useBills();
-  const { unadoptBill } = useAdoptedBills();
+  const { untrackBill } = useTrackedBills();
+
+  const isIntern = user && user.role === 'user';
 
   if (loading) {
     return null
@@ -42,14 +44,26 @@ export function ProtectedKanbanBoardOrSpreadsheet() {
         <KanbanHeader />
         <div className="flex flex-col items-center justify-center h-full space-y-6 p-8">
           <div className="text-center space-y-4">
-            <h2 className="text-2xl font-semibold">No Bills Adopted Yet</h2>
-            <p className="text-muted-foreground max-w-md">
-              You haven&apos;t adopted any bills yet. Use the button below to start tracking bills that interest you.
-            </p>
-          </div>
-          <div className="w-64">
-            <AdoptBillDialog />
-          </div>
+            { isIntern ? 
+            (
+              <>
+                <h2 className="text-2xl font-semibold">No Bills Assigned Yet</h2>
+                <p className="text-muted-foreground max-w-md">
+                  { isIntern
+                    ? 'Admin or Supervisor has not assigned any bills to you yet. Please check back later.'
+                    : 'You have not adopted any bills yet. Click the button below to track and adopt bills to get started!'
+                  }
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-semibold">You Have No Adopted Bills</h2>
+                <p className="text-muted-foreground max-w-md">
+                  You have not adopted any bills yet. Click the All Bills toggle in the header to track and adopt bills to get started!
+                </p>
+              </>              
+            )}
+          </div>          
         </div>
       </>
     );
@@ -77,7 +91,7 @@ export function ProtectedKanbanBoardOrSpreadsheet() {
       <KanbanHeader />
       <KanbanBoard 
         readOnly={isReadOnlyForIntern || false} 
-        onUnadopt={unadoptBill}
+        onUnadopt={untrackBill}
         showUnadoptButton={shouldShowUnadoptButton}
       />      
     </div>

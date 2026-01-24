@@ -12,10 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, Edit2, Trash2 } from 'lucide-react';
-import { getAllTags, createTag, updateTag, deleteTag } from '@/services/tags';
+import { getAllTags, createTag, updateTag, deleteTag } from '@/services/data/tags';
 import type { Tag } from '@/types/legislation';
 import { toast } from '@/hooks/use-toast';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 
 interface TagManagementDialogProps {
   isOpen: boolean;
@@ -72,9 +72,7 @@ export function TagManagementDialog({ isOpen, onClose }: TagManagementDialogProp
       toast({
         title: 'Success',
         description: 'Tag created successfully',
-      });
-      // Refresh bills to show the new tag in filter list
-      await refreshBills();
+      });      
     } catch (error) {
       toast({
         title: 'Error',

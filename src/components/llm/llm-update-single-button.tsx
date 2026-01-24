@@ -5,9 +5,9 @@ import { Button } from '../ui/button';
 import { RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 interface Props {
     bill: Bill
@@ -49,7 +49,7 @@ export default function AIUpdateSingleButton({ bill } : Props) {
         variant: 'default',
       });
 
-      console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_status);
+      console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_bill_status);
 
       const classification = await classifyStatusWithLLM(bill.id); 
       
@@ -75,14 +75,14 @@ export default function AIUpdateSingleButton({ bill } : Props) {
         return;
       }
       
-      if (classification !== bill.current_status) {
+      if (classification !== bill.current_bill_status) {
         const targetColumnIdx = getColumnIndex(classification);
   
         // Create temp bill for the original position
         const tempBill: TempBill = {
           id: bill.id,
-          current_status: bill.current_status,          
-          suggested_status: classification,
+          current_status: bill.current_bill_status,          
+          proposed_status: classification,
           target_idx: targetColumnIdx, 
           bill_title: bill.bill_title || null
         };      
@@ -100,8 +100,8 @@ export default function AIUpdateSingleButton({ bill } : Props) {
           b.id === bill.id 
             ? { 
                 ...b, 
-                previous_status: b.current_status, // Store original status
-                current_status: classification,
+                previous_status: b.current_bill_status, // Store original status
+                current_bill_status: classification,
                 llm_suggested: true,
                 llm_processing: false
               }

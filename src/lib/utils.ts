@@ -10,7 +10,7 @@ import type { Bill } from '../types/legislation';
 import { KANBAN_COLUMNS } from "./kanban-columns";
 
 // Helper to safely convert Kysely Timestamp/Generated<Timestamp|null> to Date|null
-function toDate(val: unknown): Date | null {
+export function toDate(val: unknown): Date | null {
   if (!val) return null;
   if (val instanceof Date) return val;
   if (typeof val === 'string' || typeof val === 'number') {
@@ -20,30 +20,68 @@ function toDate(val: unknown): Date | null {
   return null;
 }
 
-export function mapBillsToBill(raw: Bills): Bill {
-  return {
-    bill_number: raw.bill_number ?? '',
-    bill_title: raw.bill_title ?? '',
-    bill_url: raw.bill_url,
-    committee_assignment: raw.committee_assignment ?? '',
-    created_at: toDate(raw.created_at),
-    current_status: typeof raw.current_status === 'string' ? raw.current_status : '',
-    current_status_string: raw.current_status_string ?? '',
-    description: raw.description ?? '',
-    food_related: typeof raw.food_related === 'boolean' ? raw.food_related : null,
-    id: typeof raw.id === 'string' ? raw.id : '',
-    introducer: raw.introducer ?? '',
-    nickname: raw.nickname ?? '',
-    updated_at: toDate(raw.updated_at),
-    // client-side fields
-    updates: [],
-    previous_status: undefined,
-    llm_suggested: undefined,
-    llm_processing: undefined,
-  };
-}
-
 export function formatBillStatusName(status: string | null): string {
   if (!status) return 'No Assigned Status';
+  const lowerStatus = status.toLowerCase();
+
+  // Check for keywords and return formatted strings
+  if (lowerStatus.includes('introduced')) return 'Introduced';
+  if (lowerStatus.includes('waiting')) return 'Waiting';
+  if (lowerStatus.includes('scheduled')) return 'Scheduled';
+  if (lowerStatus.includes('deferred')) return 'Deferred';
+  if (lowerStatus.includes('passed')) return 'Passed';
+  if (lowerStatus.includes('unassigned')) return 'N/A';
+  if (lowerStatus.includes('assigned')) return 'Assigned';
+  if (lowerStatus.includes('transmitted')) return 'Transmitted';
+  if (lowerStatus.includes('veto')) return 'Vetoed';
+  if (lowerStatus.includes('signs') || lowerStatus.includes('law')) return 'Became Law';
+
+  // Fallback to column title if available, or the status itself
   return KANBAN_COLUMNS.find(col => col.id === status)?.title || status;
+}
+
+// ==============================================
+// PERMISSION HELPER FUNCTIONS
+// ==============================================
+
+/**
+ * Checks if a user has permission to assign bills to others.
+ * Only admins and supervisors can assign bills.
+ *
+ * @param user User object with role property
+ * @returns True if user can assign bills, false otherwise
+ */
+export function canAssignBills(user: { role: string } | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === 'admin' || user.role === 'supervisor';
+}
+
+/**
+ * Checks if a user can track their own bills.
+ * Interns cannot track their own bills, only receive assignments.
+ * All other roles can track their own bills.
+ *
+ * @param user User object with role property
+ * @returns True if user can track their own bills, false otherwise
+ */
+export function canTrackOwnBills(user: { role: string } | null | undefined): boolean {
+  if (!user) return false;
+  return user.role !== 'intern';
+}
+
+/**
+ * Gets the list of roles that a user can assign bills to.
+ * Admins can assign to interns and supervisors.
+ * Supervisors can only assign to interns (filtered by adoption in backend).
+ *
+ * @param userRole The role of the user making the assignment
+ * @returns Array of role strings that can receive assignments
+ */
+export function getAssignableRoles(userRole: string): string[] {
+  if (userRole === 'admin') {
+    return ['intern', 'supervisor'];
+  } else if (userRole === 'supervisor') {
+    return ['intern'];
+  }
+  return [];
 }

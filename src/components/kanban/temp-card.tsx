@@ -5,7 +5,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 interface TempBillCardProps {
     tempBill: TempBill;
@@ -14,17 +15,20 @@ interface TempBillCardProps {
     canModerate?: boolean;
     onApproveTemp?: (billId: string) => void;
     onRejectTemp?: (billId: string) => void;
+    onUndoProposal?: (billId: string) => void;
   }
 
-export const TempBillCard: React.FC<TempBillCardProps> = ({ 
-    tempBill, 
+export const TempBillCard: React.FC<TempBillCardProps> = ({
+    tempBill,
     onTempCardClick,
     className,
     canModerate = false,
     onApproveTemp,
-    onRejectTemp
+    onRejectTemp,
+    onUndoProposal
   }) => {
     const { bills } = useBills();
+    const { user } = useAuth();
     
     // Get the actual bill data for display (for description and other fields)
     const actualBill = bills.find(b => b.id === tempBill.id);
@@ -41,14 +45,16 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
       billTitle,
       tempBillBillNumber: tempBill.bill_number,
       tempBillBillTitle: tempBill.bill_title,
-      actualBillFound: !!actualBill
+      actualBillFound: !!actualBill,
+      currentStatus: tempBill.current_status,
+      proposedStatus: tempBill.proposed_status
     });
 
     const proposerName =
       tempBill.proposed_by?.username ??
       tempBill.proposed_by?.email ??
       tempBill.proposed_by?.user_id ??
-      'Unknown user';
+      'AI';
 
     const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
@@ -108,7 +114,7 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
                         </Badge>
                         <ArrowRight className="h-3 w-3 text-gray-400" />
                         <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700">
-                        {tempBill.suggested_status}
+                        {tempBill.proposed_status}
                         </Badge>
                     </div>
 
@@ -117,7 +123,22 @@ export const TempBillCard: React.FC<TempBillCardProps> = ({
                     </div>
 
                     </CardContent>
-                    
+
+                    {/* Undo button for proposal author */}
+                    {!canModerate && user && tempBill.proposed_by?.user_id === user.id && (
+                        <div className="p-3 pt-2 flex gap-2 mt-2 border-t border-gray-200">
+                            <button
+                                className="px-3 py-1.5 text-xs rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-1"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUndoProposal?.(tempBill.id);
+                                }}
+                            >
+                                Undo
+                            </button>
+                        </div>
+                    )}
+
                     {/* Approve/Reject buttons */}
                     {canModerate && (
                         <div className="p-3 pt-2 flex gap-2 mt-2 border-t border-gray-200">

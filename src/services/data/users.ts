@@ -1,4 +1,4 @@
-import { db } from '../db/kysely/client';
+import { db } from '../../db/kysely/client';
 import type { User } from '@/lib/auth';
 
 export async function getUserById(userId: string): Promise<User | null> {

@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { Bill, TempBill } from '@/types/legislation';
 import { KanbanCard } from './kanban-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,12 +10,8 @@ import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
 import { TempBillCard } from './temp-card';
 import { ListRestart, TriangleAlert } from 'lucide-react';
-import RefreshColumnButton from '../scraper/update-column-button';
 import LLMUpdateColumnButton from '../llm/llm-update-column-button';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
-
-
-
 
 // Adds readOnly prop to control card rendering
 // When readOnly=true, cards aren't wrapped in Draggable components
@@ -37,9 +33,13 @@ export interface KanbanColumnProps extends React.HTMLAttributes<HTMLDivElement> 
   canModerate?: boolean; // show Approve/Reject for supervisors/admins
   onApproveTemp?: (billId: string) => void;
   onRejectTemp?: (billId: string) => void;
+  onUndoProposal?: (billId: string) => void;
+  onTempCardClick?: (tempBill: TempBill) => void; // Handler for temp card clicks
+  billCardRefs?: React.MutableRefObject<Map<string, HTMLDivElement>>; // Shared refs for all bill cards
+  columnScrollViewportRefs?: React.MutableRefObject<Map<number, HTMLDivElement>>; // Shared refs for all column scroll viewports
+  columnIndex?: number; // Index of this column in the board
 
   enableDnd?: boolean;
-
 }
 
 
@@ -58,11 +58,15 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
       className,
       readOnly = false,
 
-      // NEW
       pendingTempBills = [],
       canModerate = false,
       onApproveTemp,
       onRejectTemp,
+      onUndoProposal,
+      onTempCardClick,
+      billCardRefs: sharedBillCardRefs,
+      columnScrollViewportRefs,
+      columnIndex,
 
       enableDnd = false,
       ...props
@@ -71,9 +75,12 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
   ) => {
     const [refreshing, setRefreshing] = useState<boolean>(false);
 
-    const pendingCount = pendingTempBills?.length ?? 0;
-    const useDnD = enableDnd && !readOnly;
+    // Use shared refs from parent, or create local ones if not provided
+    const localBillCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+    const billCardRefsToUse = sharedBillCardRefs || localBillCardRefs;
+
+    const pendingCount = pendingTempBills?.length ?? 0;
 
     return (
       <div
@@ -117,16 +124,24 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             </div>
           </h2>
 
-          {bills.length >= 20 && (
+          {/* {bills.length >= 20 && (
             <p className="mt-2 text-xs text-gray-600 flex items-center gap-2">
               <TriangleAlert className="h-4 w-4 text-yellow-600" />
               Clicking <ListRestart className="h-3 w-3" /> will take a long time
             </p>
-          )}
+          )} */}
         </div>
 
         <ScrollArea className="flex-1 p-2">
-          <div className="flex flex-col gap-2">
+          <div
+            className="flex flex-col gap-2"
+            ref={(el) => {
+              // Get the viewport element (parent of this div) and store it in the shared map
+              if (el && el.parentElement && columnScrollViewportRefs && columnIndex !== undefined) {
+                columnScrollViewportRefs.current.set(columnIndex, el.parentElement as HTMLDivElement);
+              }
+            }}
+          >
             {/* REAL BILL CARDS */}
             {bills.map((bill, index) =>
               refreshing ? (
@@ -136,6 +151,9 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
               ) : readOnly ? (
                 <KanbanCard
                   key={bill.id}
+                  ref={(el) => {
+                    if (el) billCardRefsToUse.current.set(bill.id, el);
+                  }}
                   bill={bill}
                   isDragging={false}
                   onCardClick={onCardClick}
@@ -146,7 +164,10 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                 <Draggable key={bill.id} draggableId={bill.id} index={index}>
                   {(provided, snapshot) => (
                     <KanbanCard
-                      ref={provided.innerRef}
+                      ref={(el) => {
+                        provided.innerRef(el);
+                        if (el) billCardRefsToUse.current.set(bill.id, el);
+                      }}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
                       bill={bill}
@@ -176,6 +197,8 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
                     canModerate={canModerate}
                     onApproveTemp={onApproveTemp}
                     onRejectTemp={onRejectTemp}
+                    onUndoProposal={onUndoProposal}
+                    onTempCardClick={onTempCardClick}
                   />
                 ))}
               </div>

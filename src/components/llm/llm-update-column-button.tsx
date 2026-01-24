@@ -5,9 +5,9 @@ import { Button } from '../ui/button';
 import { RefreshCw, WandSparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { classifyStatusWithLLM } from '@/services/llm';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 interface Props {
   bills: Bill[]
@@ -69,7 +69,7 @@ export default function LLMUpdateColumnButton({ bills, onRefreshStart, onRefresh
       return null;
     }
 
-    console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_status);
+    console.log("ABOUT TO CLASSIFY BILL:", bill.bill_title, "To: ", bill.current_bill_status);
     
     let classification: string | null | undefined;
     try {
@@ -125,15 +125,15 @@ export default function LLMUpdateColumnButton({ bills, onRefreshStart, onRefresh
       return null;
     }
 
-    if (classification !== bill.current_status) {
+    if (classification !== bill.current_bill_status) {
       const targetColumnIdx = getColumnIndex(classification);
 
       // Create temp bill for the original position
       const tempBill: TempBill = {
         id: bill.id,
         bill_number: bill.bill_number,
-        current_status: bill.current_status,
-        suggested_status: classification,
+        current_status: bill.current_bill_status,
+        proposed_status: classification,
         target_idx: targetColumnIdx,
         bill_title: bill.bill_title,
         source: 'llm'
@@ -148,7 +148,7 @@ export default function LLMUpdateColumnButton({ bills, onRefreshStart, onRefresh
         id: tempBill.id,
         bill_number: tempBill.bill_number,
         current_status: tempBill.current_status,
-        suggested_status: tempBill.suggested_status,
+        proposed_status: tempBill.proposed_status,
         target_idx: tempBill.target_idx
       });
       setTempBills(prevBills => {
@@ -169,8 +169,8 @@ export default function LLMUpdateColumnButton({ bills, onRefreshStart, onRefresh
         b.id === bill.id
           ? {
             ...b,
-            previous_status: b.current_status, // Store original status
-            current_status: classification,
+            previous_status: b.current_bill_status, // Store original status
+            current_bill_status: classification,
             llm_suggested: true,
             llm_processing: false
           }

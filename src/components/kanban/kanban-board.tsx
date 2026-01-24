@@ -3,23 +3,23 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Bill, BillStatus, TempBill } from '@/types/legislation';
 import { KANBAN_COLUMNS, COLUMN_TITLES } from '@/lib/kanban-columns';
-// import { KanbanColumn } from './kanban-column'; // we inline KanbanColumn below
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
-import { updateBillStatusServerAction, searchBills } from '@/services/legislation';
+import { updateBillStatus, searchBills } from '@/services/data/legislation';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { useKanbanBoard } from '@/contexts/kanban-board-context';
+import { useKanbanBoard } from '@/hooks/contexts/kanban-board-context';
 import { useToast } from '@/hooks/use-toast';
 import { BillDetailsDialog } from './bill-details-dialog';
 import { Button } from '@/components/ui/button';
-import { useBills } from '@/contexts/bills-context';
+import { useBills } from '@/hooks/contexts/bills-context';
 import KanbanBoardSkeleton from './skeletons/skeleton-board';
 import { KanbanColumn } from './kanban-column';
-import { useAuth } from '@/contexts/auth-context';
-import { KanbanCard } from './kanban-card';
-import { TempBillCard } from './temp-card';
-import LLMUpdateColumnButton from '../llm/llm-update-column-button';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
+const introducedIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'introduced');
+const crossoverIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'crossoverWaiting1');
+const conferenceIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'conferenceAssigned');
+const governorIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'transmittedGovernor');
 
 interface KanbanBoardProps {
   readOnly: boolean;
@@ -28,11 +28,10 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: KanbanBoardProps) {
-  const { searchQuery, selectedTagIds } = useKanbanBoard();
+  const { searchQuery, selectedTagIds, selectedYears } = useKanbanBoard();
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Pull everything from a single bills context call
   const {
     loadingBills: loading,
     setLoadingBills: setLoading,
@@ -42,6 +41,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     proposeStatusChange,
     acceptTempChange,
     rejectTempChange,
+    undoProposal,
   } = useBills();
 
   const [, setError] = useState<string | null>(null);
@@ -49,27 +49,27 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [filteredBills, setFilteredBills] = useState<Bill[] | null>();
-  const [highlightedBillId, setHighlightedBillId] = useState<string | null>(null);
+  // const [highlightedBillId, //setHighlightedBillId] = useState<string | null>(null);
 
-  // --- Add refs for scroll groups ---
-  const viewportRef = useRef<HTMLDivElement>(null);
-
+  // =======================================================
+  // ============= Scroll Handlers =========================
+  // =======================================================
+  
   // Create refs for all columns dynamically
+  const viewportRef = useRef<HTMLDivElement>(null);
   const columnRefs = useRef<(HTMLDivElement | null)[]>(
     new Array(KANBAN_COLUMNS.length).fill(null)
   );
 
-  const introducedIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'introduced');
-  const crossoverIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'crossoverWaiting1');
-  const conferenceIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'conferenceAssigned');
-  const governorIdx = KANBAN_COLUMNS.findIndex((col) => col.id === 'transmittedGovernor');
+  // Store refs to all bill cards across all columns
+  const billCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const columnScrollViewportRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const scrollToIntroduced = () => scrollToColumnByIndex(introducedIdx);
   const scrollToCrossover = () => scrollToColumnByIndex(crossoverIdx);
   const scrollToConference = () => scrollToColumnByIndex(conferenceIdx);
   const scrollToGovernor = () => scrollToColumnByIndex(governorIdx);
 
-  // --- Scroll handler ---
   const handleScrollTo = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current && viewportRef.current) {
       const container = viewportRef.current;
@@ -94,11 +94,15 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     }
   }, []);
 
+  // =======================================================
+  // ==================== Effects ==========================
+  // =======================================================
+
   // Debounced search effect
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredBills(null);
-      setHighlightedBillId(null);
+      //setHighlightedBillId(null);
       return;
     }
 
@@ -112,7 +116,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
         console.error('Error searching bills:', err);
         setError('Failed to search bills.');
         setFilteredBills(null);
-        setHighlightedBillId(null);
+        //setHighlightedBillId(null);
       } finally {
         setLoading(false);
       }
@@ -126,7 +130,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
   // Navigate to first search result
   useEffect(() => {
     if (!searchQuery.trim() || !filteredBills || filteredBills.length === 0) {
-      setHighlightedBillId(null);
+      //setHighlightedBillId(null);
       return;
     }
 
@@ -134,7 +138,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     if (!firstBill) return;
 
     // Find which column this bill is in
-    const billStatus = firstBill.current_status as BillStatus;
+    const billStatus = firstBill.current_bill_status as BillStatus;
     const columnIndex = KANBAN_COLUMNS.findIndex(col => col.id === billStatus);
     
     if (columnIndex >= 0) {
@@ -142,78 +146,69 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       scrollToColumnByIndex(columnIndex);
       
       // Highlight the first matched bill
-      setHighlightedBillId(firstBill.id);
+      //setHighlightedBillId(firstBill.id);
       
       // Clear highlight after 3 seconds
       const highlightTimeout = setTimeout(() => {
-        setHighlightedBillId(null);
+        //setHighlightedBillId(null);
       }, 3000);
       
       return () => clearTimeout(highlightTimeout);
     }
   }, [filteredBills, searchQuery, scrollToColumnByIndex]);
 
+  // =======================================================
+  // ==================== Bill Rendering ===================
+  // =======================================================
+
   const billsByColumn = useMemo(() => {
     const grouped = Object.fromEntries(
       KANBAN_COLUMNS.map(c => [c.id as BillStatus, [] as Bill[]])
     ) as Record<BillStatus, Bill[]>;
-  
+
     let items = (searchQuery.trim() && filteredBills) ? filteredBills : bills;
-  
+
     // Filter by selected tags if any are selected
     if (selectedTagIds && selectedTagIds.length > 0) {
-      console.log('🔍 [TAG FILTER] Filtering bills with selected tag IDs:', selectedTagIds);
-      console.log('🔍 [TAG FILTER] Total bills before filtering:', items.length);
-      
-      // Debug: check a few bills to see their tags
-      const billsWithTags = items.filter(b => b.tags && b.tags.length > 0);
-      console.log('🔍 [TAG FILTER] Bills with tags:', billsWithTags.length);
-      if (billsWithTags.length > 0) {
-        console.log('🔍 [TAG FILTER] Sample bill tags:', billsWithTags[0].tags?.map(t => ({ id: t.id, name: t.name })));
-      }
-      
       items = items.filter((bill) => {
-        // Check if bill has tags
         const billTagIds = bill.tags?.map(tag => tag.id) || [];
-        const hasMatchingTag = billTagIds.some(tagId => selectedTagIds.includes(tagId));
-        
-        if (hasMatchingTag) {
-          console.log(`✅ [TAG FILTER] Bill ${bill.bill_number} matches - has tags:`, billTagIds);
-        } else if (billTagIds.length > 0) {
-          console.log(`❌ [TAG FILTER] Bill ${bill.bill_number} doesn't match - has tags:`, billTagIds, 'selected:', selectedTagIds);
-        }
-        
-        return hasMatchingTag;
+        return billTagIds.some(tagId => selectedTagIds.includes(tagId));
       });
-      
-      console.log('🔍 [TAG FILTER] Bills after filtering:', items.length);
     }
-  
+
+    // Filter by selected years if any are selected
+    if (selectedYears && selectedYears.length > 0) {
+      items = items.filter((bill) => {
+        const billYear = bill.year;
+        if (billYear === null || billYear === undefined) {
+          return false;
+        }
+        // Convert to number to handle potential string/number mismatches
+        const normalizedBillYear = typeof billYear === 'string' ? parseInt(billYear, 10) : billYear;
+        return selectedYears.includes(normalizedBillYear);
+      });
+    }
+
     const fallbackId = (KANBAN_COLUMNS.find(c => c.id === 'unassigned')?.id
                      ?? KANBAN_COLUMNS[0].id) as BillStatus;
-  
+
     // Group bills into columns
     for (const bill of items) {
-      const valid = KANBAN_COLUMNS.some(c => c.id === bill.current_status);
-      const key = (valid ? bill.current_status : fallbackId) as BillStatus;
+      const valid = KANBAN_COLUMNS.some(c => c.id === bill.current_bill_status);
+      const key = (valid ? bill.current_bill_status : fallbackId) as BillStatus;
       grouped[key].push(bill);
     }
 
     // Sort each column's bills by latest status update date (most recent first)
     Object.keys(grouped).forEach((status) => {
       grouped[status as BillStatus].sort((a, b) => {
-        // Get the latest update date from the first update (most recent)
-        // bill.updates[0] is the latest update
+        // Get the latest update date from Bill's latest_update field
         const getLatestUpdateDate = (bill: Bill): number => {
-          if (bill.updates && bill.updates.length > 0 && bill.updates[0].date) {
-            const date = new Date(bill.updates[0].date);
+          if (bill.latest_update && bill.latest_update.date) {
+            const date = new Date(bill.latest_update.date);
             return date.getTime();
           }
-          // Fallback to updated_at if no status updates
-          if (bill.updated_at) {
-            const date = bill.updated_at instanceof Date ? bill.updated_at : new Date(bill.updated_at);
-            return date.getTime();
-          }
+          
           return 0; // Put bills without dates at the end
         };
 
@@ -224,7 +219,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     });
 
     return grouped;
-  }, [bills, filteredBills, searchQuery, selectedTagIds]);
+  }, [bills, filteredBills, searchQuery, selectedTagIds, selectedYears]);
 
   const billsToGroup: Bill[] = searchQuery.trim() && filteredBills ? filteredBills : bills;
 
@@ -235,32 +230,21 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     const grouped: { [key in BillStatus]?: TempBill[] } = {};
     KANBAN_COLUMNS.forEach((c) => (grouped[c.id as BillStatus] = []));
 
-    console.log('📊 [TEMP BILLS BY COLUMN] Processing', tempBills.length, 'temp bills');
-    console.log('📊 [TEMP BILLS BY COLUMN] Visible bill IDs:', Array.from(visibleBillIds));
-    console.log('📊 [TEMP BILLS BY COLUMN] Search query:', searchQuery);
-
-    tempBills.forEach((tb, idx) => {
-      console.log(`  [${idx + 1}] Bill ID: ${tb.id}, Status: ${tb.current_status} → ${tb.suggested_status}`);
+    tempBills.forEach((tb) => {
       if (searchQuery.trim() && !visibleBillIds.has(tb.id)) {
-        console.log(`    ⚠️ Filtered out (not in visible bills or search)`);
         return;
       }
       // Group by current_status so temp bill appears in the original column
       const key = tb.current_status as BillStatus;
       grouped[key]?.push(tb);
-      console.log(`    ✅ Added to column: ${key} (original status, proposed to move to ${tb.suggested_status})`);
-    });
-
-    // Log final grouped counts
-    Object.keys(grouped).forEach((col) => {
-      const count = grouped[col as BillStatus]?.length || 0;
-      if (count > 0) {
-        console.log(`📊 [TEMP BILLS BY COLUMN] Column "${col}": ${count} proposals`);
-      }
     });
 
     return grouped;
   }, [tempBills, searchQuery, visibleBillIds]);
+
+  // =======================================================
+  // ==================== Drag and Drop ====================
+  // =======================================================
 
   const onDragStart = useCallback((start: any) => {
     setDraggingBillId(start.draggableId);
@@ -281,10 +265,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       if (!movedBill) return;
 
       // Interns (users with role 'user') propose (no direct commit)
-      console.log('🔍 User role check - user:', user?.email, 'role:', user?.role);
-      
       if (user?.role === 'user') {
-        console.log('🔵 User proposing change:', movedBill.id, '→', destinationColumnId);
         await proposeStatusChange(movedBill, destinationColumnId, {
           userId: user.id,
           role: 'intern',
@@ -303,7 +284,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       if (billIndex > -1) {
         const updatedBill = {
           ...newBills[billIndex],
-          current_status: destinationColumnId,
+          current_bill_status: destinationColumnId,
           llm_suggested: false,
         };
         newBills.splice(billIndex, 1, updatedBill);
@@ -323,7 +304,7 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
       }
 
       try {
-        const updatedBillFromServer = await updateBillStatusServerAction(
+        const updatedBillFromServer = await updateBillStatus(
           draggableId,
           destinationColumnId
         );
@@ -358,15 +339,48 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
     [bills, readOnly, user, proposeStatusChange, toast, filteredBills, searchQuery, setBills]
   );
 
+  // ===========================================================
+  // ==================== Card Click Handler ===================
+  // ===========================================================
+
   const handleCardClick = useCallback((bill: Bill) => {
     setSelectedBillId(bill.id);
     setIsDialogOpen(true);
   }, []);
 
   const handleTempCardClick = useCallback(
-    (bill: TempBill) => {
-      // optional: if you want pending click to scroll to its target column
-      scrollToColumnByIndex(bill.target_idx);
+    (tempBill: TempBill) => {
+      // Find the column index where the real bill currently is (current_status)
+      const currentStatusColumnIndex = KANBAN_COLUMNS.findIndex(
+        col => col.id === tempBill.proposed_status
+      );
+
+      // First, scroll horizontally to the column where the real bill is
+      if (currentStatusColumnIndex !== -1) {
+        scrollToColumnByIndex(currentStatusColumnIndex);
+      }
+
+      // Then, scroll vertically to the bill card within that column
+      // Wait a bit for the horizontal scroll to complete
+      setTimeout(() => {
+        const billElement = billCardRefs.current.get(tempBill.id);
+        const viewport = columnScrollViewportRefs.current.get(currentStatusColumnIndex);
+
+        if (billElement && viewport) {
+          // Get the position of the bill card relative to the viewport
+          const billRect = billElement.getBoundingClientRect();
+          const viewportRect = viewport.getBoundingClientRect();
+
+          // Calculate the scroll position to center the bill card
+          const scrollTop = viewport.scrollTop + (billRect.top - viewportRect.top) - (viewportRect.height / 2) + (billRect.height / 2);
+
+          // Smooth scroll to the position
+          viewport.scrollTo({
+            top: scrollTop,
+            behavior: 'smooth'
+          });
+        }
+      }, 300); // Wait for horizontal scroll animation
     },
     [scrollToColumnByIndex]
   );
@@ -408,6 +422,11 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                       canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
                       onApproveTemp={(billId) => acceptTempChange(billId)}
                       onRejectTemp={(billId) => rejectTempChange(billId)}
+                      onUndoProposal={(billId) => undoProposal(billId)}
+                      onTempCardClick={handleTempCardClick}
+                      billCardRefs={billCardRefs}
+                      columnScrollViewportRefs={columnScrollViewportRefs}
+                      columnIndex={idx}
                     />
                   </div>
                 ))}
@@ -456,6 +475,11 @@ export function KanbanBoard({ readOnly, onUnadopt, showUnadoptButton = false }: 
                             canModerate={user?.role === 'supervisor' || user?.role === 'admin'}
                             onApproveTemp={(billId) => acceptTempChange(billId)}
                             onRejectTemp={(billId) => rejectTempChange(billId)}
+                            onUndoProposal={(billId) => undoProposal(billId)}
+                            onTempCardClick={handleTempCardClick}
+                            billCardRefs={billCardRefs}
+                            columnScrollViewportRefs={columnScrollViewportRefs}
+                            columnIndex={idx}
                           >
                             {provided.placeholder}
                           </KanbanColumn>

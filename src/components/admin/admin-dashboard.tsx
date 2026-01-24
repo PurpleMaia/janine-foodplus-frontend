@@ -5,43 +5,47 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs,TabsContent } from '@/components/ui/tabs';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown, X, Archive, Trash2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import AdminHeader from './admin-header';
 import { useAdminDashboard } from '@/hooks/use-query-admin';
 import { formatBillStatusName } from '@/lib/utils';
-import { BillWithInterns, InternWithBills, PendingUser, SupervisorWithInterns } from '@/types/admin';
+import { BillWithInterns, InternWithBills, PendingProposal, PendingUser, SupervisorWithInterns } from '@/types/admin';
+import { InternSelector } from './intern-selector';
+import { AssignMultipleBillsDialog } from './assign-multiple-bills-dialog';
 // import { ManageInternDialog } from './manage-intern-dialog';
 
 export function AdminDashboard() {
   const {
   // Data
-  pendingUsers,  
+  pendingUsers,
+  allAccounts,  
   allInterns,
   allSupervisors,
-  allInternBills,
-
-  // Loading states
-  isLoading,
-  isLoadingProposals,
-  isLoadingInterns,
-  isLoadingRelationships,
-  isLoadingBills,
+  allInternBills,  
 
   // Actions  
   handleApproveUser,
   handleDenyUser,  
-
-  // Mutation states
-  isApproving,
-  isRejecting,
 } = useAdminDashboard();
 
   const counts = {
-    pendingRequests: pendingUsers ? pendingUsers.length : 0,
+    accounts: pendingUsers.length == 0 ? allAccounts.length : pendingUsers.length,
     allTrackedBills: allInternBills ? allInternBills.length : 0,
     allInterns: allInterns ? allInterns.length : 0,
     allSupervisors: allSupervisors ? allSupervisors.length : 0,
@@ -52,8 +56,9 @@ export function AdminDashboard() {
       <Tabs defaultValue="pending-requests" className="w-full">
         <AdminHeader count={counts} />
           
-          <PendingUsersTab
+          <AccountsTab
             pendingUsers={pendingUsers}
+            allAccounts={allAccounts}
             handleApproveUser={handleApproveUser}
             handleDenyUser={handleDenyUser}
           />
@@ -69,9 +74,10 @@ export function AdminDashboard() {
   );
 }
 
-function PendingUsersTab(
-  { pendingUsers, handleApproveUser, handleDenyUser }: {
+function AccountsTab(
+  { pendingUsers, allAccounts, handleApproveUser, handleDenyUser }: {
     pendingUsers: PendingUser[];
+    allAccounts: PendingUser[];
     handleApproveUser: (userId: string, role: string) => void
     handleDenyUser: (userId: string) => void;
   }
@@ -90,66 +96,345 @@ function PendingUsersTab(
   }
 
   return (
-    <TabsContent value="pending-requests" className="mx-8 space-y-8 mt-6">
+    <TabsContent value="pending-requests" className="mx-8 mt-6">
+        <div className="space-y-8">
+          {/* All Accounts Section */}
+          <AllAccountsSection allAccounts={allAccounts} />
+          
           {/* Pending Account Requests */}
           <div>
-            <h1 className="text-2xl font-bold mb-1 ">Pending Account Requests</h1>
+            <h1 className="text-2xl font-bold mb-1">Pending Account Requests</h1>
             <h2 className="text-sm mb-6 text-muted-foreground">Review and manage user account requests</h2>
-            <ScrollArea className="h-[800px] w-full">
-              <div className="space-y-4">
-                {pendingUsers.length === 0 ? (
-                  <Card className="p-6">
-                    <p className="text-center text-muted-foreground">
-                      No pending account requests
-                    </p>
-                  </Card>
-                ) : (
-                  pendingUsers.map((user) => (
-                    <Card key={user.id} className="p-6 bg-white shadow-md">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <h3 className="font-semibold">{user.username}</h3>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
-                          <div className="flex gap-2 text-sm text-muted-foreground items-center">
-                            Joined: <span className='text-foreground'>{user.created_at ? user.created_at.toLocaleDateString() : 'Unknown'}</span> 
+            <div className="space-y-4">
+              {pendingUsers.length === 0 ? (
+                <Card className="p-6">
+                  <p className="text-center text-muted-foreground">
+                    No pending account requests
+                  </p>
+                </Card>
+              ) : (
+                pendingUsers.map((user) => (
+                  <Card key={user.id} className="p-6 bg-white shadow-md">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <h3 className="font-semibold">{user.username}</h3>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="flex gap-2 text-sm text-muted-foreground items-center">
+                          Joined: <span className='text-foreground'>{user.created_at ? user.created_at.toLocaleDateString() : 'Unknown'}</span>
 
-                            {user.requested_admin 
-                            ? <Badge variant="secondary" className='bg-red-100 text-red-800'>Admin</Badge>
-                            : user.requested_supervisor ? (
-                              <Badge variant="secondary" className='bg-yellow-100 text-yellow-800'>Supervisor</Badge>
-                            ) : <Badge variant="secondary">Intern</Badge>
-                            }
-                          </div>
-                        </div>
-                        <div className="space-x-2">
-                          {isApproving || isRejecting ? (
-                            <Skeleton className="h-8 w-24 rounded-md" />
-                          ) : (
-                            <>                          
-                              <Button
-                                onClick={() => handleApproveUser(user.id, user.requested_admin ? 'admin' : user.requested_supervisor ? 'supervisor' : 'user')}
-                                variant="default"
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                onClick={() => handleDenyUser(user.id)}
-                                variant="outline"
-                              >
-                                Deny
-                              </Button>
-                            </>
-                          ) }
+                          {user.requested_admin
+                          ? <Badge variant="secondary" className='bg-red-100 text-red-800'>Admin</Badge>
+                          : user.requested_supervisor ? (
+                            <Badge variant="secondary" className='bg-yellow-100 text-yellow-800'>Supervisor</Badge>
+                          ) : <Badge variant="secondary">Intern</Badge>
+                          }
                         </div>
                       </div>
-                    </Card>
-                  ))
-                )}
+                      <div className="space-x-2">
+                        {isApproving || isRejecting ? (
+                          <Skeleton className="h-8 w-24 rounded-md" />
+                        ) : (
+                          <>
+                            <Button
+                              onClick={() => handleApproveUser(user.id, user.requested_admin ? 'admin' : user.requested_supervisor ? 'supervisor' : 'user')}
+                              variant="default"
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              onClick={() => handleDenyUser(user.id)}
+                              variant="outline"
+                            >
+                              Deny
+                            </Button>
+                          </>
+                        ) }
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
           </div>
-        </ScrollArea>
-      </div>
-      </TabsContent>    
+
+        </div>
+    </TabsContent>
   )
+}
+
+function AllAccountsSection({ allAccounts }: { allAccounts: PendingUser[] }) {
+  const [activeUsers, setActiveUsers] = useState<PendingUser[]>(allAccounts);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
+  const [archivingUserId, setArchivingUserId] = useState<string | null>(null);
+  const [archiveDialogUserId, setArchiveDialogUserId] = useState<string | null>(null);
+
+  // Filter state
+  const [showArchived, setShowArchived] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [usernameSearch, setUsernameSearch] = useState('');
+
+  // Sync activeUsers with allAccounts when it changes
+  React.useEffect(() => {
+    setActiveUsers(allAccounts);
+  }, [allAccounts]);
+
+  const handleRoleChange = (userId: string, newRole: string) => {
+    setSelectedRoles(prev => ({
+      ...prev,
+      [userId]: newRole
+    }));
+  };
+
+  const handleUpdateRole = async (userId: string) => {
+    const newRole = selectedRoles[userId];
+    if (!newRole) return;
+
+    setUpdatingUserId(userId);
+    try {
+      const { updateUserRole } = await import('@/app/actions/admin');
+      const result = await updateUserRole(userId, newRole as 'user' | 'supervisor' | 'admin');
+
+      if (result.success) {
+        // Update local state
+        setActiveUsers(prev =>
+          prev.map(user =>
+            user.id === userId ? { ...user, role: newRole } : user
+          )
+        );
+      } else {
+        alert(result.error || 'Failed to update role');
+      }
+    } catch (error) {
+      console.error('Error updating role:', error);
+      alert('Failed to update role');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleArchiveAccount = async (userId: string) => {
+    setArchivingUserId(userId);
+    try {
+      const { archiveAccount } = await import('@/app/actions/admin');
+      const result = await archiveAccount(userId);
+
+      if (result.success) {
+        // Update local state
+        setActiveUsers(prev =>
+          prev.map(user =>
+            user.id === userId ? { ...user, account_status: 'archived' } : user
+          )
+        );
+      } else {
+        alert(result.error || 'Failed to archive account');
+      }
+    } catch (error) {
+      console.error('Error archiving account:', error);
+      alert('Failed to archive account');
+    } finally {
+      setArchivingUserId(null);
+    }
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-red-100 text-red-800';
+      case 'supervisor':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-blue-100 text-blue-800';
+    }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'Admin';
+      case 'supervisor':
+        return 'Supervisor';
+      default:
+        return 'Intern';
+    }
+  };
+
+  // Filter users based on filters
+  const filteredUsers = React.useMemo(() => {
+    return activeUsers.filter(user => {
+      // Filter by archived status
+      if (!showArchived && user.account_status === 'archived') {
+        return false;
+      }
+
+      // Filter by role
+      if (roleFilter !== 'all' && user.role !== roleFilter) {
+        return false;
+      }
+
+      // Filter by username search
+      if (usernameSearch && !user.username.toLowerCase().includes(usernameSearch.toLowerCase())) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [activeUsers, showArchived, roleFilter, usernameSearch]);
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-1">All Accounts</h1>
+      <h2 className="text-sm mb-6 text-muted-foreground">Manage user roles and archive accounts</h2>
+
+      {/* Filter Controls */}
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
+        <div className="flex items-center gap-6 flex-wrap">
+          {/* Show Archived Toggle */}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-archived"
+              checked={showArchived}
+              onCheckedChange={setShowArchived}
+            />
+            <Label htmlFor="show-archived" className="cursor-pointer">
+              Show Archived
+            </Label>
+          </div>
+
+          {/* Role Filter */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="role-filter">Role:</Label>
+            <select
+              id="role-filter"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="all">All Roles</option>
+              <option value="user">Intern</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          {/* Username Search */}
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <Label htmlFor="username-search">Search:</Label>
+            <Input
+              id="username-search"
+              type="text"
+              placeholder="Search by username..."
+              value={usernameSearch}
+              onChange={(e) => setUsernameSearch(e.target.value)}
+              className="h-9"
+            />
+          </div>
+        </div>
+
+        {/* Results count */}
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredUsers.length} of {activeUsers.length} users
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {filteredUsers.length === 0 ? (
+          <Card className="p-6">
+            <p className="text-center text-muted-foreground">
+              No users found matching your filters
+            </p>
+          </Card>
+        ) : (
+          filteredUsers.map((user) => {
+            const currentRole = selectedRoles[user.id] || user.role || 'user';
+            const hasChanged = currentRole !== user.role;
+            const isArchived = user.account_status === 'archived';
+
+            return (
+              <React.Fragment key={user.id}>
+                <Card className={`p-6 shadow-md ${isArchived ? 'bg-gray-100 opacity-75' : 'bg-white'}`}>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2 flex-1">
+                      <h3 className="font-semibold">{user.username}</h3>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <div className="flex gap-2 text-sm text-muted-foreground items-center flex-wrap">
+                        Joined: <span className='text-foreground'>{user.created_at ? user.created_at.toLocaleDateString() : 'Unknown'}</span>
+                        <Badge variant="secondary" className={getRoleBadgeColor(user.role || 'user')}>
+                          {getRoleDisplayName(user.role || 'user')}
+                        </Badge>
+                        {isArchived && (
+                          <Badge variant="secondary" className="bg-gray-300 text-gray-700">
+                            Archived
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isArchived && (
+                        <>
+                          <select
+                            value={currentRole}
+                            onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            disabled={updatingUserId === user.id}
+                          >
+                            <option value="user">Intern</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          {hasChanged && (
+                            <Button
+                              onClick={() => handleUpdateRole(user.id)}
+                              disabled={updatingUserId === user.id}
+                              size="sm"
+                            >
+                              {updatingUserId === user.id ? 'Updating...' : 'Update Role'}
+                            </Button>
+                          )}
+                          <Button
+                            onClick={() => setArchiveDialogUserId(user.id)}
+                            disabled={archivingUserId === user.id}
+                            size="sm"
+                            variant="outline"
+                          >
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Archive Confirmation Dialog */}
+                <AlertDialog open={archiveDialogUserId === user.id} onOpenChange={(open) => !open && setArchiveDialogUserId(null)}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Archive Account</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to archive <strong>{user.username}</strong>? This will deactivate their account and they will no longer be able to access the system.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          handleArchiveAccount(user.id);
+                          setArchiveDialogUserId(null);
+                        }}
+                      >
+                        Archive
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </React.Fragment>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 }
 
 function AllInternsTab(
@@ -159,7 +444,32 @@ function AllInternsTab(
 ) {
   const { isLoadingInterns } = useAdminDashboard();
   const [expandedIntern, setExpandedIntern] = useState<string | null>(null);
+  const [removingBill, setRemovingBill] = useState<{ internId: string; billId: string; billNumber: string; internName: string } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
   // const [editingIntern, setEditingIntern] = useState<boolean>(false);
+
+  const handleRemoveBill = async () => {
+    if (!removingBill) return;
+
+    setIsRemoving(true);
+    try {
+      const { removeBillFromIntern } = await import('@/app/actions/admin');
+      const result = await removeBillFromIntern(removingBill.internId, removingBill.billId);
+
+      if (result.success) {
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        alert(result.error || 'Failed to remove bill');
+      }
+    } catch (error) {
+      console.error('Error removing bill:', error);
+      alert('Failed to remove bill');
+    } finally {
+      setIsRemoving(false);
+      setRemovingBill(null);
+    }
+  };
 
   if (isLoadingInterns) {
     return (
@@ -193,7 +503,7 @@ function AllInternsTab(
                         <TableHead className='font-bold'>Supervisor</TableHead>
                         <TableHead className='font-bold'>Status</TableHead>
                         <TableHead className='font-bold'>Joined</TableHead>
-                        <TableHead className='font-bold'>Adopted Bills</TableHead>                        
+                        <TableHead className='font-bold'>Tracked Bills</TableHead>                        
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -231,9 +541,9 @@ function AllInternsTab(
                               </TableCell>
                               <TableCell>
                                 {intern.adopted_bills.length === 0 ? (
-                                  <span className="text-sm text-muted-foreground">No adopted bills</span>
+                                  <span className="text-sm text-muted-foreground">No tracked bills</span>
                                 ) : (
-                                  // Expand List of adopted bills
+                                  // Expand List of tracked bills
                                   <div className='flex items-center gap-2'>
                                     {intern.adopted_bills.length} bills                                   
                                       <ChevronDown className={`w-4 h-4 transition-transform ${
@@ -262,6 +572,7 @@ function AllInternsTab(
                                           <TableHead>Title</TableHead>
                                           <TableHead>Status</TableHead>
                                           <TableHead>Intern Adopted</TableHead>
+                                          <TableHead>Actions</TableHead>
                                         </TableRow>
                                       </TableHeader>
                                       <TableBody>
@@ -273,11 +584,29 @@ function AllInternsTab(
                                             <TableCell className="text-muted-foreground">
                                               {bill.bill_title || 'No Title'}
                                             </TableCell>
-                                            <TableCell className='font-semibold'>                                              
-                                                {formatBillStatusName(bill.current_status) || 'Unknown Status'}                                              
+                                            <TableCell className='font-semibold'>
+                                                {formatBillStatusName(bill.current_status) || 'Unknown Status'}
                                             </TableCell>
                                             <TableCell className="text-sm text-muted-foreground">
                                               {bill.adopted_at ? new Date(bill.adopted_at).toLocaleDateString() : 'Unknown'}
+                                            </TableCell>
+                                            <TableCell>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setRemovingBill({
+                                                    internId: intern.id,
+                                                    billId: bill.bill_id,
+                                                    billNumber: bill.bill_number || 'N/A',
+                                                    internName: intern.username
+                                                  });
+                                                }}
+                                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
                                             </TableCell>
                                           </TableRow>
                                         ))}
@@ -296,8 +625,29 @@ function AllInternsTab(
                </div>
           </div>
 
+          {/* Remove Bill Confirmation Dialog */}
+          <AlertDialog open={!!removingBill} onOpenChange={(open) => !open && setRemovingBill(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove Bill from Intern</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to remove bill <strong>{removingBill?.billNumber}</strong> from <strong>{removingBill?.internName}</strong>&apos;s tracking list? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleRemoveBill}
+                  disabled={isRemoving}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isRemoving ? 'Removing...' : 'Remove Bill'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
-      </TabsContent>    
+      </TabsContent>
   )
 }
 
@@ -306,8 +656,18 @@ function AllSupervisorsTab(
     supervisors: SupervisorWithInterns[];
   }
 ) {
-  const { isLoadingRelationships } = useAdminDashboard();
-  
+  const {
+    isLoadingRelationships,
+    allInterns,
+    handleAssignSupervisor,
+    handleUnassignIntern,
+    isAssigningSupervisor,
+    isUnassigningIntern
+  } = useAdminDashboard();
+
+  // State to manage selected interns for each supervisor
+  const [selectedInternsBySupervisor, setSelectedInternsBySupervisor] = useState<Record<string, string[]>>({});
+
   if (isLoadingRelationships) {
     return (
       <TabsContent value="all-supervisors" className="mx-8 space-y-8 mt-6">
@@ -319,13 +679,31 @@ function AllSupervisorsTab(
     );
   }
 
+  const handleSelectionChange = (supervisorId: string, selectedIds: string[]) => {
+    setSelectedInternsBySupervisor(prev => ({
+      ...prev,
+      [supervisorId]: selectedIds
+    }));
+  };
+
+  const handleAssign = (supervisorId: string) => {
+    const selectedIds = selectedInternsBySupervisor[supervisorId] || [];
+    if (selectedIds.length > 0) {
+      handleAssignSupervisor(supervisorId, selectedIds);
+      // Clear selection after assignment
+      setSelectedInternsBySupervisor(prev => ({
+        ...prev,
+        [supervisorId]: []
+      }));
+    }
+  };
+
   return (
     <TabsContent value="all-supervisors" className="mx-8 space-y-8 mt-6">
       <div>
         <h1 className="text-2xl font-bold mb-1 ">All Supervisors</h1>
-        <h2 className="text-sm mb-6 text-muted-foreground">View all supervisor accounts and their interns</h2>          
+        <h2 className="text-sm mb-6 text-muted-foreground">View all supervisor accounts and their interns</h2>
 
-      <ScrollArea className="h-[800px] w-full">
         <div className='bg-white rounded-lg shadow-sm border'>
             <div className="p-4 space-y-6">
               {supervisors.length === 0 ? (
@@ -336,31 +714,78 @@ function AllSupervisorsTab(
                 </Card>
               ) : (
                 supervisors.map((supervisor) => (
-                  <div key={supervisor.supervisor_id} className="border-b pb-4 last:border-0">
-                    <h3 className="font-semibold text-lg">
-                      {supervisor.supervisor_username}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {supervisor.supervisor_email}
-                    </p>
-                    
-                    {supervisor.interns.length === 0 ? (
-                      <p className="text-sm text-foreground">No interns assigned</p>
-                    ) : (
-                      <ul className="flex items-center gap-2 flex-wrap">
-                        {supervisor.interns.map((intern) => (
-                          <li key={intern.id} className="text-foreground">
-                            <Badge variant="outline" className="mr-2">{intern.username}</Badge> ({intern.email})
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                  <div key={supervisor.supervisor_id} className="border rounded-lg p-4 space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {supervisor.supervisor_username}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {supervisor.supervisor_email}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Assigned Interns ({supervisor.interns.length})
+                      </p>
+                      {supervisor.interns.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No interns assigned</p>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {supervisor.interns.map((intern) => (
+                            <Badge
+                              key={intern.id}
+                              variant="secondary"
+                              className="pl-2 pr-1 py-1 flex items-center gap-1"
+                            >
+                              <span className="text-xs">{intern.username}</span>
+                              <button
+                                onClick={() => handleUnassignIntern(intern.id)}
+                                disabled={isUnassigningIntern}
+                                className="ml-1 hover:bg-muted rounded-sm p-0.5 transition-colors disabled:opacity-50"
+                                aria-label={`Unassign ${intern.username}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-sm font-medium text-foreground">
+                        Assign New Interns
+                      </p>
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <InternSelector
+                            interns={allInterns}
+                            selectedInternIds={selectedInternsBySupervisor[supervisor.supervisor_id] || []}
+                            onSelectionChange={(selectedIds) => handleSelectionChange(supervisor.supervisor_id, selectedIds)}
+                            currentSupervisorId={supervisor.supervisor_id}
+                            disabled={isAssigningSupervisor}
+                          />
+                        </div>
+                        <Button
+                          onClick={() => handleAssign(supervisor.supervisor_id)}
+                          disabled={
+                            isAssigningSupervisor ||
+                            !selectedInternsBySupervisor[supervisor.supervisor_id] ||
+                            selectedInternsBySupervisor[supervisor.supervisor_id]?.length === 0
+                          }
+                          size="default"
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" />
+                          Assign
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
             </div>
         </div>
-      </ScrollArea>
       </div>
     </TabsContent>
   );
@@ -387,8 +812,23 @@ function AllInternBillsTab(
   return (
     <TabsContent value="all-tracked-bills" className="mx-8 space-y-8 mt-6">
       <div>
-        <h1 className="text-2xl font-bold mb-1 ">All Tracked Bills</h1>
-        <h2 className="text-sm mb-6 text-muted-foreground">View all bills tracked by interns</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">All Tracked Bills</h1>
+            <h2 className="text-sm text-muted-foreground">View all bills tracked by interns</h2>
+          </div>
+          <AssignMultipleBillsDialog
+            trigger={
+              <Button>
+                Assign Bills to Users
+              </Button>
+            }
+            onSuccess={() => {
+              // Refresh the bills data after successful assignment
+              window.location.reload();
+            }}
+          />
+        </div>
           <div className="space-y-4">
             {bills && bills.length === 0 ? (
               <Card className="p-6">
@@ -427,65 +867,4 @@ function AllInternBillsTab(
       </div>
     </TabsContent>
   )
-}
-
-function PendingProposalsTab(
-  { pendingProposals }: {
-    pendingProposals: PendingProposal[];
-  }
-) {
-  return (
-    <TabsContent value="pending-proposals" className="mx-8 space-y-8 mt-6">
-      <div>
-        <h1 className="text-2xl font-bold mb-1 ">Pending Proposals</h1>
-        <h2 className="text-sm mb-6 text-muted-foreground">Review and manage bill changes proposed by users</h2>
-
-        <ScrollArea className="h-[800px] w-full">
-          <div className="space-y-4">
-            {pendingProposals.length === 0 ? (
-              <Card className="p-6">
-                <p className="text-center text-muted-foreground">
-                  No pending proposals
-                </p>
-              </Card>
-            ) : (
-              pendingProposals.map((proposal) => (
-                <Card key={proposal.id} className="p-6 bg-white shadow-md">
-                  <div className="flex items-start justify-between">
-                    <div className="">
-                      <p className="text-md font-semibold text-foreground">{proposal.bill_number}</p>
-                      <div className="flex gap-2 text-sm text-muted-foreground items-center">
-                        Proposed By:<span className='text-foreground font-semibold'>{proposal.proposer.username || 'Unknown User'}</span> ({proposal.proposer.email || 'No Email'})
-                        <p> |  {new Date(proposal.proposed_at).toLocaleDateString()}</p>
-                      </div>
-                      
-                    </div>
-                    <div className="space-x-2">
-                      <Button
-                        onClick={() => console.log('Approve proposal', proposal.proposal_id)}
-                        variant="default"
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => console.log('Reject proposal', proposal.proposal_id)}
-                        variant="outline"
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                  <div className='mt-2 flex text-muted-foreground gap-2'>
-                    <Badge variant='outline'>{formatBillStatusName(proposal.current_status)}</Badge>
-                    <ArrowRight className='w-4 h-4 mt-1' /> 
-                    <Badge>{formatBillStatusName(proposal.proposed_status)}</Badge>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-        </ScrollArea>
-      </div>
-    </TabsContent>
-  );
 }

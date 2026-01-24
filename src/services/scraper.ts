@@ -40,7 +40,7 @@ export async function scrapeForUpdates(billID: string) {
  * @returns individual bill data
  */
 export async function findBill(billURL: string) {
-  cconsole.log('[SCRAPER FOR FIND BILL] calling scraping service with billURL classifier:', billURL)
+  console.log('[SCRAPER FOR FIND BILL] calling scraping service with billURL classifier:', billURL)
     const rl = limitFixedWindow(`scrape:find:${billURL}`, SCRAPER_RATE_LIMIT.limit, SCRAPER_RATE_LIMIT.windowMs);
     if (!rl.ok) {
       console.warn('Scrape rate limited for bill url lookup', { billURL, retryAfterMs: retryAfterMs(rl.resetAt) });

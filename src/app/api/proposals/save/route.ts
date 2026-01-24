@@ -11,15 +11,15 @@ export async function POST(request: NextRequest) {
     const session_token = getSessionCookie(request);
     const user = await validateSession(session_token);
 
-    const { billId, currentStatus, suggestedStatus, note } = await request.json();
-    const validation = proposalSchema.safeParse({ billId, currentStatus, suggestedStatus, note });
+    const { billId, currentStatus, proposedStatus, note } = await request.json();
+    const validation = proposalSchema.safeParse({ billId, currentStatus, proposedStatus, note });
     if (!validation.success) {
       return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
 
     console.log('💾 [SAVE PROPOSAL] User:', user.email, 'Role:', user.role);
     console.log('💾 [SAVE PROPOSAL] Bill ID:', billId);
-    console.log('💾 [SAVE PROPOSAL] Status change:', currentStatus, '→', suggestedStatus);    
+    console.log('💾 [SAVE PROPOSAL] Status change:', currentStatus, '→', proposedStatus);
 
     // Check if proposal already exists (by user_id and bill_id, regardless of approval status)
     // Use (db as any) to bypass Kysely type checking for snake_case columns
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       .selectFrom('pending_proposals')
       .selectAll()
       .where('bill_id', '=', billId)
-      .where('user_id', '=', user.id)
+      .where('proposed_by_user_id', '=', user.id)
       .executeTakeFirst();
 
     if (existing) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       await db
         .updateTable('pending_proposals')
         .set({
-          suggested_status: suggestedStatus,
+          proposed_status: proposedStatus,
           current_status: currentStatus,
           approval_status: 'pending', // Reset to pending
           proposed_at: new Date(),
@@ -51,23 +51,23 @@ export async function POST(request: NextRequest) {
     // Create new proposal
     const proposalId = crypto.randomUUID();
     console.log('💾 [SAVE PROPOSAL] Creating new proposal:', proposalId);
-    await db
+    const result = await db
       .insertInto('pending_proposals')
       .values({
         id: proposalId,
         bill_id: billId,
         proposed_by_user_id: user.id,
-        user_id: user.id,
-        suggested_status: suggestedStatus,
+        proposed_status: proposedStatus,
         current_status: currentStatus,
         proposed_at: new Date(),
         approval_status: 'pending',
         note: note || null,
       })
-      .execute();
+      .returningAll()
+      .executeTakeFirstOrThrow();
 
-    console.log('✅ [SAVE PROPOSAL] Successfully saved proposal:', proposalId);
-    return NextResponse.json({ success: true, proposalId });
+    console.log('✅ [SAVE PROPOSAL] Successfully saved proposal:', result.id, result?.current_status, '→', result?.proposed_status);
+    return NextResponse.json({ success: true, proposalId: result.id });
   } catch (error) {
     console.error('Error saving proposal:', error);
     console.error('Error details:', error instanceof Error ? error.message : String(error));

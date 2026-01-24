@@ -39,27 +39,43 @@ export interface NewsArticle {
  */
 export interface Bill {
   // attributes from the database
+  id: string;
   bill_number: string;
-  bill_title: string;  
-  bill_url: string;
-  committee_assignment: string;
-  created_at: Date | null;
-  current_status: string;  
+  bill_title: string;
+  year: number | null;
+  current_bill_status: string;
   current_status_string: string;
-  description: string; 
-  food_related: boolean | null;
-  id: string;  
-  introducer: string;
-  nickname: string;
-  user_nickname?: string | null;
-  updated_at: Date | null;
+  description: string;
+  archived: boolean;
 
   // client side attributes
-  updates: StatusUpdate[]
-  previous_status?: BillStatus;  
-  llm_suggested?: boolean;  
+  latest_update: StatusUpdate | null;
+  previous_status?: BillStatus;
+
+  // LLM state 
+  llm_suggested?: boolean;
   llm_processing?: boolean;
   tags?: Tag[];
+  tracked_count?: number;
+  tracked_by?: BillTracker[];
+}
+
+export interface BillDetails extends Bill {
+  bill_url: string;
+  committee_assignment: string;
+  introducer: string;
+  food_related: boolean | null;
+  created_at: Date | null;
+  updated_at: Date | null;
+
+  updates: StatusUpdate[];
+}
+
+export interface BillTracker {
+  id: string;
+  email: string | null;
+  username: string | null;
+  adopted_at?: Date | string | null;
 }
 
 export interface TempBill {
@@ -68,7 +84,7 @@ export interface TempBill {
   bill_number?: string | null;
   bill_title: string | null;
   current_status: BillStatus;
-  suggested_status: BillStatus;
+  proposed_status: BillStatus;
   target_idx: number;
   source?: 'llm' | 'human';
   approval_status?: 'pending' | 'approved' | 'rejected';

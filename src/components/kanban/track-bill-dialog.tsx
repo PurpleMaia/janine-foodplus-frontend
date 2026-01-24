@@ -6,24 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
-import { useAdoptedBills } from '@/hooks/use-adopted-bills';
+import { useAuth } from '@/hooks/contexts/auth-context';
+import { useTrackedBills } from '@/hooks/use-tracked-bills';
 import { UserPlus } from 'lucide-react';
+import { DialogDescription } from '@radix-ui/react-dialog';
 
-export function AdoptBillDialog() {
+export function TrackBillDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [billUrl, setBillUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { adoptBill } = useAdoptedBills();
+  const { trackBill } = useTrackedBills();
 
-  // Calls the adoptBill service and provides feedback via toasts.
-  const handleAdoptBill = async () => {
+  // Calls the trackBill service and provides feedback via toasts.
+  const handleTrackBill = async () => {
     if (!user) {
       toast({
         title: "Authentication Error",
-        description: "You must be logged in to adopt bills.",
+        description: "You must be logged in to track bills.",
         variant: "destructive",
       });
       return;
@@ -41,19 +42,19 @@ export function AdoptBillDialog() {
     setIsLoading(true);
     try {
 
-      const success = await adoptBill(billUrl.trim());
-      
+      const success = await trackBill(billUrl.trim());
+
       if (success) {
         toast({
           title: "Success!",
-          description: `Bill has been adopted successfully.`,
+          description: `Bill has been tracked successfully.`,
         });
         setBillUrl('');
         setIsOpen(false);
       } else {
         toast({
-          title: "Adoption Failed",
-          description: "Bill URL not found or already adopted.",
+          title: "Tracking Failed",
+          description: "Bill URL not found or already tracked.",
           variant: "destructive",
         });
       }
@@ -70,7 +71,7 @@ export function AdoptBillDialog() {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isLoading) {
-      handleAdoptBill();
+      handleTrackBill();
     }
   };
 
@@ -78,12 +79,15 @@ export function AdoptBillDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
-          <UserPlus /> Track New Bill
+          <UserPlus /> Track Bill
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="">
         <DialogHeader>
-          <DialogTitle>Add a Bill to Track</DialogTitle>
+          <DialogTitle>Track a new Bill</DialogTitle>
+          <DialogDescription className='text-muted-foreground text-sm'>
+            <span className="font-semibold">Note: </span>Only track a new bill from the {new Date().getFullYear()} legislative session
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -96,9 +100,6 @@ export function AdoptBillDialog() {
               onKeyPress={handleKeyPress}
               disabled={isLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              Paste the full URL from the bill page (e.g., https://www.capitol.hawaii.gov/session/measure_indiv.aspx?billtype=HB&billnumber=1294&year=2025)
-            </p>
           </div>
           <div className="flex justify-end space-x-2">
             <Button
@@ -109,10 +110,10 @@ export function AdoptBillDialog() {
               Cancel
             </Button>
             <Button
-              onClick={handleAdoptBill}
+              onClick={handleTrackBill}
               disabled={isLoading || !billUrl.trim()}
             >
-              {isLoading ? 'Adopting...' : 'Adopt Bill'}
+              {isLoading ? 'Tracking...' : 'Track Bill'}
             </Button>
           </div>
         </div>

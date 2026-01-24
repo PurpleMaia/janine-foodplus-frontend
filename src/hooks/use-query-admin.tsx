@@ -9,12 +9,16 @@ import {
   getAllSupervisors,
   getAllInternBills,
   approveUser,
-  denyUser,  
+  denyUser,
+  assignSupervisorToIntern,
+  unassignInternFromSupervisor,
+  getAllAccounts,
 } from '@/app/actions/admin';
 
 // Query keys for cache management
 const queryKeys = {
   pendingRequests: ['admin', 'pending-requests'] as const,
+  allAccounts: ['admin', 'all-accounts'] as const,
   pendingProposals: ['admin', 'pending-proposals'] as const,
   supervisorRequests: ['admin', 'supervisor-requests'] as const,
   allInterns: ['admin', 'all-interns'] as const,
@@ -38,6 +42,17 @@ export function useAdminDashboard() {
       return result.data ?? [];
     },
     staleTime: 30_000, // Consider data fresh for 30 seconds
+  });
+
+  const allAccountsQuery = useQuery({
+    queryKey: queryKeys.allAccounts,
+    queryFn: async () => {
+      const result = await getAllAccounts();
+
+      if (!result.success) throw new Error(result.error);
+      return result.data ?? [];
+    },
+    staleTime: 30_000,
   });
 
   const pendingProposalsQuery = useQuery({
@@ -130,11 +145,11 @@ export function useAdminDashboard() {
     onMutate: async (userId) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.pendingRequests });
       const previousData = queryClient.getQueryData(queryKeys.pendingRequests);
-      
-      queryClient.setQueryData(queryKeys.pendingRequests, (old: any[]) => 
+
+      queryClient.setQueryData(queryKeys.pendingRequests, (old: any[]) =>
         old?.filter(user => user.id !== userId) ?? []
       );
-      
+
       return { previousData };
     },
     onSuccess: () => {
@@ -153,6 +168,57 @@ export function useAdminDashboard() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.pendingRequests });
     },
+  });
+
+  const assignSupervisorMutation = useMutation({
+    mutationFn: async ({ supervisorId, internIds }: { supervisorId: string; internIds: string[] }) => {
+      const result = await assignSupervisorToIntern(supervisorId, internIds);
+      if (!result.success) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: (_data, variables) => {
+      const internCount = variables.internIds.length;
+      toast({
+        title: 'Success',
+        description: `Successfully assigned ${internCount} intern${internCount > 1 ? 's' : ''} to supervisor`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to assign supervisor',
+        variant: 'destructive',
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.allInterns });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allSupervisors });
+    },
+  });
+
+  const unassignInternMutation = useMutation({
+    mutationFn: async (internId: string) => {
+      const result = await unassignInternFromSupervisor(internId);
+      if (!result.success) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Successfully unassigned intern from supervisor',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to unassign intern',
+        variant: 'destructive',
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.allInterns });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allSupervisors });
+    },
   });  
 
   // ============================================
@@ -163,6 +229,7 @@ export function useAdminDashboard() {
     // Data
     pendingUsers: pendingRequestsQuery.data ?? [],
     pendingProposals: pendingProposalsQuery.data ?? [],
+    allAccounts: allAccountsQuery.data ?? [],
     allInterns: allInternsQuery.data ?? [],
     allSupervisors: allSupervisorsQuery.data ?? [],
     allInternBills: allInternBillsQuery.data ?? [],
@@ -184,14 +251,20 @@ export function useAdminDashboard() {
     },
 
     // Actions (simplified API - no need to pass refetch functions)
-    handleApproveUser: (userId: string, role: string) => 
+    handleApproveUser: (userId: string, role: string) =>
       approveUserMutation.mutate({ userId, role }),
-    handleDenyUser: (userId: string,) => 
+    handleDenyUser: (userId: string,) =>
       denyUserMutation.mutate(userId),
+    handleAssignSupervisor: (supervisorId: string, internIds: string[]) =>
+      assignSupervisorMutation.mutate({ supervisorId, internIds }),
+    handleUnassignIntern: (internId: string) =>
+      unassignInternMutation.mutate(internId),
 
     // Mutation loading states (useful for disabling buttons)
-    isApproving: approveUserMutation.isPending, 
-    isRejecting: denyUserMutation.isPending, 
+    isApproving: approveUserMutation.isPending,
+    isRejecting: denyUserMutation.isPending,
+    isAssigningSupervisor: assignSupervisorMutation.isPending,
+    isUnassigningIntern: unassignInternMutation.isPending, 
 
     // Manual refetch functions if needed
     refetch: {
