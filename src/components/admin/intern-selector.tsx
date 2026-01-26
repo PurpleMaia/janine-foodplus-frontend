@@ -9,8 +9,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface InternOption {
   id: string;
@@ -35,11 +35,22 @@ export function InternSelector({
   disabled = false,
 }: InternSelectorProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Filter out interns already assigned to this supervisor
   const availableInterns = interns.filter(
     (intern) => intern.supervisor_id !== currentSupervisorId
   );
+
+  // Filter by search query
+  const filteredInterns = availableInterns.filter((intern) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      intern.username.toLowerCase().includes(query) ||
+      intern.email.toLowerCase().includes(query)
+    );
+  });
 
   const toggleIntern = (internId: string) => {
     const newSelection = selectedInternIds.includes(internId)
@@ -88,14 +99,27 @@ export function InternSelector({
             )}
           </div>
 
+          <div className="px-2 pb-2">
+            <Input
+              placeholder="Search interns..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+
           {availableInterns.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
               No available interns
             </div>
+          ) : filteredInterns.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              No interns found matching &quot;{searchQuery}&quot;
+            </div>
           ) : (
-            <ScrollArea className="max-h-[300px]">
+            <div className="max-h-[300px] overflow-y-auto px-2">
               <div className="space-y-1">
-                {availableInterns.map((intern) => {
+                {filteredInterns.map((intern) => {
                   const isSelected = selectedInternIds.includes(intern.id);
                   return (
                     <div
@@ -133,7 +157,7 @@ export function InternSelector({
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
           )}
 
           {selectedInterns.length > 0 && (
