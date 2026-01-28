@@ -1,0 +1,240 @@
+name: Claude Code Ticket Agent
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  claude-code:
+    # Only run if issue has 'claude-code' label
+    if: contains(github.event.issue.labels.*.name, 'claude-code')
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    
+    steps:
+      - name: Comment on issue - Starting
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🤖 **Claude Code has been activated!**\n\nI\'m analyzing the codebase and will create a pull request with the fix. This may take a few minutes...'
+            });
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install -g tsx
+      
+      - name: Configure Git
+        run: |
+          git config user.name "claude-code-bot[bot]"
+          git config user.email "claude-code-bot[bot]@users.noreply.github.com"
+      
+      - name: Create branch
+        id: branch
+        run: |
+          BRANCH_NAME="fix/issue-${{ github.event.issue.number }}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          git checkout -b "$BRANCH_NAME"
+      
+      - name: Run Claude Code
+        id: claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          # Create Claude Code automation script
+          cat > run-claude-code.js << 'EOFSCRIPT'
+          import Anthropic from '@anthropic-ai/sdk';
+          import { execSync } from 'child_process';
+          import fs from 'fs';
+
+          const anthropic = new Anthropic({
+            apiKey: process.env.ANTHROPIC_API_KEY
+          });
+
+          // Load your custom settings
+          let customSettings = {};
+          if (fs.existsSync('.claude/settings.json')) {
+            customSettings = JSON.parse(fs.readFileSync('.claude/settings.json', 'utf8'));
+          }
+
+          const issueContext = `You are working on GitHub issue #${process.env.ISSUE_NUMBER} in a Node.js repository.
+
+          Issue Title: ${process.env.ISSUE_TITLE}
+
+          Issue Description:
+          ${process.env.ISSUE_BODY}
+
+          Custom Project Settings:
+          ${JSON.stringify(customSettings, null, 2)}
+
+          Your workflow:
+          1. Analyze the codebase to understand the issue context
+          2. Identify which files need to be modified
+          3. Implement the necessary changes
+          4. Test your changes if tests are available
+          5. Create clear, descriptive commit messages
+
+          Start by exploring the project structure and understanding the issue.`;
+
+          async function runClaudeCode() {
+            console.log('🤖 Starting Claude Code...\n');
+            
+            const message = await anthropic.messages.create({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 8000,
+              messages: [{
+                role: 'user',
+                content: issueContext
+              }]
+            });
+
+            const response = message.content[0].text;
+            console.log('Claude\'s analysis:\n', response);
+
+            // Parse file changes from Claude's response
+            const fileRegex = /FILE:\s*(.+?)\n```[\w]*\n([\s\S]+?)```/g;
+            let match;
+            const changes = [];
+
+            while ((match = fileRegex.exec(response)) !== null) {
+              changes.push({
+                path: match[1].trim(),
+                content: match[2].trim()
+              });
+            }
+
+            if (changes.length === 0) {
+              console.log('No specific file changes detected. Saving analysis...');
+              fs.writeFileSync('CLAUDE_ANALYSIS.md', `# Analysis for Issue #${process.env.ISSUE_NUMBER}\n\n${response}`);
+              execSync('git add CLAUDE_ANALYSIS.md');
+              execSync(`git commit -m "Add Claude Code analysis for issue #${process.env.ISSUE_NUMBER}"`);
+            } else {
+              console.log(`\n📝 Applying ${changes.length} file change(s)...`);
+              
+              for (const change of changes) {
+                console.log(`   Updating: ${change.path}`);
+                
+                // Ensure directory exists
+                const dir = change.path.split('/').slice(0, -1).join('/');
+                if (dir) {
+                  execSync(`mkdir -p "${dir}"`, { stdio: 'inherit' });
+                }
+                
+                fs.writeFileSync(change.path, change.content);
+                execSync(`git add "${change.path}"`);
+              }
+
+              execSync(`git commit -m "Fix: Implement solution for issue #${process.env.ISSUE_NUMBER}
+
+          ${response.substring(0, 500).replace(/"/g, '\\"')}...
+
+          Modified files:
+          ${changes.map(c => `- ${c.path}`).join('\n')}"`);
+            }
+
+            console.log('\n✅ Changes committed successfully');
+          }
+
+          runClaudeCode().catch(console.error);
+          EOFSCRIPT
+
+          # Install Anthropic SDK
+          npm install @anthropic-ai/sdk
+
+          # Run Claude Code
+          node run-claude-code.js
+      
+      - name: Push changes
+        run: |
+          git push -u origin ${{ steps.branch.outputs.branch_name }}
+      
+      - name: Create Pull Request
+        id: create-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Fix: ${{ github.event.issue.title }}`,
+              body: `Fixes #${{ github.event.issue.number }}
+
+            ## 🤖 Automated Fix by Claude Code
+
+            Claude Code analyzed the issue and implemented the necessary changes.
+
+            ### What Changed
+            - Analyzed the codebase context
+            - Identified the root cause
+            - Implemented targeted fixes
+            - Committed changes with clear descriptions
+
+            ### Testing Checklist
+            - [ ] Review the code changes
+            - [ ] Test the functionality locally
+            - [ ] Verify the issue is resolved
+            - [ ] Check for any side effects
+
+            ### Next Steps
+            1. Review the changes in the Files tab
+            2. Pull the branch locally for testing (optional)
+            3. Approve and merge when satisfied
+
+            ---
+            *This PR was automatically generated by Claude Code via GitHub Actions*`,
+              head: '${{ steps.branch.outputs.branch_name }}',
+              base: 'main'
+            });
+
+            return pr.number;
+      
+      - name: Comment on issue - Success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.create-pr.outputs.result }};
+            const prUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${prNumber}`;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `✅ **Claude Code has completed the fix!**\n\nPull Request: #${prNumber}\n${prUrl}\n\nPlease review the changes and merge when ready.`
+            });
+      
+      - name: Comment on issue - Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '❌ **Claude Code encountered an error**\n\nPlease check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
+            });
