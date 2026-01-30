@@ -2,23 +2,23 @@ name: Claude Code Agent
 
 on:
   issues:
-    types: [labeled]  # Only trigger on label add, not on opened
+    types: [labeled]
 
 jobs:
   claude-code:
-    # Only run if issue has 'claude-code' label AND hasn't been processed yet
     if: |
-      github.event.action == 'labeled' && 
+      github.event.action == 'labeled' &&
       github.event.label.name == 'claude-code' &&
       !contains(github.event.issue.labels.*.name, 'claude-processing')
-    
+
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 30
+
     permissions:
       contents: write
       issues: write
       pull-requests: write
-    
+
     steps:
       - name: Add processing label to prevent duplicate runs
         uses: actions/github-script@v7
@@ -30,387 +30,177 @@ jobs:
               issue_number: context.issue.number,
               labels: ['claude-processing']
             });
-      
+
       - name: Comment on issue - Starting
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '🤖 **Claude Code Agent Activated**\n\nAnalyzing the issue and codebase. This will take a few minutes...\n\n*Status: Starting analysis*'
+              body: '🤖 **Claude Code Agent Activated**\n\nAnalyzing the issue and codebase...\n\n*Status: Starting analysis*'
             });
-      
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Install dependencies
-        run: |
-          npm install || echo "No package.json or install failed, continuing..."
-      
+        run: npm install || echo "No package.json or install failed, continuing..."
+
       - name: Configure Git
         run: |
           git config user.name "claude-code-bot[bot]"
           git config user.email "claude-code-bot[bot]@users.noreply.github.com"
-      
+
       - name: Create working branch
         id: branch
         run: |
           BRANCH_NAME="fix/issue-${{ github.event.issue.number }}"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           git checkout -b "$BRANCH_NAME"
-          echo "Created branch: $BRANCH_NAME"
-      
-      - name: Run Claude Code Agent
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude Code
         id: claude
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
-          REPO_OWNER: ${{ github.repository_owner }}
-          REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          # Install required packages
-          npm install @anthropic-ai/sdk
-          
-          # Create the Claude Code agent script
-          cat > claude-agent.mjs << 'EOFSCRIPT'
-          import Anthropic from '@anthropic-ai/sdk';
-          import { execSync } from 'child_process';
-          import fs from 'fs';
-          import path from 'path';
+          PROMPT="You are working on a GitHub issue in this repository.
 
-          const anthropic = new Anthropic({
-            apiKey: process.env.ANTHROPIC_API_KEY
-          });
+          Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
 
-          // Load custom settings if they exist
-          let customSettings = {};
-          if (fs.existsSync('.claude/settings.json')) {
-            customSettings = JSON.parse(fs.readFileSync('.claude/settings.json', 'utf8'));
-            console.log('📋 Loaded custom Claude settings');
-          }
+          ${{ github.event.issue.body }}
 
-          // Get repository context
-          function getRepoContext() {
-            const context = {
-              files: [],
-              structure: {}
-            };
-            
-            try {
-              // Get list of files
-              const files = execSync('find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" | head -100', 
-                { encoding: 'utf8' }).trim().split('\n');
-              context.files = files;
-              
-              // Get package.json if exists
-              if (fs.existsSync('package.json')) {
-                context.packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-              }
-              
-              // Get README if exists
-              if (fs.existsSync('README.md')) {
-                context.readme = fs.readFileSync('README.md', 'utf8').substring(0, 1000);
-              }
-            } catch (e) {
-              console.error('Error getting repo context:', e.message);
-            }
-            
-            return context;
-          }
+          Instructions:
+          - Read and understand the relevant code before making changes.
+          - Implement a minimal, focused fix for this issue.
+          - Stage and commit your changes with a clear commit message referencing the issue number.
+          - Do not modify package.json unless the issue specifically requires it.
+          - Do not leave console.log statements in committed code."
 
-          async function analyzeAndFix() {
-            console.log('🤖 Starting Claude Code Agent...\n');
-            
-            const repoContext = getRepoContext();
-            
-            const systemPrompt = `You are an expert software engineer working on a Node.js codebase. You have access to the repository and can make changes.
+          claude -p "$PROMPT" \
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git add:*),Bash(git commit:*),Bash(npm run typecheck:*),Bash(npm run lint:*)" \
+            --max-turns 25 \
+            --output-format text \
+            2>&1 | tee claude-output.txt
 
-          Repository Context:
-          ${JSON.stringify(repoContext, null, 2)}
-
-          Custom Project Settings:
-          ${JSON.stringify(customSettings, null, 2)}
-
-          Your task is to analyze and fix GitHub issue #${process.env.ISSUE_NUMBER}.`;
-
-            const userPrompt = `Please analyze and fix this issue:
-
-          ## Issue #${process.env.ISSUE_NUMBER}: ${process.env.ISSUE_TITLE}
-
-          ${process.env.ISSUE_BODY}
-
-          ## Your Workflow:
-          1. Understand the issue thoroughly
-          2. Analyze the relevant parts of the codebase
-          3. Determine what changes are needed
-          4. Implement a clean, tested solution
-          5. Provide the exact file changes
-
-          ## Response Format:
-          For each file you need to modify, use this format:
-
-          FILE: path/to/file.js
-          \`\`\`javascript
-          // Complete file content here
-          \`\`\`
-
-          EXPLANATION: Brief explanation of changes
-
-          If you need to create new files, use the same format.
-          Focus on minimal, targeted changes that solve the issue.`;
-
-            console.log('📤 Sending request to Claude...');
-            
-            const message = await anthropic.messages.create({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 16000,
-              system: systemPrompt,
-              messages: [{
-                role: 'user',
-                content: userPrompt
-              }]
-            });
-
-            const response = message.content[0].text;
-            console.log('\n📥 Received response from Claude\n');
-            console.log('--- Claude\'s Analysis ---');
-            console.log(response.substring(0, 500) + '...\n');
-
-            return response;
-          }
-
-          function applyChanges(claudeResponse) {
-            console.log('🔧 Applying changes...\n');
-            
-            // Parse file changes from Claude's response
-            const fileRegex = /FILE:\s*(.+?)\n```[\w]*\n([\s\S]+?)```/g;
-            let match;
-            const changes = [];
-
-            while ((match = fileRegex.exec(claudeResponse)) !== null) {
-              changes.push({
-                path: match[1].trim(),
-                content: match[2].trim()
-              });
-            }
-
-            if (changes.length === 0) {
-              console.log('⚠️ No file changes detected in Claude\'s response');
-              console.log('Creating analysis document instead...\n');
-              
-              fs.writeFileSync('CLAUDE_ANALYSIS.md', 
-                `# Claude Code Analysis - Issue #${process.env.ISSUE_NUMBER}\n\n${claudeResponse}`
-              );
-              execSync('git add CLAUDE_ANALYSIS.md');
-              execSync(`git commit -m "Add Claude analysis for issue #${process.env.ISSUE_NUMBER}"`);
-              
-              return {
-                filesChanged: ['CLAUDE_ANALYSIS.md'],
-                summary: 'Created analysis document'
-              };
-            }
-
-            console.log(`Found ${changes.length} file(s) to modify:\n`);
-            
-            for (const change of changes) {
-              console.log(`  📝 ${change.path}`);
-              
-              // Ensure directory exists
-              const dir = path.dirname(change.path);
-              if (dir && dir !== '.') {
-                execSync(`mkdir -p "${dir}"`, { stdio: 'inherit' });
-              }
-              
-              // Write the file
-              fs.writeFileSync(change.path, change.content);
-              
-              // Stage the file
-              execSync(`git add "${change.path}"`);
-            }
-
-            // Create commit with detailed message
-            const commitMsg = `Fix: Issue #${process.env.ISSUE_NUMBER} - ${process.env.ISSUE_TITLE}
-
-          Implemented by Claude Code Agent
-
-          Modified files:
-          ${changes.map(c => `- ${c.path}`).join('\n')}
-
-          ${claudeResponse.substring(0, 300).replace(/"/g, "'")}...`;
-
-            execSync(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`, { stdio: 'inherit' });
-            
-            console.log('\n✅ Changes committed successfully');
-            
-            return {
-              filesChanged: changes.map(c => c.path),
-              summary: claudeResponse.substring(0, 500)
-            };
-          }
-
-          async function main() {
-            try {
-              const analysis = await analyzeAndFix();
-              const result = applyChanges(analysis);
-              
-              console.log('\n🎉 Claude Code Agent completed successfully!');
-              console.log(`Modified ${result.filesChanged.length} file(s)`);
-              
-              // Write summary for GitHub Actions
-              fs.writeFileSync('claude-summary.txt', result.summary);
-              fs.writeFileSync('claude-files.txt', result.filesChanged.join('\n'));
-              
-            } catch (error) {
-              console.error('\n❌ Error:', error.message);
-              console.error(error.stack);
-              process.exit(1);
-            }
-          }
-
-          main();
-          EOFSCRIPT
-
-          # Run the Claude agent
-          echo "🚀 Starting Claude Code Agent..."
-          node claude-agent.mjs
-          
-          echo ""
-          echo "✅ Claude Code Agent finished"
-      
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if git diff --quiet HEAD~1; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "No changes were made"
-          else
+          # Check if claude made any commits
+          if git log --oneline origin/main..HEAD | grep -q .; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "Changes detected"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Push changes
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
-          git push -u origin ${{ steps.branch.outputs.branch_name }}
-          echo "✅ Pushed branch: ${{ steps.branch.outputs.branch_name }}"
-      
+        if: steps.claude.outputs.has_changes == 'true'
+        run: git push -u origin ${{ steps.branch.outputs.branch_name }}
+
       - name: Create Pull Request
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.claude.outputs.has_changes == 'true'
         id: create_pr
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            
-            let summary = 'Claude Code analyzed the issue and implemented changes.';
-            let filesChanged = [];
-            
+            const { execSync } = require('child_process');
+
+            let claudeOutput = '';
             try {
-              summary = fs.readFileSync('claude-summary.txt', 'utf8');
-              filesChanged = fs.readFileSync('claude-files.txt', 'utf8').split('\n').filter(f => f);
+              claudeOutput = fs.readFileSync('claude-output.txt', 'utf8');
             } catch (e) {
-              console.log('Could not read summary files');
+              claudeOutput = 'Claude Code output not available.';
             }
-            
+
+            // Get list of changed files from git
+            let changedFiles = '';
+            try {
+              changedFiles = execSync('git diff --name-only origin/main...HEAD', { encoding: 'utf8' }).trim();
+            } catch (e) {
+              changedFiles = 'Could not determine changed files.';
+            }
+
+            const filesList = changedFiles
+              .split('\n')
+              .filter(f => f)
+              .map(f => `- \`${f}\``)
+              .join('\n');
+
             const { data: pr } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Fix: ${{ github.event.issue.title }}`,
-              body: `Fixes #${{ github.event.issue.number }}
-
-            ## 🤖 Automated Fix by Claude Code Agent
-
-            Claude Code analyzed the issue and implemented the following solution.
-
-            ### Changes Made
-            ${summary.substring(0, 1000)}
-
-            ### Modified Files
-            ${filesChanged.map(f => `- \`${f}\``).join('\n')}
-
-            ### Review Checklist
-            - [ ] Review the code changes
-            - [ ] Test the functionality
-            - [ ] Verify the issue is resolved
-            - [ ] Check for any unintended side effects
-
-            ### Testing Instructions
-            \`\`\`bash
-            git checkout ${{ steps.branch.outputs.branch_name }}
-            npm install
-            npm test  # if tests exist
-            \`\`\`
-
-            ---
-            *This PR was automatically generated by Claude Code Agent*`,
+              body: `Fixes #${{ github.event.issue.number }}\n\n## 🤖 Automated Fix by Claude Code Agent\n\n### Modified Files\n${filesList}\n\n### Claude Code Output\n<details>\n<summary>Expand to see full output</summary>\n\n\`\`\`\n${claudeOutput.substring(0, 60000)}\n\`\`\`\n</details>\n\n### Review Checklist\n- [ ] Review the code changes\n- [ ] Test the functionality\n- [ ] Verify the issue is resolved\n- [ ] Check for any unintended side effects\n\n---\n*This PR was automatically generated by Claude Code Agent*`,
               head: '${{ steps.branch.outputs.branch_name }}',
               base: 'main'
             });
 
             return pr.number;
-      
+
       - name: Comment on issue - Success
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.claude.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = ${{ steps.create_pr.outputs.result }};
             const prUrl = `https://github.com/${{ github.repository }}/pull/${prNumber}`;
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `✅ **Claude Code Agent completed successfully!**\n\n**Pull Request:** #${prNumber}\n${prUrl}\n\nThe fix has been implemented and is ready for review. Please test the changes before merging.`
+              body: `✅ **Claude Code Agent completed successfully!**\n\n**Pull Request:** #${prNumber}\n${prUrl}\n\nThe fix has been implemented and is ready for review.`
             });
-            
-            // Remove processing label and add completed label
+
             await github.rest.issues.removeLabel({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
               name: 'claude-processing'
             });
-            
+
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
               labels: ['claude-completed']
             });
-      
+
       - name: Comment on issue - No changes
-        if: steps.check_changes.outputs.has_changes == 'false'
+        if: steps.claude.outputs.has_changes == 'false'
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
+            let claudeOutput = '';
+            try {
+              claudeOutput = fs.readFileSync('claude-output.txt', 'utf8').substring(0, 3000);
+            } catch (e) {}
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '⚠️ **Claude Code Agent Analysis**\n\nClaude analyzed the issue but did not make any code changes. This could mean:\n- The issue needs more information\n- The fix requires manual intervention\n- The issue is not a code problem\n\nPlease review the issue and provide more details if needed.'
+              body: `⚠️ **Claude Code Agent Analysis**\n\nClaude analyzed the issue but did not make any code changes. This could mean:\n- The issue needs more information\n- The fix requires manual intervention\n- The issue is not a code problem\n\n<details>\n<summary>Claude's analysis</summary>\n\n\`\`\`\n${claudeOutput}\n\`\`\`\n</details>`
             });
-            
+
             await github.rest.issues.removeLabel({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
               name: 'claude-processing'
             });
-      
+
       - name: Comment on issue - Failure
         if: failure()
         uses: actions/github-script@v7
@@ -422,7 +212,7 @@ jobs:
               issue_number: context.issue.number,
               body: `❌ **Claude Code Agent encountered an error**\n\nPlease check the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.\n\nYou may need to:\n- Check that ANTHROPIC_API_KEY is set correctly\n- Verify the issue description has enough detail\n- Handle this issue manually`
             });
-            
+
             await github.rest.issues.removeLabel({
               owner: context.repo.owner,
               repo: context.repo.repo,
