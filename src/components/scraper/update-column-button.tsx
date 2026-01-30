@@ -100,8 +100,9 @@ export default function RefreshColumnButton({ bills, onRefreshStart, onRefreshEn
                 { loading ? (
                     <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/></span>
                 ) : (
-                    <span className="flex items-center gap-2"><ListRestart /></span>
+                    <span className="flex items-center gap-2"><ListRestart className="h-4 w-4"/></span>
                 )}
+                Refresh Updates
             </Button>
         </>
     )

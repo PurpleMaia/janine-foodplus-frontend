@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, use } from 'react';
 import type { Bill, TempBill } from '@/types/legislation';
 import { KanbanCard } from './kanban-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,8 +10,9 @@ import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
 import { TempBillCard } from './temp-card';
 import { ListRestart, TriangleAlert } from 'lucide-react';
-import LLMUpdateColumnButton from '../llm/llm-update-column-button';
+import ColumnOptionsMenu from './column-options-menu';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
+import { useAuth } from '@/hooks/contexts/auth-context';
 
 // Adds readOnly prop to control card rendering
 // When readOnly=true, cards aren't wrapped in Draggable components
@@ -73,6 +74,7 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
     },
     ref
   ) => {
+    const { user } = useAuth();
     const [refreshing, setRefreshing] = useState<boolean>(false);
 
     // Use shared refs from parent, or create local ones if not provided
@@ -110,18 +112,13 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
               )}
             </span>
 
-            <div className="flex items-center gap-1">
-              <LLMUpdateColumnButton
+            { user && (
+              <ColumnOptionsMenu
                 bills={bills}
                 onRefreshStart={() => setRefreshing(true)}
                 onRefreshEnd={() => setRefreshing(false)}
               />
-              {/* <RefreshColumnButton
-                bills={bills}
-                onRefreshStart={() => setRefreshing(true)}
-                onRefreshEnd={() => setRefreshing(false)}
-              /> */}
-            </div>
+            )}
           </h2>
 
           {/* {bills.length >= 20 && (
