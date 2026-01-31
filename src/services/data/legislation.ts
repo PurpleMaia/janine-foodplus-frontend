@@ -2,7 +2,6 @@
 
 import type { Bill, BillTracker, Tag, BillDetails, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
-import { revalidatePath } from 'next/cache';
 import { db } from '@/db/kysely/client';
 import { Bills, BillStatus, StatusUpdates, User } from '@/db/types';
 import { Selectable, sql } from 'kysely';
@@ -432,15 +431,21 @@ export async function updateBillStatus(billId: string, newStatus: string): Promi
 
 export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | null, foodState: boolean | null): Promise<Bill> {
   try {    
+    console.log(`[UPDATE FOOD STATUS] Updating food-related flag to ${foodState}`);
 
     if (!bill) {
       throw new Error('Bill data is required to update food-related flag');
     }
 
     // if bill type is Bill, convert to BillDetails by fetching missing fields
+    // Bill type does not have bill_url field, BillDetails does 
+
+    // THIS IS INEFFICIENT, TODO JUST FIND EXISTING BILL BY BILL ID
     let billURL: string = '';
     const isBasicBill = !(bill as BillDetails).bill_url;
+    console.log('Is basic Bill type (missing bill_url)?', isBasicBill);
     if (isBasicBill) {
+      console.log('Fetching missing bill_url from database for bill ID:', bill.id.slice(0, 6));
       const missingFields = await db
         .selectFrom('bills')
         .select('bill_url')
@@ -451,13 +456,11 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | nu
       billURL = (bill as BillDetails).bill_url;
     }
 
-    if (billURL.includes('https://data.capitol.hawaii.gov/')) {
-      console.log('Bill object returned was from scraper, setting url to capitol.hawaii.gov format...');
-      billURL = billURL.replace('https://data.capitol.hawaii.gov/', 'https://capitol.hawaii.gov/');
-    }
-
-    // Check if bill exists
-    const existingBill = await findExistingBillByURL(billURL);
+    const existingBill = await db
+      .selectFrom('bills')
+      .selectAll()
+      .where('id', '=', bill.id)
+      .executeTakeFirst();
 
     if (!existingBill) {
       console.log('Bill not found in database, creating new bill with food-related flag...');
@@ -489,7 +492,6 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | nu
         if (aiMisclassificationType) {
           console.log(`Bill flagged as AI misclassification: ${aiMisclassificationType}`);
         }
-        revalidatePath('/');
         return await convertDataToBillShape(insertedBill);
       } else {
         console.log('Failed to create new bill in database');
@@ -510,6 +512,8 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | nu
         aiMisclassificationType = 'false_negative';
       }
     }
+
+    console.log('Existing bill found, updating food-related flag to:', foodState, 'with AI misclassification type:', aiMisclassificationType);
 
     // If bill exists, update its food-related flag
     const result = await db.updateTable('bills')
@@ -543,7 +547,6 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | nu
       throw new Error('Failed to convert bill data');
     }
 
-    revalidatePath('/');
     return convertedBill; // to render on board
   } catch (error) {
     console.error('Database update failed', error)
