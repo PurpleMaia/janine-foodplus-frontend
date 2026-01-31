@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
 import { TempBillCard } from './temp-card';
-import { ListRestart, TriangleAlert } from 'lucide-react';
+import { ListRestart, MoreVertical, TriangleAlert } from 'lucide-react';
 import ColumnOptionsMenu from './column-options-menu';
 import { KanbanCardSkeleton } from './skeletons/skeleton-board';
 import { useAuth } from '@/hooks/contexts/auth-context';
@@ -121,12 +121,12 @@ export const KanbanColumn = React.forwardRef<HTMLDivElement, KanbanColumnProps>(
             )}
           </h2>
 
-          {/* {bills.length >= 20 && (
+          {bills.length >= 20 && (
             <p className="mt-2 text-xs text-gray-600 flex items-center gap-2">
               <TriangleAlert className="h-4 w-4 text-yellow-600" />
-              Clicking <ListRestart className="h-3 w-3" /> will take a long time
+              Using Actions in <MoreVertical className="h-3 w-3" /> will take a while
             </p>
-          )} */}
+          )}
         </div>
 
         <ScrollArea className="flex-1 p-2">
