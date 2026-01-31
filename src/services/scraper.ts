@@ -1,4 +1,5 @@
 'use server'
+import { revalidatePath } from 'next/cache';
 import { limitFixedWindow, retryAfterMs } from '@/lib/ratelimit-memory';
 // NOTE: due to the archive of 2025, bill URLS have changed
 // - when going to that link it appends the 'Archives' segment and redirects, so we need to handle both cases
@@ -29,7 +30,7 @@ export async function scrapeForUpdates(billID: string) {
     console.log('[SCRAPER FOR UPDATES] Successfully scraped: ', data.individualBill.billTitle)
     console.log('[SCRAPER FOR UPDATES] Total Updates: ', data.individualBill.updates.length)
 
-    // test
+    revalidatePath('/');
     return data
 }
 

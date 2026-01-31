@@ -2,6 +2,7 @@
 
 import type { Bill, BillTracker, Tag, BillDetails, StatusUpdate } from '@/types/legislation';
 import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/db/kysely/client';
 import { Bills, BillStatus, StatusUpdates, User } from '@/db/types';
 import { Selectable, sql } from 'kysely';
@@ -488,6 +489,7 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | nu
         if (aiMisclassificationType) {
           console.log(`Bill flagged as AI misclassification: ${aiMisclassificationType}`);
         }
+        revalidatePath('/');
         return await convertDataToBillShape(insertedBill);
       } else {
         console.log('Failed to create new bill in database');
@@ -541,6 +543,7 @@ export async function updateFoodStatusOrCreateBill(bill: Bill | BillDetails | nu
       throw new Error('Failed to convert bill data');
     }
 
+    revalidatePath('/');
     return convertedBill; // to render on board
   } catch (error) {
     console.error('Database update failed', error)
