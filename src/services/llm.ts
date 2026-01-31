@@ -3,6 +3,7 @@ import { KANBAN_COLUMNS } from '@/lib/kanban-columns';
 import { limitFixedWindow, retryAfterMs } from '@/lib/ratelimit-memory';
 import { OpenAI } from 'openai';
 import { db } from '../db/kysely/client';
+import { sql } from 'kysely';
 
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -102,15 +103,17 @@ const SYSTEM_PROMPT = [
 const LLM_RATE_LIMIT = { limit: 10, windowMs: 60_000 };
 
 async function getContext(billId: string) {
-    console.log('getting context...')
+    console.log('[LLM] fetching recent status update context...')
     try {
-        const data = await db.selectFrom('status_updates')
+        const data = await db.selectFrom('status_updates as su')
             .select(['chamber', 'date', 'statustext'])
             .where('bill_id', '=', billId)
-            .orderBy('date', 'desc')
+            .orderBy(sql`cast(su.date as date)`, 'desc')
             .limit(5)
-            .execute();                
-        console.log('# of status updates', data.length) 
+            .execute();
+        console.log('[LLM] # of status updates', data.length)
+        console.log('[LLM] current status update:', data[0])
+
         // Format as tab-separated string, one row per line
         return data.map((row: any) => `${row.chamber}\t${row.date}\t${row.statustext}`).join('\n');
     } catch (error){
@@ -119,10 +122,9 @@ async function getContext(billId: string) {
     }
 }
 export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retryDelay = 1000) {  
-    console.log("HELLOOOOO");
-    console.log("MODEL:", process.env.VLLM || process.env.LLM);
+    console.log("[LLM] model:", process.env.VLLM || process.env.LLM);
     
-    console.log("CLASSIFYING BILL:", billId);
+    console.log("[LLM] classifying bill:", billId.slice(0,6), '...');
     const rl = limitFixedWindow(`llm:classify:${billId}`, LLM_RATE_LIMIT.limit, LLM_RATE_LIMIT.windowMs);
     if (!rl.ok) {
         console.warn('LLM classification rate limited', { billId, retryAfterMs: retryAfterMs(rl.resetAt) });
@@ -130,24 +132,17 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
     }
 
     const context = await getContext(billId);
-    console.log("GOT CONTEXT FOR BILL:", billId);
     const currStatus = context ? context.split(/\r?\n/)[0] : '';
     let attempt = 0;
-    // console.log('CONTEXT:\n', context)
-    console.log('awaiting llm...', process.env.VLLM)   
-        while (attempt < maxRetries) {
-            console.log('in while loop')   
-
+    console.log('[LLM] starting classification attempts...')
+    while (attempt < maxRetries) {
             try {
-                console.log('in try block')
                 const model = process.env.VLLM || process.env.LLM || '';
-                console.log('model:', model)
                 if (!model) {
-                    console.log('model not found')
-                    console.error('LLM model not configured. Please set VLLM or LLM environment variable.');
+                    console.log('[LLM] model not found')
+                    console.error('[LLM] LLM model not configured. Please set VLLM or LLM environment variable.');
                     return null;
                 }
-                console.log('calling llm...')   
                 const response = await client.chat.completions.create({
                     model,
                     messages: [
@@ -165,7 +160,7 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
                     ],
                     temperature: 0.0
                 });
-                console.log('response:', response)
+                // console.log('response:', response)
     
                 if (!response || !response.choices[0].message.content || !response.choices || !response.choices[0].message) {
                     console.log('response not found')
@@ -173,7 +168,7 @@ export async function classifyStatusWithLLM(billId: string, maxRetries = 3, retr
                 }
     
                 const classification = response.choices[0].message.content.trim();
-                console.log("Current Status:", currStatus);
+                // console.log("Current Status:", currStatus);
                 console.log("Classification:", classification);
                 const newStatus = mapToColumnID(classification)
                 console.log("Mapped:", newStatus)            
