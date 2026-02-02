@@ -16,7 +16,7 @@ interface Props {
 
 export default function RefreshColumnButton({ bills, onRefreshStart, onRefreshEnd  } : Props) {
     const [loading, setLoading] = useState<boolean>(false)
-    const { setBills } = useBills()
+    const { updateBill } = useBills()
     const { user } = useAuth() // Add this line to get authentication state
 
     const handleScrapeBillsStatuses = async () => {
@@ -47,18 +47,8 @@ export default function RefreshColumnButton({ bills, onRefreshStart, onRefreshEn
                     variant: 'destructive',
                 });
             } else {
-                // Update the UI with LLM suggestion (optimistic)
-                setBills(prevBills => 
-                    prevBills.map(b => 
-                    b.id === bill.id 
-                        ? { 
-                            ...b, 
-                            updates: result.individualBill.updates
-                        }
-                        : b
-                    )
-                );
-    
+                // Update the bill in the Bills Context
+                updateBill(bill.id, { latest_update: result.individualBill.updates[0] ?? null });
                 toast({
                     title: `Done: ${bill.bill_number}`,
                     description: `Successfully updated this bill.`,
@@ -100,8 +90,9 @@ export default function RefreshColumnButton({ bills, onRefreshStart, onRefreshEn
                 { loading ? (
                     <span className="flex items-center gap-2"><RefreshCw className='animate-spin'/></span>
                 ) : (
-                    <span className="flex items-center gap-2"><ListRestart /></span>
+                    <span className="flex items-center gap-2"><ListRestart className="h-4 w-4"/></span>
                 )}
+                Refresh Updates
             </Button>
         </>
     )
