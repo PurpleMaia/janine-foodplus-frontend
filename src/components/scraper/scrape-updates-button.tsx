@@ -8,7 +8,11 @@ import { scrapeForUpdates } from "@/services/scraper";
 
 interface Props {
     bill: Bill
-    onRefresh: (updates: StatusUpdate[]) => void
+    onRefresh: (
+        description: string, 
+        committee_assignment: string, 
+        introducers: string, 
+        updates: StatusUpdate[]) => void
 }
 
 // NOTE: This component does not save to the database. It only updates the UI optimistically.
@@ -33,7 +37,12 @@ export default function RefreshStatusesButton({ bill, onRefresh } : Props) {
             });
         } else {
             // Update the Details Dialog with updates
-            onRefresh(result.individualBill.updates);            
+            onRefresh(
+                result.individualBill.description,
+                result.individualBill.committee_assignment,
+                result.individualBill.introducers,
+                result.individualBill.updates
+            );
 
             toast({
                 title: `Done: ${bill.bill_number}`,

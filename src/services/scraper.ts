@@ -26,6 +26,7 @@ export async function scrapeForUpdates(billID: string) {
   
     const data = await response.json();
 
+    console.log('[SCRAPER FOR UPDATES] Successfully scraped: ', data.individualBill.description)
     console.log('[SCRAPER FOR UPDATES] Successfully scraped: ', data.individualBill.updates)
     console.log('[SCRAPER FOR UPDATES] Total Updates: ', data.individualBill.updates.length)
 

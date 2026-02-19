@@ -216,13 +216,15 @@ export function BillDetailsDialog({ billID, isOpen, onClose }: BillDetailsDialog
     }         
   }
 
-  const handleStatusUpdateRefresh = (updates: StatusUpdate[]) => {
+  const handleStatusUpdateRefresh = (description: string, committee_assignment: string, introducers: string, updates: StatusUpdate[]) => {
     const sortedUpdates = [...updates].sort((a, b) => b.date.localeCompare(a.date));
-    const updatedDetails = billDetails ? { ...billDetails, updates: sortedUpdates } : null;
+    const updatedDetails = billDetails ? { ...billDetails, description, committee_assignment, introducers, updates: sortedUpdates } : null;
 
     setBillDetails(updatedDetails);
     if (bill) {
-      updateBill(bill.id, { latest_update: sortedUpdates[0] ?? null });
+      updateBill(bill.id, { 
+        description, latest_update: sortedUpdates[0] ?? null 
+      });
     }
   }
 
