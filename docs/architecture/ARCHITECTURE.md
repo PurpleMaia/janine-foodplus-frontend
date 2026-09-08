@@ -1,10 +1,10 @@
-# Food+ Bill Tracker - Architecture Guide
+# Hawaiʻi Bill Tracker (by Purple Maiʻa & Food+ Policy) - Architecture Guide
 
 > A comprehensive guide for developers joining the project. Start here to understand how the codebase is structured and how data flows through the system.
 
 ## Table of Contents
 
-1. [What is Food+?](#what-is-food)
+1. [Who is Food+?](#what-is-food)
 2. [Tech Stack](#tech-stack)
 3. [Directory Structure](#directory-structure)
 4. [Data Model](#data-model)
@@ -19,18 +19,22 @@
 
 ---
 
-## What is Food+?
+## What is the Hawaiʻi Bill Tracker?
 
-Food+ is a legislative bill tracking application built for the Hawaii Legislature. Organizations (tenants) use it to monitor food-related bills as they move through the legislative process. The main interface is a **Kanban board** where bills are cards that move between columns representing legislative statuses (Introduced, Committee, Floor Vote, etc.).
+Hawaiʻi Bill Tracker is a legislative bill tracking progressive web application built for the Hawaii Legislature. The main interface is a **Kanban board** where bills are cards that move between columns representing legislative statuses (Introduced & Waiting, Crossover, Conference, etc.). Although the interface focuses on legislative tracking, its real purpose is action, not observation. Users can understand a bill in plain language, get told when it matters, draft and submit testimony, and contact legislators. 
 
 **Key concepts:**
-- **Bills** are scraped from the Hawaii Legislature website
-- **Organizations** (tenants) track bills and assign statuses independently
+- **Bills** - scraped from the Hawaii Legislature website in a **separate** repo called bill-scraper
+- **Search Bills** - pick a bill that peaks your interest by key terms from any legislative year and by a particular status
+- **Track Bills** - bills are organized by status in a Kanban-board style, each card contains info like testimony deadlines, legislative deadlines, committees and latest status update. If a bill failed (died), the card itself shows the reason why
+- **Testimonies** - users can write their bill drafts in a central place and are walked through the process of submitting testimony on the capitol website. Users also get email alerts when testimony is open for the bill that they track. 
+- **Contacting Legislators** - users can draft emails or scripts before contacting a legislator. The app gets the committee members assigned to the user's bill and provides an easy experience to contact them directly. According to what stage the bill is at, the legislator contact list adjusts (conference, governor, etc.)
+- **Active Boards** - users can see organizations who actively use Hawaiʻi Bill Tracker and what bills these organizations track. Users can then track the same bill an org tracks. Users can only follow organizations who have flagged themselves as public. 
+- **Organizations** (tenants) can track bills and work as a team for their own lobbyist goals
 - **Users** within an organization can be admins or workers
-- **Public users** can view bill statuses without joining an organization
-- **Supervisors** can oversee workers and approve status changes
-- The system uses **AI (LLM)** to suggest bill status classifications
-- A **derived public status** is computed from all organization statuses + AI input
+- **Admins** can manage workers, invite workers to their organization, and assign bills to certain workers. 
+- The system uses a **deterministic pattern table** to change bill statuses
+- The system has **opt-in AI** features like: bill summaries and testimony writing assistance
 
 ---
 
@@ -45,7 +49,6 @@ Food+ is a legislative bill tracking application built for the Hawaii Legislatur
 | ORM | Kysely (type-safe SQL query builder) |
 | Auth | Custom session-based (SHA-256 hashed tokens in cookies) |
 | State | React Context + TanStack React Query |
-| Drag & Drop | @hello-pangea/dnd |
 | Validation | Zod |
 | AI | OpenAI API |
 | Email | Resend |
@@ -128,74 +131,6 @@ src/
     ├── tenant.ts                 # Tenant, Membership, OrgRole
     └── admin.ts                  # Admin dashboard types
 ```
-
----
-
-## Data Model
-
-### Core Tables
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│    tenants    │     │   members    │     │     user     │
-├──────────────┤     ├──────────────┤     ├──────────────┤
-│ id (PK)      │◄────│ tenant_id    │     │ id (PK)      │
-│ name         │     │ user_id      │────►│ username     │
-│ slug         │     │ org_role     │     │ email        │
-│ created_at   │     │ (admin|      │     │ role (legacy)│
-│ branding_    │     │  worker)     │     │ system_role  │
-│  config      │     │ created_at   │     │ account_     │
-└──────────────┘     └──────────────┘     │  status      │
-                                          └──────────────┘
-                                               │
-                          ┌────────────────────┤
-                          ▼                    ▼
-                  ┌──────────────┐     ┌──────────────┐
-                  │  user_bills  │     │   auth_key   │
-                  ├──────────────┤     ├──────────────┤
-                  │ user_id (FK) │     │ user_id (FK) │
-                  │ bill_id (FK) │     │ hashed_      │
-                  │ tenant_id    │     │  password    │
-                  │ adopted_at   │     └──────────────┘
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐     ┌──────────────┐
-                  │    bills     │     │  org_bills   │
-                  ├──────────────┤     ├──────────────┤
-                  │ id (PK)      │◄────│ bill_id (FK) │
-                  │ bill_number  │     │ tenant_id    │
-                  │ bill_title   │     │ bill_status  │
-                  │ bill_url     │     │ updated_at   │
-                  │ bill_status  │     └──────────────┘
-                  │ dead (bool)  │
-                  │ archived     │     ┌──────────────┐
-                  │ food_related │     │  bill_tags   │
-                  └──────┬───────┘     ├──────────────┤
-                         │             │ bill_id (FK) │
-                         ▼             │ tag_id (FK)  │
-                  ┌──────────────┐     │ tenant_id    │
-                  │status_updates│     └──────┬───────┘
-                  ├──────────────┤            │
-                  │ bill_id (FK) │            ▼
-                  │ chamber      │     ┌──────────────┐
-                  │ date         │     │    tags      │
-                  │ statustext   │     ├──────────────┤
-                  └──────────────┘     │ id (PK)      │
-                                       │ name         │
-                                       │ color        │
-                                       │ tenant_id    │
-                                       └──────────────┘
-```
-
-### Key Relationships
-
-- A **User** can belong to multiple **Tenants** (organizations) via the **Members** table
-- Each membership has an `org_role`: `admin` or `worker`
-- **Bills** are global; organizations track them via **user_bills** (with `tenant_id`)
-- Each org can have its own status for a bill via **org_bills**
-- **Tags** are scoped per tenant
-- **Proposals** (pending status changes) are scoped per tenant
 
 ---
 
@@ -512,7 +447,7 @@ const bill = await db
   .executeTakeFirst();
 ```
 
-To regenerate types after schema changes: `npm run codegen`
+To regenerate types after schema changes: `pnpm  codegen`
 
 ### 2. Zod Validation
 
@@ -575,11 +510,11 @@ const { data: pendingUsers } = useQuery({
 
 ### Adding a New Database Table
 
-1. Create a migration: `npm run migrate:create <name>`
+1. Create a migration: `pnpm migrate:create <name>`
 2. Write SQL in `src/db/migrations/<number>_<name>.up.sql`
 3. Write rollback in `src/db/migrations/<number>_<name>.down.sql`
-4. Run migration: `npm run migrate:up`
-5. Regenerate types: `npm run codegen`
+4. Run migration: `pnpm migrate:up`
+5. Regenerate types: `pnpm codegen`
 6. The new table types appear in `src/db/types.ts`
 
 ### Adding a New Component
@@ -593,11 +528,11 @@ const { data: pendingUsers } = useQuery({
 ### Running the App
 
 ```bash
-npm run dev          # Start dev server on port 9002
-npm run build        # Production build
-npm run typecheck    # TypeScript type checking
-npm run codegen      # Regenerate Kysely types from DB
-npm run migrate:up   # Run pending migrations
+pnpm  dev          # Start dev server on port 9002
+pnpm  build        # Production build
+pnpm  typecheck    # TypeScript type checking
+pnpm  codegen      # Regenerate Kysely types from DB
+pnpm  migrate:up   # Run pending migrations
 ```
 
 ---

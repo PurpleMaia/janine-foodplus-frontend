@@ -140,7 +140,7 @@ safe. Paired with the seed script, mirroring the existing seed/undo convention.
 
 ## Testing / verification
 
-- `npm run typecheck` and `npm run build` (the build catches `'use server'` and
+- `pnpm  typecheck` and `pnpm  build` (the build catches `'use server'` and
   import issues typecheck misses).
 - `npm test` (pure-logic suites; no new pure logic here, but must stay green).
 - Manual: run `npx tsx scripts/seed-sim-2027.ts` against the dev DB, register a

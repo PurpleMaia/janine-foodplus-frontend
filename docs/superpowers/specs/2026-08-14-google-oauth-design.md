@@ -198,7 +198,7 @@ real OAuth client: new-user signup, returning-user login, linking to an
 existing password account, invite acceptance, org creation, and the
 unverified-email refusal.
 
-Gates before completion: `npm test`, `npm run typecheck`, `npm run build`
+Gates before completion: `npm test`, `pnpm  typecheck`, `pnpm  build`
 (the build catches `'use server'` export violations that typecheck does
 not).
 

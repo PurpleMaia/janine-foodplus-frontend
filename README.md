@@ -1,6 +1,6 @@
-# Food+ Frontend
+# Hawaiʻi Bill Tracker (Frontend)
 
-A Next.js application for tracking and managing legislative bills related to food and agriculture in Hawaiʻi. This repository contains the frontend application, developer utilities, and scripts used to run and maintain the project locally and in production.
+A Next.js application for tracking and managing legislative bills related to food and agriculture in Hawaiʻi. This repository contains the frontend application, developer utilities, and scripts used to run and maintain the project. 
 
 ---
 
@@ -72,19 +72,19 @@ Create a `.env` file in the repository root (do not commit secrets). The main va
 Install dependencies and run the dev server:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 # Open http://localhost:9002
 ```
 
 Available npm scripts (high level):
 
-- npm run dev — Start dev server (Next.js, port 9002 by default in package.json)
-- npm run build — Build production app
-- npm run start — Start the built app
-- npm run lint — Run ESLint
-- npm run typecheck — Run TypeScript typecheck
-- npm run kysely:generate — Generate DB types from DATABASE_URL with kysely-codegen
+- pnpm dev — Start dev server (Next.js, port 9002 by default in package.json)
+- pnpm build — Build production app
+- pnpm start — Start the built app
+- pnpm lint — Run ESLint
+- pnpm typecheck — Run TypeScript typecheck
+- pnpm codegen — Generate DB types from DATABASE_URL with kysely-codegen
 
 If the app does not pick up `.env`, confirm your terminal has the environment variables exported (zsh profile, direnv, or use a .env loader).
 
@@ -121,15 +121,14 @@ git checkout -b feature/<short-description>
 4. Run linting and type checking locally:
 
 ```bash
-npm run lint
-npm run typecheck
+pnpm lint
+pnpm typecheck
 ```
 
 5. If your changes touch database types, regenerate Kysely types:
 
 ```bash
-export DATABASE_URL="..."
-npm run kysely:generate
+pnpm codegen
 ```
 
 6. Create a pull request. In the PR description:
@@ -149,13 +148,13 @@ Coding style:
 
 ## Testing & linting
 
-- ESLint (run `npm run lint`) is configured. Fix lint errors before submitting PRs.
-- Type checking: `npm run typecheck`.
+- ESLint (run `pnpm  lint`) is configured. Fix lint errors before submitting PRs.
+- Type checking: `pnpm  typecheck`.
 - There are no automated test scripts included by default; add unit/integration tests as needed and document how to run them in PRs.
 
 ## Deployment notes
 
-- Build for production: `npm run build` then `npm run start`.
+- Build for production: `pnpm  build` then `pnpm  start`.
 - Ensure production environment has the required env vars (DATABASE_URL, OPENAI_API_KEY).
 - Database migrations: this repo uses DDL setup scripts located in `scripts/`. For production, run your curated migrations or managed schema updates.
 - When deploying to a platform (Vercel, Cloud Run, etc.), set environment variables in the platform settings and ensure Postgres is reachable from the deployed environment.
