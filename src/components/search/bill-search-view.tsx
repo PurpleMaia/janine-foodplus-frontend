@@ -20,9 +20,10 @@ import {
   parseSearchParams,
   type SearchFilters,
 } from '@/lib/bills/search-params';
+import { loadSearchFilters, saveSearchFilters } from '@/lib/bills/search-filter-storage';
 
 /** Sessions the corpus covers, newest first. Mirrors the rail's YEARS list. */
-const SESSION_YEARS = [2027, 2026, 2025];
+const SESSION_YEARS = [2027, 2026];
 
 export function BillSearchView() {
   const { user, activeTenant } = useAuth();
@@ -33,10 +34,40 @@ export function BillSearchView() {
   // thereafter (they don't push back to the URL). A missing `years` param keeps
   // the default live-session scope rather than widening to all sessions.
   const searchParams = useSearchParams();
+  // Whether the entry URL carried filter params. A deep link must win over
+  // stored filters; only when the URL is bare do we restore the last session.
+  const urlHadParams = useRef(false);
   const [filters, setFilters] = useState<SearchFilters>(() => {
-    const parsed = parseSearchParams(new URLSearchParams(searchParams.toString()));
+    const raw = new URLSearchParams(searchParams.toString());
+    urlHadParams.current = Array.from(raw.keys()).length > 0;
+    const parsed = parseSearchParams(raw);
     return { ...parsed, years: parsed.years.length ? parsed.years : DEFAULT_FILTERS.years };
   });
+
+  // Restore the last-used filters from localStorage AFTER mount (the read must
+  // run client-side; a lazy initializer would see no `window` during SSR and
+  // React doesn't re-run it on hydration). A deep link with params wins, so we
+  // only restore when the entry URL was bare. `hydrated` is state, not a ref,
+  // so flipping it commits a render before the persist effect runs — the
+  // initial defaults can never overwrite what's stored.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    if (!urlHadParams.current) {
+      const stored = loadSearchFilters();
+      if (stored) setFilters(stored);
+    }
+    setHydrated(true);
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist filter changes so they survive navigation and reload. Gated on
+  // `hydrated` so the persist effect first runs only after the restore above
+  // has committed — the initial defaults are never written over stored filters.
+  useEffect(() => {
+    if (!hydrated) return;
+    saveSearchFilters(filters);
+  }, [hydrated, filters]);
   const [openBillId, setOpenBillId] = useState<string | null>(null);
   const {
     bills,
